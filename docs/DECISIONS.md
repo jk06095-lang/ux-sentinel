@@ -21,10 +21,12 @@ This file records product and technical decisions made during implementation.
 | 2026-07-01 | Support GitHub `npm exec` as the external-project path. | Developers should be able to use ux-sentinel from another Codex project without `npm link`, global install, or adding a dependency. | Accepted |
 | 2026-07-01 | Add `prepare: npm run build`. | GitHub package installs need to compile `dist/cli.js` before npm exposes the `ux-sentinel` bin. | Accepted |
 | 2026-07-01 | Keep Codex Skill and MCP as future packaging layers. | Prompt-only GitHub execution is lower scope and better matches the local-first MVP; MCP is not required for v0. | Accepted |
+| 2026-07-01 | Keep v0.1 launch usage GitHub-only for now. | GitHub `npm exec` is verified from an external repo; npm publishing should wait until the v0.1.0 tag, release notes, and package ownership are deliberately finalized. | Accepted |
 
 ## Pending Decisions
 
-- Whether to publish the package to npm after MVP validation.
+- Whether to publish the package to npm after GitHub-only v0.1 usage gets feedback.
+- When to cut the `v0.1.0` tag and GitHub release.
 - How rich scenario action steps should become after the initial observe-only visual contract.
 - Whether future optional LLM/provider integrations belong in core or separate plugins.
 - Whether to package the repo-scoped skill as an installable Codex plugin after the prompt-only workflow has enough usage feedback.

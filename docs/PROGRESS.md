@@ -145,3 +145,17 @@ Status: done
 Fixed the temporary clone fallback docs so the clone directory is only used to build ux-sentinel. The docs now instruct Codex to return to the target frontend repo before running `node /tmp/ux-sentinel/dist/cli.js`, because reports and traces are written relative to `process.cwd()`.
 
 Updated README, Codex magic prompt, Codex integration guide, repo-scoped skill draft, launch plan, and copy-paste Codex prompts. Added tests to prevent fallback examples from running target scenario checks from inside `/tmp/ux-sentinel`.
+
+### Checkpoint: Public Launch Polish
+
+Status: done
+
+Made the README Codex entry point more visible with a direct "Copy this prompt" block near the top.
+
+Captured a real external-repo smoke log using the GitHub `npm exec` path. The temporary target frontend repo produced:
+
+- broken page: exit 1, report verdict `fail`
+- fixed page: exit 0, report verdict `pass`
+- reports and traces written under the target repo `.ux-sentinel` directory
+
+Documented the current packaging decision: v0.1 launch usage stays GitHub-only for now; npm publish waits until the v0.1.0 tag, release notes, and package ownership are deliberately finalized.
