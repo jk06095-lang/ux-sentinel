@@ -1,0 +1,6 @@
+id: first-time-user
+name: First-time user
+description: A user who has not learned hidden shortcuts or icon meanings.
+assumptions:
+  - Relies on visible labels, hierarchy, and empty-state copy.
+  - Does not inspect DOM or accessibility metadata.

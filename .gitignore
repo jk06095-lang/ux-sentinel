@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.ux-sentinel/traces/
+.ux-sentinel/reports/
+.ux-sentinel/briefs/
+.ux-sentinel/feedback/distilled/*.yaml
+.DS_Store
+npm-debug.log*

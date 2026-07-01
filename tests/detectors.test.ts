@@ -1,0 +1,154 @@
+import { describe, expect, it } from "vitest";
+import { runDetectors, verdictForFindings } from "../src/core/detectors.js";
+import type { Scenario, ScreenMap } from "../src/core/types.js";
+
+const scenario: Scenario = {
+  id: "onboarding-empty-state",
+  title: "First-time user sees clear next action",
+  persona: "first-time-user",
+  goal: {
+    user_wants: "Create the first project",
+    primary_intent: "create_project"
+  },
+  visual_contract: {
+    primary_cta: {
+      preferred_labels: ["Create first project", "Create project"],
+      avoid_icon_only: true,
+      must_be_visible_above_fold: true,
+      must_look_clickable: true
+    },
+    empty_state: {
+      if_detected_requires_primary_cta: true
+    }
+  },
+  fail_conditions: [
+    "primary_cta_missing",
+    "primary_cta_icon_only",
+    "empty_state_without_cta",
+    "console_error",
+    "network_5xx",
+    "horizontal_scroll"
+  ]
+};
+
+function baseScreenMap(overrides: Partial<ScreenMap>): ScreenMap {
+  return {
+    url: "http://example.test",
+    timestamp: "2026-07-01T00:00:00.000Z",
+    viewport: { width: 1280, height: 720 },
+    document: { width: 1280, height: 720, hasHorizontalScroll: false },
+    visibleText: [],
+    elements: [],
+    consoleErrors: [],
+    networkErrors: [],
+    risks: [],
+    ...overrides
+  };
+}
+
+describe("detectors", () => {
+  it("fails the broken empty state with an icon-only CTA", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Projects", "No projects yet", "+"],
+      elements: [
+        {
+          id: "e1",
+          tag: "button",
+          role: "button",
+          visibleText: "+",
+          ariaLabel: "Create first project",
+          title: null,
+          bbox: { x: 1200, y: 32, width: 28, height: 28 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: false,
+          isIconOnly: true,
+          textTruncated: false,
+          visualWeight: 0.001
+        }
+      ]
+    });
+
+    const findings = runDetectors(screenMap, scenario);
+
+    expect(findings.map((finding) => finding.detector)).toContain("primary_cta_icon_only");
+    expect(findings.map((finding) => finding.detector)).toContain("empty_state_without_cta");
+    expect(verdictForFindings(findings, scenario)).toBe("fail");
+  });
+
+  it("passes the fixed empty state with a visible primary CTA", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Projects", "No projects yet", "Create first project"],
+      elements: [
+        {
+          id: "e1",
+          tag: "button",
+          role: "button",
+          visibleText: "Create first project",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 520, y: 340, width: 180, height: 44 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0086
+        }
+      ]
+    });
+
+    const findings = runDetectors(screenMap, scenario);
+
+    expect(findings).toEqual([]);
+    expect(verdictForFindings(findings, scenario)).toBe("pass");
+  });
+
+  it("detects horizontal scroll and network 5xx as functional issues", () => {
+    const screenMap = baseScreenMap({
+      document: { width: 1500, height: 720, hasHorizontalScroll: true },
+      networkErrors: [{ url: "http://example.test/api", status: 503, statusText: "Service Unavailable", method: "GET" }]
+    });
+
+    const findings = runDetectors(screenMap, scenario);
+
+    expect(findings.map((finding) => finding.detector)).toContain("horizontal_scroll");
+    expect(findings.map((finding) => finding.detector)).toContain("network_5xx");
+  });
+
+  it("fails when the primary CTA is only below the fold", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Projects", "No projects yet", "Create first project"],
+      elements: [
+        {
+          id: "e1",
+          tag: "button",
+          role: "button",
+          visibleText: "Create first project",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 520, y: 900, width: 180, height: 44 },
+          clickable: true,
+          disabled: false,
+          aboveFold: false,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0086
+        }
+      ]
+    });
+
+    const findings = runDetectors(screenMap, scenario);
+
+    expect(findings.map((finding) => finding.detector)).toContain("primary_cta_below_fold");
+  });
+});

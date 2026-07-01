@@ -1,0 +1,36 @@
+id: onboarding-empty-state
+title: First-time user sees clear next action
+persona: first-time-user
+mode: visual_contract
+start_path: /dashboard
+
+goal:
+  user_wants: "Create the first project"
+  primary_intent: "create_project"
+
+visual_contract:
+  page_must_answer:
+    - "Where am I?"
+    - "What can I do next?"
+    - "What happens after I do it?"
+  primary_cta:
+    preferred_labels:
+      - "Create first project"
+      - "Create project"
+      - "New project"
+      - "첫 프로젝트 만들기"
+      - "프로젝트 만들기"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+  empty_state:
+    if_detected_requires_primary_cta: true
+
+fail_conditions:
+  - primary_cta_missing
+  - primary_cta_icon_only
+  - empty_state_without_cta
+  - console_error
+  - network_5xx
+  - horizontal_scroll
+  - important_text_truncated

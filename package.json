@@ -1,0 +1,45 @@
+{
+  "name": "ux-sentinel",
+  "version": "0.1.0",
+  "description": "A local CLI that catches UI perception mismatches in AI-generated frontends.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jk06095-lang/ux-sentinel.git"
+  },
+  "homepage": "https://github.com/jk06095-lang/ux-sentinel#readme",
+  "bugs": {
+    "url": "https://github.com/jk06095-lang/ux-sentinel/issues"
+  },
+  "bin": {
+    "ux-sentinel": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "demo",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "demo:server": "node demo/server.mjs",
+    "demo:broken": "node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/broken",
+    "demo:fixed": "node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/fixed",
+    "demo:verify": "node scripts/verify-demo.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright": "^1.57.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}
