@@ -120,6 +120,57 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel");
   });
 
+  it("keeps the README copy prompt self-contained for clone fallback", () => {
+    const readme = readText("README.md");
+
+    expect(readme).toContain("### Copy this prompt");
+    expect(readme).toContain("TARGET_REPO=$(pwd)");
+    expect(readme).toContain("git clone https://github.com/jk06095-lang/ux-sentinel.git /tmp/ux-sentinel");
+    expect(readme).toContain("node /tmp/ux-sentinel/dist/cli.js --help");
+    expect(readme).toContain('UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"');
+    expect(readme).not.toContain("use the temporary clone fallback from the ux-sentinel README");
+  });
+
+  it("uses a selected runner in the magic prompt after npm exec or fallback", () => {
+    const prompt = readText("docs/CODEX_MAGIC_PROMPT.md");
+
+    expect(prompt).toContain('UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"');
+    expect(prompt).toContain('UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"');
+    expect(prompt).toContain("$UX_SENTINEL init");
+    expect(prompt).toContain("$UX_SENTINEL run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url <local-url>");
+    expect(prompt).toContain("$UX_SENTINEL codex-brief <report-path>");
+  });
+
+  it("does not reference stale launch detector names", () => {
+    const docs = [
+      "README.md",
+      "docs/MVP_SPEC.md",
+      "docs/LAUNCH_PLAN.md",
+      "docs/examples/sample-failure-report.md"
+    ].map(readText).join("\n");
+
+    expect(docs).not.toContain("aria-only-action");
+    expect(docs).not.toContain("empty-state-primary-cta");
+    expect(docs).toContain("primary_cta_icon_only");
+    expect(docs).toContain("empty_state_without_cta");
+  });
+
+  it("warns not to commit target-repo .codex-tools fallback clones", () => {
+    const docs = [
+      "docs/CODEX_MAGIC_PROMPT.md",
+      "docs/CODEX_INTEGRATION.md",
+      ".agents/skills/ux-sentinel/SKILL.md",
+      "examples/codex/magic-prompt.md",
+      "examples/codex/goal-prompt.md",
+      "examples/codex/onboarding-qa.prompt.md",
+      "examples/codex/empty-state-qa.prompt.md"
+    ].map(readText).join("\n");
+
+    expect(docs).toContain(".codex-tools/ux-sentinel");
+    expect(docs).toMatch(/do not commit it/i);
+    expect(docs).toContain(".git/info/exclude");
+  });
+
   it("mentions npm link only as something to avoid", () => {
     const docs = [
       "README.md",

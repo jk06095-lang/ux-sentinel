@@ -25,6 +25,12 @@ Prefer GitHub `npm exec` so the target repo does not need `npm link`, global ins
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
 ```
 
+If this works, treat the selected runner as:
+
+```bash
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+```
+
 Common commands:
 
 ```bash
@@ -50,6 +56,14 @@ Build ux-sentinel in the temporary tool directory, then cd back to the target re
 
 If `/tmp` is unavailable, use `.codex-tools/ux-sentinel` in the target repo and keep it out of production changes.
 
+If using `.codex-tools/ux-sentinel` inside the target repo, do not commit it. Prefer adding it to `.git/info/exclude` rather than changing the project's `.gitignore` unless the user asks.
+
+If fallback works, treat the selected runner as:
+
+```bash
+UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"
+```
+
 ## Workflow
 
 1. Read the target repo `AGENTS.md` and relevant package files.
@@ -59,7 +73,7 @@ If `/tmp` is unavailable, use `.codex-tools/ux-sentinel` in the target repo and 
 5. Determine the local URL from terminal output or common defaults.
 6. Run the default onboarding empty-state scenario.
 7. Read the generated `.ux-sentinel/reports/*.md` report.
-8. Generate or read the Codex patch brief with `ux-sentinel codex-brief <report>`.
+8. Generate or read the Codex patch brief with `$UX_SENTINEL codex-brief <report>`.
 9. Fix only P0/P1 findings grounded in the report.
 10. Rerun the same scenario.
 11. Report files changed, commands run, report path, brief path, final verdict, and remaining risks.

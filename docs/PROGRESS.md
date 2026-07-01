@@ -159,3 +159,22 @@ Captured a real external-repo smoke log using the GitHub `npm exec` path. The te
 - reports and traces written under the target repo `.ux-sentinel` directory
 
 Documented the current packaging decision: v0.1 launch usage stays GitHub-only for now; npm publish waits until the v0.1.0 tag, release notes, and package ownership are deliberately finalized.
+
+### Checkpoint: Launch Docs Review Polish
+
+Status: done
+
+Applied the final launch-doc review fixes:
+
+- Made the README copy prompt self-contained with the minimal temporary clone fallback commands.
+- Introduced a selected `UX_SENTINEL` runner in the magic prompt and Codex examples so fallback and npm exec paths share the same later workflow.
+- Replaced stale launch-plan detector names with `primary_cta_icon_only`, `empty_state_without_cta`, and optional `dom_visible_but_human_invisible`.
+- Clarified the external smoke log by explaining the broken and fixed checks used the same local URL after swapping the temporary target app HTML.
+- Added `.codex-tools/ux-sentinel` safety guidance: do not commit it; prefer `.git/info/exclude` over changing `.gitignore` unless the user asks.
+- Added docs tests for self-contained fallback commands, selected runner usage, stale detector names, and `.codex-tools` commit safety.
+
+Verification:
+
+- `npm run build` passed.
+- `npm test` passed with 6 test files and 23 tests.
+- `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.

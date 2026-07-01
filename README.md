@@ -26,9 +26,22 @@ DOM says pass. Humans say “what do I click?”
 Do not use npm link or a global install. First try:
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
 
-If that fails, use the temporary clone fallback from the ux-sentinel README. Build ux-sentinel in the temporary tool directory, then cd back to this target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.
+If that works, use this runner for all ux-sentinel commands:
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
 
-Read this repo's AGENTS.md and package files. Start the app, find the local URL, initialize .ux-sentinel if missing, run the default onboarding-empty-state scenario, read the report and Codex patch brief, fix only P0/P1 perception mismatch findings, rerun the same scenario, and report files changed, commands run, final verdict, and remaining risks.
+If npm exec fails, run this fallback from the target repo root:
+TARGET_REPO=$(pwd)
+git clone https://github.com/jk06095-lang/ux-sentinel.git /tmp/ux-sentinel
+cd /tmp/ux-sentinel
+npm install
+npm run build
+cd "$TARGET_REPO"
+node /tmp/ux-sentinel/dist/cli.js --help
+UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"
+
+Build ux-sentinel in the temporary tool directory, then cd back to this target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.
+
+Read this repo's AGENTS.md and package files. Start the app, find the local URL, run $UX_SENTINEL init if .ux-sentinel is missing, run $UX_SENTINEL run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url <local-url>, read the report, run $UX_SENTINEL codex-brief <report-path>, fix only P0/P1 perception mismatch findings, rerun the same scenario, and report files changed, commands run, final verdict, and remaining risks.
 ```
 
 Longer prompt files:

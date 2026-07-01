@@ -8,10 +8,18 @@ The target repository was:
 %TEMP%\ux-sentinel-target-49292f804f774788abd5d38ed21c9660
 ```
 
-The run used the GitHub no-install path from the target repo root:
+The temporary target app served `/dashboard` from a local `page.html` file.
+
+The run used the GitHub no-install path from the target repo root. First, the target app served the broken empty-state HTML:
 
 ```bash
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4871
+```
+
+Then `page.html` was replaced with the fixed empty-state HTML and the same scenario was rerun against the same URL:
+
+```bash
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4871
 ```
 

@@ -129,8 +129,9 @@ Broken UI:
 Expected `ux-sentinel` result:
 
 - Fail.
-- Finding from `aria-only-action`.
-- Finding from `empty-state-primary-cta`.
+- Finding from `primary_cta_icon_only`.
+- Finding from `empty_state_without_cta`.
+- Optional warning from `dom_visible_but_human_invisible`.
 - Report explains that accessible metadata is not enough because the primary action is not visually legible.
 
 ## Fixed Demo Scenario

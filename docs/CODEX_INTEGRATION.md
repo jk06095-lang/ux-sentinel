@@ -20,6 +20,12 @@ npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run
 
 This path requires no checked-in dependency in the target app.
 
+When this succeeds, treat the selected runner as:
+
+```bash
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+```
+
 If GitHub `npm exec` fails, use a temporary clone fallback:
 
 ```bash
@@ -37,6 +43,12 @@ node /tmp/ux-sentinel/dist/cli.js run .ux-sentinel/scenarios/onboarding-empty-st
 
 Build ux-sentinel in the temporary tool directory, then cd back to the target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.
 
+When this succeeds, treat the selected runner as:
+
+```bash
+UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"
+```
+
 When `/tmp` is not appropriate, clone into the target repo under `.codex-tools/ux-sentinel`:
 
 ```bash
@@ -51,6 +63,8 @@ node .codex-tools/ux-sentinel/dist/cli.js --help
 node .codex-tools/ux-sentinel/dist/cli.js init
 node .codex-tools/ux-sentinel/dist/cli.js run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```
+
+If using `.codex-tools/ux-sentinel` inside the target repo, do not commit it. Prefer adding it to `.git/info/exclude` rather than changing the project's `.gitignore` unless the user asks.
 
 Recommended target-project prompt:
 
@@ -74,8 +88,11 @@ When I ask for UI QA, perception mismatch review, empty-state review, onboarding
 - Do not install ux-sentinel globally.
 - First try:
   `npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help`
+- If npm exec works, use selected runner: `UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"`.
 - If npm exec fails, clone `https://github.com/jk06095-lang/ux-sentinel.git` into `/tmp/ux-sentinel` or `.codex-tools/ux-sentinel`, run `npm install && npm run build` in the tool directory, then return to the target repo root before executing `node /tmp/ux-sentinel/dist/cli.js`.
-- Run `ux-sentinel init` if `.ux-sentinel` is missing.
+- If using `.codex-tools/ux-sentinel` inside the target repo, do not commit it. Prefer adding it to `.git/info/exclude` rather than changing the project's `.gitignore` unless the user asks.
+- If fallback works, use selected runner: `UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"`.
+- Run `$UX_SENTINEL init` if `.ux-sentinel` is missing.
 - Start the target app using its existing package manager and dev command.
 - Run `.ux-sentinel/scenarios/onboarding-empty-state.yaml` against the local URL.
 - Read the generated report and Codex patch brief.
