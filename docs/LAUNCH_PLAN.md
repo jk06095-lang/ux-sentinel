@@ -5,11 +5,13 @@
 ```markdown
 # ux-sentinel
 
-Catch the UI bug your DOM tests miss.
+DOM says pass. Humans say “what do I click?”
 
-`ux-sentinel` is a local CLI for AI-generated frontend UIs. It looks for perception mismatch: cases where the DOM contains a working control, but a human looking at the screen cannot tell what to do next.
+ux-sentinel is a local CLI for AI-generated frontend UIs. It looks for perception mismatch: cases where the DOM contains a working control, but a human looking at the screen cannot tell what to do next.
 
 Example: an empty dashboard has a tiny `+` icon button with a correct `aria-label`. Automated checks can find it. A real user still asks, "what do I click?"
+
+Paste one prompt into Codex. No npm link. No global install. No SaaS.
 
 ## MVP
 
@@ -20,6 +22,39 @@ Example: an empty dashboard has a tiny `+` icon button with a correct `aria-labe
 - `ux-sentinel codex-brief <report.md>`
 
 The first version uses Playwright, deterministic rule-based detectors, local evidence artifacts, and Markdown reports. No SaaS account, cloud runner, browser extension, or required external LLM API.
+```
+
+## New Usage Story
+
+Paste one prompt into Codex. Codex uses `ux-sentinel` from GitHub as a temporary external QA tool, runs the default onboarding/empty-state scenario, reads the report and Codex patch brief, fixes only P0/P1 perception mismatch findings, and reruns the same scenario.
+
+No npm link. No global install. No SaaS.
+
+Fast path:
+
+```bash
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+```
+
+Fallback:
+
+```bash
+git clone https://github.com/jk06095-lang/ux-sentinel.git /tmp/ux-sentinel
+cd /tmp/ux-sentinel
+npm install
+npm run build
+node /tmp/ux-sentinel/dist/cli.js --help
+```
+
+## Launch Copy
+
+```text
+DOM says pass. Humans say “what do I click?”
+
+Paste this into Codex and let it find/fix P0/P1 perception mismatches in your frontend.
+
+No npm link. No global install. No SaaS.
 ```
 
 ## Show HN Draft

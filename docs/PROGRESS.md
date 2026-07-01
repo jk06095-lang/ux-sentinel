@@ -113,3 +113,17 @@ README launch fixes:
 - Added sample Codex brief section.
 - Added links to `docs/examples/sample-failure-report.md` and `docs/examples/sample-codex-brief.md`.
 - Clarified that screenshots are generated locally under `.ux-sentinel/traces/<timestamp>/`.
+
+### Checkpoint: Cross-Project Codex Usage
+
+Status: in progress
+
+Improved the project so Codex can use ux-sentinel from another frontend repository without `npm link` or global install:
+
+- Added `prepare: npm run build` for GitHub package installs.
+- Added `docs/CODEX_MAGIC_PROMPT.md`.
+- Added `docs/CODEX_INTEGRATION.md`.
+- Added repo-scoped skill draft at `.agents/skills/ux-sentinel/SKILL.md`.
+- Added copy-paste prompts under `examples/codex/`.
+- Updated README with the GitHub `npm exec` fast path and temporary clone fallback.
+- Updated `docs/LAUNCH_PLAN.md` with the prompt-only usage story.

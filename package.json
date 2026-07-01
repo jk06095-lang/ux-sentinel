@@ -18,12 +18,15 @@
     "dist",
     "demo",
     "docs",
+    "examples",
+    ".agents",
     "README.md",
     "LICENSE",
     "CONTRIBUTING.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
     "test": "vitest run",
     "demo:server": "node demo/server.mjs",
     "demo:broken": "node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/broken",

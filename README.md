@@ -10,6 +10,34 @@ It collects screenshots, visible text, DOM/accessibility evidence, layout signal
 
 AI-built UIs can pass DOM tests while still failing the person looking at the screen. `ux-sentinel` checks the visible next action, empty-state guidance, layout signals, console errors, and network failures so the report points to the human-facing UX problem, not just the selector that exists.
 
+## Use with Codex, no install required
+
+Paste one prompt into Codex inside your frontend repo. Codex can pull `ux-sentinel` from GitHub, run perception checks, read the report, generate a patch brief, and fix only P0/P1 perception mismatch findings.
+
+Magic prompt:
+
+- [docs/CODEX_MAGIC_PROMPT.md](docs/CODEX_MAGIC_PROMPT.md)
+- [examples/codex/magic-prompt.md](examples/codex/magic-prompt.md)
+
+Fast path:
+
+```bash
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+```
+
+If GitHub `npm exec` fails, Codex can use a temporary clone instead:
+
+```bash
+git clone https://github.com/jk06095-lang/ux-sentinel.git /tmp/ux-sentinel
+cd /tmp/ux-sentinel
+npm install
+npm run build
+node /tmp/ux-sentinel/dist/cli.js run <target-repo>/.ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+```
+
+This project is not published to npm yet. The command above uses GitHub as the package source. The Codex Skill/Plugin and MCP paths are future packaging options, not current requirements.
+
 ## Install
 
 This MVP uses `npm` because it is the default Node.js package manager and keeps local setup simple.
@@ -254,6 +282,9 @@ The demo generates screenshots automatically as `.ux-sentinel/traces/<timestamp>
 - This MVP uses deterministic DOM, layout, accessibility, console, and network evidence. It does not use a visual AI model.
 - It does not call external LLM APIs.
 - It is not a SaaS dashboard, cloud runner, account system, database, Chrome extension, or enterprise QA platform.
+- It is not a replacement for human UX research; it is a local evidence harness for catching obvious perception mismatches before review.
+- It is not currently published as an npm registry package.
+- The repo-scoped Codex skill draft is included for local workflow design; it is not a published Codex plugin.
 - Detector heuristics are intentionally small and explainable.
 - The first visual contract focuses on clear primary CTA and empty-state perception.
 

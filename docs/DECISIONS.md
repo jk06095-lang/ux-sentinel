@@ -18,9 +18,13 @@ This file records product and technical decisions made during implementation.
 | 2026-07-01 | Ship static HTML demo fixtures plus a tiny Node demo server. | This proves the broken/fixed perception mismatch without adding an app framework or SaaS surface. | Accepted |
 | 2026-07-01 | Treat P0/P1 findings listed in `fail_conditions` as failing exit codes. | The CLI must be usable in local scripts and must fail the broken demo deterministically. | Accepted |
 | 2026-07-01 | Write `screen-map.json`, `screen-map.html`, `accessibility.json`, and `screenshot.png` into timestamped trace folders. | Evidence artifacts need to be inspectable by both humans and Codex. | Accepted |
+| 2026-07-01 | Support GitHub `npm exec` as the external-project path. | Developers should be able to use ux-sentinel from another Codex project without `npm link`, global install, or adding a dependency. | Accepted |
+| 2026-07-01 | Add `prepare: npm run build`. | GitHub package installs need to compile `dist/cli.js` before npm exposes the `ux-sentinel` bin. | Accepted |
+| 2026-07-01 | Keep Codex Skill and MCP as future packaging layers. | Prompt-only GitHub execution is lower scope and better matches the local-first MVP; MCP is not required for v0. | Accepted |
 
 ## Pending Decisions
 
 - Whether to publish the package to npm after MVP validation.
 - How rich scenario action steps should become after the initial observe-only visual contract.
 - Whether future optional LLM/provider integrations belong in core or separate plugins.
+- Whether to package the repo-scoped skill as an installable Codex plugin after the prompt-only workflow has enough usage feedback.
