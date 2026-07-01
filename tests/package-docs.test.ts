@@ -162,6 +162,7 @@ describe("Codex integration docs", () => {
     expect(notes).toContain("Not published to the npm registry yet.");
     expect(notes).toContain("github:jk06095-lang/ux-sentinel#v0.1.0");
     expect(checklist).toContain("gh release create v0.1.0");
+    expect(checklist).toContain("--verify-tag");
     expect(checklist).toContain("npm publish is deferred for `v0.1.0`.");
     expect(checklist).toContain("npm pack --dry-run");
   });

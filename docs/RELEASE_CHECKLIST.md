@@ -44,7 +44,10 @@ git push origin v0.1.0
 ## Create The GitHub Release
 
 ```bash
-gh release create v0.1.0 --title "ux-sentinel v0.1.0" --notes-file RELEASE_NOTES.md
+gh release create v0.1.0 \
+  --title "ux-sentinel v0.1.0" \
+  --notes-file RELEASE_NOTES.md \
+  --verify-tag
 ```
 
 ## Post-Release Smoke
