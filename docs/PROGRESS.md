@@ -199,3 +199,31 @@ Verification:
 - `npm test` passed with 6 test files and 25 tests.
 - `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.
 - `npm pack --dry-run` passed and produced a dry-run `ux-sentinel-0.1.0.tgz` package listing.
+
+### Checkpoint: GitHub v0.1.0 Release
+
+Status: done
+
+Created the GitHub-only `v0.1.0` release.
+
+Release verification:
+
+```json
+{
+  "isDraft": false,
+  "isPrerelease": false,
+  "name": "ux-sentinel v0.1.0",
+  "tagName": "v0.1.0",
+  "url": "https://github.com/jk06095-lang/ux-sentinel/releases/tag/v0.1.0"
+}
+```
+
+Post-release `v0.1.0` smoke:
+
+- `npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help`: exit 0
+- `ux-sentinel init`: exit 0
+- `ux-sentinel run` against a temp fixed app: exit 0
+- report verdict: `pass`
+- reports and traces written under the target temp repo `.ux-sentinel`
+
+npm publish remains deferred.
