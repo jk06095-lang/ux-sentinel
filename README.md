@@ -44,6 +44,16 @@ Build ux-sentinel in the temporary tool directory, then cd back to this target r
 Read this repo's AGENTS.md and package files. Start the app, find the local URL, run $UX_SENTINEL init if .ux-sentinel is missing, run $UX_SENTINEL run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url <local-url>, read the report, run $UX_SENTINEL codex-brief <report-path>, fix only P0/P1 perception mismatch findings, rerun the same scenario, and report files changed, commands run, final verdict, and remaining risks.
 ```
 
+### Three Magic Prompts
+
+Use these prompts when you want a more guided workflow:
+
+1. [First Run Baseline](docs/prompts/01-first-run-baseline.md) — connect `ux-sentinel`, initialize the target repo, run the default baseline, and collect evidence without changing app source code.
+2. [Natural Language Goal → Scenario](docs/prompts/02-natural-language-goal-to-scenario.md) — write the user's desired experience in plain language and let Codex refine it into a mission, persona, and executable visual-contract scenario.
+3. [Continuous `/GOAL` Loop](docs/prompts/03-continuous-goal-loop.md) — let Codex implement the requested product work while `ux-sentinel` keeps checking and fixing report-backed P0/P1 perception mismatches.
+
+Recommended order: run baseline first, turn the user's conversational goal into a scenario, then use the `/GOAL` loop for implementation and continuous QA.
+
 Longer prompt files:
 
 - [docs/CODEX_MAGIC_PROMPT.md](docs/CODEX_MAGIC_PROMPT.md)
