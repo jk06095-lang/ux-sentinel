@@ -24,10 +24,10 @@ Use ux-sentinel from GitHub as a temporary external QA tool for this frontend re
 DOM says pass. Humans say “what do I click?”
 
 Do not use npm link or a global install. First try:
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help
 
 If that works, use this runner for all ux-sentinel commands:
-UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"
 
 If npm exec fails, run this fallback from the target repo root:
 TARGET_REPO=$(pwd)
@@ -56,8 +56,14 @@ External repo smoke log:
 Fast path:
 
 ```bash
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+```
+
+Latest development path:
+
+```bash
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```
 
 If GitHub `npm exec` fails, Codex can use a temporary clone instead:

@@ -13,9 +13,9 @@ The user opens Codex inside a frontend repo and pastes the magic prompt from `do
 Codex should first try GitHub `npm exec`:
 
 ```bash
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```
 
 This path requires no checked-in dependency in the target app.
@@ -23,8 +23,10 @@ This path requires no checked-in dependency in the target app.
 When this succeeds, treat the selected runner as:
 
 ```bash
-UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"
 ```
+
+Use `github:jk06095-lang/ux-sentinel#main` only when you explicitly want the latest unreleased development version.
 
 If GitHub `npm exec` fails, use a temporary clone fallback:
 
@@ -87,8 +89,8 @@ When I ask for UI QA, perception mismatch review, empty-state review, onboarding
 - Do not use npm link.
 - Do not install ux-sentinel globally.
 - First try:
-  `npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help`
-- If npm exec works, use selected runner: `UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"`.
+  `npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help`
+- If npm exec works, use selected runner: `UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"`.
 - If npm exec fails, clone `https://github.com/jk06095-lang/ux-sentinel.git` into `/tmp/ux-sentinel` or `.codex-tools/ux-sentinel`, run `npm install && npm run build` in the tool directory, then return to the target repo root before executing `node /tmp/ux-sentinel/dist/cli.js`.
 - If using `.codex-tools/ux-sentinel` inside the target repo, do not commit it. Prefer adding it to `.git/info/exclude` rather than changing the project's `.gitignore` unless the user asks.
 - If fallback works, use selected runner: `UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"`.
@@ -119,12 +121,12 @@ MCP is intentionally not part of v0. The current MVP remains local-first, determ
 If you want to manually confirm GitHub execution from any target repo, run:
 
 ```bash
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help
 ```
 
 Then, with your app running:
 
 ```bash
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```

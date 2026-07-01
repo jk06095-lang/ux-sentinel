@@ -33,8 +33,8 @@ No npm link. No global install. No SaaS.
 Fast path:
 
 ```bash
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```
 
 Fallback:

@@ -34,8 +34,10 @@ describe("package metadata for GitHub npm exec", () => {
 
 describe("Codex integration docs", () => {
   const requiredFiles = [
+    "RELEASE_NOTES.md",
     "docs/CODEX_MAGIC_PROMPT.md",
     "docs/CODEX_INTEGRATION.md",
+    "docs/RELEASE_CHECKLIST.md",
     ".agents/skills/ux-sentinel/SKILL.md",
     "examples/codex/magic-prompt.md",
     "examples/codex/goal-prompt.md",
@@ -109,7 +111,7 @@ describe("Codex integration docs", () => {
     }
   });
 
-  it("documents GitHub npm exec as the external-project fast path", () => {
+  it("documents GitHub npm exec v0.1.0 as the stable external-project fast path", () => {
     const docs = [
       readText("README.md"),
       readText("docs/CODEX_MAGIC_PROMPT.md"),
@@ -117,7 +119,18 @@ describe("Codex integration docs", () => {
       readText("examples/codex/magic-prompt.md")
     ].join("\n");
 
-    expect(docs).toContain("npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel");
+    expect(docs).toContain("npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel");
+  });
+
+  it("keeps main documented only as a latest-development path", () => {
+    const docs = [
+      readText("README.md"),
+      readText("docs/CODEX_MAGIC_PROMPT.md"),
+      readText("docs/CODEX_INTEGRATION.md")
+    ].join("\n");
+
+    expect(docs).toContain("Latest development");
+    expect(docs).toContain("github:jk06095-lang/ux-sentinel#main");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {
@@ -134,11 +147,23 @@ describe("Codex integration docs", () => {
   it("uses a selected runner in the magic prompt after npm exec or fallback", () => {
     const prompt = readText("docs/CODEX_MAGIC_PROMPT.md");
 
-    expect(prompt).toContain('UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"');
+    expect(prompt).toContain('UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"');
     expect(prompt).toContain('UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"');
     expect(prompt).toContain("$UX_SENTINEL init");
     expect(prompt).toContain("$UX_SENTINEL run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url <local-url>");
     expect(prompt).toContain("$UX_SENTINEL codex-brief <report-path>");
+  });
+
+  it("documents the GitHub-only v0.1.0 release workflow", () => {
+    const notes = readText("RELEASE_NOTES.md");
+    const checklist = readText("docs/RELEASE_CHECKLIST.md");
+
+    expect(notes).toContain("# ux-sentinel v0.1.0");
+    expect(notes).toContain("Not published to the npm registry yet.");
+    expect(notes).toContain("github:jk06095-lang/ux-sentinel#v0.1.0");
+    expect(checklist).toContain("gh release create v0.1.0");
+    expect(checklist).toContain("npm publish is deferred for `v0.1.0`.");
+    expect(checklist).toContain("npm pack --dry-run");
   });
 
   it("does not reference stale launch detector names", () => {

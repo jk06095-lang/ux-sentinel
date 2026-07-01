@@ -22,20 +22,20 @@ A perception mismatch occurs when the DOM, accessibility tree, or guided test sa
 Prefer GitHub `npm exec` so the target repo does not need `npm link`, global install, or a committed dependency:
 
 ```bash
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help
 ```
 
 If this works, treat the selected runner as:
 
 ```bash
-UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"
 ```
 
 Common commands:
 
 ```bash
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```
 
 ## Fallback Execution

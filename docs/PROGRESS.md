@@ -178,3 +178,24 @@ Verification:
 - `npm run build` passed.
 - `npm test` passed with 6 test files and 23 tests.
 - `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.
+
+### Checkpoint: GitHub-Only v0.1.0 Release Prep
+
+Status: done
+
+Prepared release documentation for a GitHub-only `v0.1.0` release:
+
+- Added `RELEASE_NOTES.md`.
+- Added `docs/RELEASE_CHECKLIST.md`.
+- Updated stable no-install commands to prefer `github:jk06095-lang/ux-sentinel#v0.1.0`.
+- Kept `#main` documented as the latest-development path.
+- Kept npm publishing deferred for `v0.1.0`.
+
+The actual annotated tag, GitHub Release, and npm publish were not created during this checkpoint.
+
+Verification:
+
+- `npm run build` passed.
+- `npm test` passed with 6 test files and 25 tests.
+- `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.
+- `npm pack --dry-run` passed and produced a dry-run `ux-sentinel-0.1.0.tgz` package listing.

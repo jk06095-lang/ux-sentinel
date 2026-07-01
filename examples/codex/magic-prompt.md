@@ -6,10 +6,10 @@ Use ux-sentinel from GitHub as a temporary external QA tool for this frontend re
 DOM says pass. Humans say "what do I click?"
 
 Do not use npm link or a global install. First try:
-npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help
 
 If that works, use:
-UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"
 
 If that fails, clone https://github.com/jk06095-lang/ux-sentinel.git into /tmp/ux-sentinel or .codex-tools/ux-sentinel. Build ux-sentinel in the temporary tool directory, then cd back to the target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.
 

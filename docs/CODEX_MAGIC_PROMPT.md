@@ -22,10 +22,10 @@ Rules:
 
 Workflow:
 1. Read this target repo's AGENTS.md and package files first.
-2. Try running ux-sentinel through GitHub npm exec:
-   npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
+2. Try running the stable ux-sentinel release through GitHub npm exec:
+   npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel --help
 3. If npm exec works, use this selected runner for all ux-sentinel commands:
-   UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel"
+   UX_SENTINEL="npm exec --yes --package=github:jk06095-lang/ux-sentinel#v0.1.0 -- ux-sentinel"
 4. If npm exec from GitHub fails, clone ux-sentinel into a temporary tool directory:
    - prefer /tmp/ux-sentinel on macOS/Linux
    - use .codex-tools/ux-sentinel inside this repo if /tmp is unavailable
@@ -40,6 +40,8 @@ Workflow:
    cd "$TARGET_REPO"
    node /tmp/ux-sentinel/dist/cli.js --help
    UX_SENTINEL="node /tmp/ux-sentinel/dist/cli.js"
+   Latest development path, only if the user asks for unreleased changes:
+   npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help
 5. Use the selected runner for every ux-sentinel command:
    $UX_SENTINEL init
    $UX_SENTINEL run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url <local-url>
