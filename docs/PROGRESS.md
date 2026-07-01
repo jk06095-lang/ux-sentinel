@@ -116,7 +116,7 @@ README launch fixes:
 
 ### Checkpoint: Cross-Project Codex Usage
 
-Status: in progress
+Status: done
 
 Improved the project so Codex can use ux-sentinel from another frontend repository without `npm link` or global install:
 
@@ -127,3 +127,13 @@ Improved the project so Codex can use ux-sentinel from another frontend reposito
 - Added copy-paste prompts under `examples/codex/`.
 - Updated README with the GitHub `npm exec` fast path and temporary clone fallback.
 - Updated `docs/LAUNCH_PLAN.md` with the prompt-only usage story.
+
+Verification:
+
+- `npm install` passed and ran `prepare -> npm run build`.
+- `npm run build` passed.
+- `npm test` passed with 6 test files and 16 tests.
+- `npm run demo:verify` passed with broken demo failing and fixed demo passing.
+- `npm pack --dry-run` included `dist`, docs, examples, and the repo-scoped skill draft.
+- `npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help` passed from GitHub.
+- `npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init` created `.ux-sentinel` in a clean temporary target directory.
