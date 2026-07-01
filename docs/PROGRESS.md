@@ -97,3 +97,19 @@ Published the repository to GitHub:
 - https://github.com/jk06095-lang/ux-sentinel
 - default branch: `main`
 - initial MVP commit: `dd4307f`
+
+### Checkpoint: GitHub Launch Audit
+
+Status: done
+
+Audited the repository against the public launch checklist.
+
+README launch fixes:
+
+- Added `Why this exists`.
+- Added a 5-minute copy-paste demo path.
+- Clarified two-terminal manual demo usage.
+- Added sample feedback YAML output.
+- Added sample Codex brief section.
+- Added links to `docs/examples/sample-failure-report.md` and `docs/examples/sample-codex-brief.md`.
+- Clarified that screenshots are generated locally under `.ux-sentinel/traces/<timestamp>/`.
