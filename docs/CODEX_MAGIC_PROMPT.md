@@ -27,7 +27,15 @@ Workflow:
 3. If npm exec from GitHub fails, clone ux-sentinel into a temporary tool directory:
    - prefer /tmp/ux-sentinel on macOS/Linux
    - use .codex-tools/ux-sentinel inside this repo if /tmp is unavailable
-   Then run npm install && npm run build there, and execute node <tool-dir>/dist/cli.js.
+   Build ux-sentinel in the temporary tool directory, then cd back to the target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.
+   Example:
+   TARGET_REPO=$(pwd)
+   git clone https://github.com/jk06095-lang/ux-sentinel.git /tmp/ux-sentinel
+   cd /tmp/ux-sentinel
+   npm install
+   npm run build
+   cd "$TARGET_REPO"
+   node /tmp/ux-sentinel/dist/cli.js --help
 4. If this repo has no .ux-sentinel directory, run:
    npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
    Or use the temporary clone fallback command.

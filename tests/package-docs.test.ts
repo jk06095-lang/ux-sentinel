@@ -49,6 +49,66 @@ describe("Codex integration docs", () => {
     }
   });
 
+  it("documents clone fallback cwd safety for target repo artifacts", () => {
+    const fallbackDocs = [
+      "README.md",
+      "docs/CODEX_MAGIC_PROMPT.md",
+      "docs/CODEX_INTEGRATION.md",
+      "docs/LAUNCH_PLAN.md",
+      ".agents/skills/ux-sentinel/SKILL.md",
+      "examples/codex/magic-prompt.md",
+      "examples/codex/goal-prompt.md",
+      "examples/codex/onboarding-qa.prompt.md",
+      "examples/codex/empty-state-qa.prompt.md"
+    ];
+    const requiredNote =
+      "Build ux-sentinel in the temporary tool directory, then cd back to the target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.";
+
+    for (const file of fallbackDocs) {
+      const text = readText(file);
+      if (/temporary clone|\/tmp\/ux-sentinel|\.codex-tools\/ux-sentinel/i.test(text)) {
+        expect(text, file).toContain(requiredNote);
+      }
+    }
+  });
+
+  it("does not show target repo scenario checks running from the tool repo", () => {
+    const docs = [
+      "README.md",
+      "docs/CODEX_MAGIC_PROMPT.md",
+      "docs/CODEX_INTEGRATION.md",
+      "docs/LAUNCH_PLAN.md",
+      ".agents/skills/ux-sentinel/SKILL.md",
+      "examples/codex/magic-prompt.md",
+      "examples/codex/goal-prompt.md",
+      "examples/codex/onboarding-qa.prompt.md",
+      "examples/codex/empty-state-qa.prompt.md"
+    ].map(readText).join("\n");
+
+    expect(docs).not.toContain("node /tmp/ux-sentinel/dist/cli.js run <target-repo>");
+    expect(docs).not.toContain("<target-repo>/.ux-sentinel");
+  });
+
+  it("clone fallback command blocks return to the target repo before running the absolute CLI", () => {
+    const commandDocs = [
+      "README.md",
+      "docs/CODEX_INTEGRATION.md",
+      "docs/LAUNCH_PLAN.md",
+      ".agents/skills/ux-sentinel/SKILL.md"
+    ];
+
+    for (const file of commandDocs) {
+      const text = readText(file);
+      if (text.includes("cd /tmp/ux-sentinel")) {
+        const cloneIndex = text.indexOf("cd /tmp/ux-sentinel");
+        const returnIndex = text.indexOf('cd "$TARGET_REPO"', cloneIndex);
+        const runIndex = text.indexOf("node /tmp/ux-sentinel/dist/cli.js", cloneIndex);
+        expect(returnIndex, `${file} must cd back to target repo`).toBeGreaterThan(cloneIndex);
+        expect(runIndex, `${file} must run absolute CLI after returning`).toBeGreaterThan(returnIndex);
+      }
+    }
+  });
+
   it("documents GitHub npm exec as the external-project fast path", () => {
     const docs = [
       readText("README.md"),

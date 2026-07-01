@@ -137,3 +137,11 @@ Verification:
 - `npm pack --dry-run` included `dist`, docs, examples, and the repo-scoped skill draft.
 - `npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel --help` passed from GitHub.
 - `npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init` created `.ux-sentinel` in a clean temporary target directory.
+
+### Checkpoint: Clone Fallback CWD Safety
+
+Status: done
+
+Fixed the temporary clone fallback docs so the clone directory is only used to build ux-sentinel. The docs now instruct Codex to return to the target frontend repo before running `node /tmp/ux-sentinel/dist/cli.js`, because reports and traces are written relative to `process.cwd()`.
+
+Updated README, Codex magic prompt, Codex integration guide, repo-scoped skill draft, launch plan, and copy-paste Codex prompts. Added tests to prevent fallback examples from running target scenario checks from inside `/tmp/ux-sentinel`.

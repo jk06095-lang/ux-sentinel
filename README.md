@@ -29,12 +29,18 @@ npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel run
 If GitHub `npm exec` fails, Codex can use a temporary clone instead:
 
 ```bash
+# Run this from the target frontend repo root.
+TARGET_REPO=$(pwd)
 git clone https://github.com/jk06095-lang/ux-sentinel.git /tmp/ux-sentinel
 cd /tmp/ux-sentinel
 npm install
 npm run build
-node /tmp/ux-sentinel/dist/cli.js run <target-repo>/.ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
+cd "$TARGET_REPO"
+node /tmp/ux-sentinel/dist/cli.js init
+node /tmp/ux-sentinel/dist/cli.js run .ux-sentinel/scenarios/onboarding-empty-state.yaml --url http://localhost:3000
 ```
+
+Build ux-sentinel in the temporary tool directory, then cd back to the target repo before running node /tmp/ux-sentinel/dist/cli.js. Reports and traces are written relative to the current working directory.
 
 This project is not published to npm yet. The command above uses GitHub as the package source. The Codex Skill/Plugin and MCP paths are future packaging options, not current requirements.
 
