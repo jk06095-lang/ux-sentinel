@@ -87,3 +87,13 @@ Re-verified before publish:
 - `npm run build` passed.
 - `npm test` passed with 5 test files and 9 tests.
 - `npm run demo:verify` passed with broken demo failing and fixed demo passing.
+
+### Checkpoint: GitHub Publish
+
+Status: done
+
+Published the repository to GitHub:
+
+- https://github.com/jk06095-lang/ux-sentinel
+- default branch: `main`
+- initial MVP commit: `dd4307f`
