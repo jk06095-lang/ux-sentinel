@@ -45,11 +45,12 @@
       <p>The page exposes safe controls that open benign UI states without navigation, typing, or destructive effects.</p>
 
       <div class="toolbar" aria-label="Review actions">
-        <button class="primary" data-ux-action="start-review" onclick="setStatus('Review started');">Start review</button>
+        <button class="primary" data-ux-action="start-review" onclick="startReview();">Start review</button>
         <button role="tab" aria-selected="false" data-ux-action="open-timeline-tab" onclick="selectTimeline(this);">Timeline tab</button>
         <button data-ux-action="open-menu" aria-expanded="false" aria-controls="actions-menu" onclick="toggleOpen(this, 'actions-menu', 'Actions menu open');">Open actions menu</button>
         <button data-ux-action="help-tooltip" aria-expanded="false" aria-controls="review-hint" onclick="toggleOpen(this, 'review-hint', 'Hint visible');">Show hint</button>
         <button data-ux-action="expand-details" aria-expanded="false" aria-controls="review-details" onclick="toggleOpen(this, 'review-details', 'Details expanded');">Show details</button>
+        <button id="discovered-action" data-ux-action="open-discovered-panel" hidden onclick="openDiscoveredInsight();">Open discovered insight</button>
       </div>
 
       <div class="status" id="status" role="status" aria-live="polite">Ready for review.</div>
@@ -68,12 +69,21 @@
           <strong>Details expanded</strong>
           <p>Evidence rows and reviewer notes are now available.</p>
         </div>
+        <div id="discovered-panel" class="details" data-state="closed" aria-label="Discovered insight">
+          <strong>Discovered insight open</strong>
+          <p>The planner found this control after the first safe state change.</p>
+        </div>
       </section>
     </section>
   </main>
   <script>
     function setStatus(text) {
       document.getElementById("status").textContent = text;
+    }
+
+    function startReview() {
+      document.getElementById("discovered-action").hidden = false;
+      setStatus("Review started");
     }
 
     function selectTimeline(button) {
@@ -89,6 +99,11 @@
       panel.setAttribute("data-state", open ? "open" : "closed");
       button.setAttribute("aria-expanded", open ? "true" : "false");
       setStatus(open ? status : `${status} closed`);
+    }
+
+    function openDiscoveredInsight() {
+      document.getElementById("discovered-panel").setAttribute("data-state", "open");
+      setStatus("Discovered insight open");
     }
   </script>
 </body>

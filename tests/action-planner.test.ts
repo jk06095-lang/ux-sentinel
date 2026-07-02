@@ -116,4 +116,26 @@ describe("target classifier and action planner", () => {
     expect(planned[1].plannedSafeClick).toBe(false);
     expect(planned[1].plannedClickSkipReason).toBe("max_state_changes limit reached by planner");
   });
+
+  it("records non-zero depth for actions planned after a state change", () => {
+    const planned = planInteractiveActions({
+      targets: [target({ id: "t1", visibleText: "Open discovered insight", dataUxAction: "open-discovered-panel" })],
+      scrollTargets: [],
+      scenario,
+      config: {
+        mode: "agentic",
+        maxActions: 1,
+        maxDepth: 2,
+        maxClicks: 1,
+        maxStateChanges: 1,
+        safeClickEnabled: true,
+        depth: 1
+      }
+    });
+
+    expect(planned).toHaveLength(1);
+    expect(planned[0].depth).toBe(1);
+    expect(planned[0].targetCategory).toBe("dialog_trigger");
+    expect(planned[0].plannedSafeClick).toBe(true);
+  });
 });

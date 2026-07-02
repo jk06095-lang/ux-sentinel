@@ -297,18 +297,19 @@ try {
   });
   runScenario("demo/scenarios/interactive-agentic-states.yaml", "/interactive-agentic-states", 0, {
     expectedVerdict: "pass",
-    args: ["--interactive", "--max-actions", "5", "--settle-ms", "100"],
+    args: ["--interactive", "--max-actions", "6", "--settle-ms", "100"],
     expectedInteractiveArtifacts: true,
     expectedPlannerMode: "agentic",
-    expectedMinActions: 5,
-    expectedMinClickedActions: 5,
-    expectedTargetCategories: ["primary_cta", "tab", "menu", "tooltip_help_trigger", "expandable_section"],
+    expectedMinActions: 6,
+    expectedMinClickedActions: 6,
+    expectedTargetCategories: ["primary_cta", "tab", "menu", "tooltip_help_trigger", "expandable_section", "dialog_trigger"],
     expectedDomDiffTextAdded: [
       "Review started",
       "Timeline panel selected",
       "Actions menu open",
       "Hint visible",
-      "Details expanded"
+      "Details expanded",
+      "Discovered insight open"
     ]
   });
   runScenario("demo/scenarios/interactive-skip.yaml", "/interactive-skip", 0, {

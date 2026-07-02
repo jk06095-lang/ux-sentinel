@@ -291,6 +291,7 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("expectedMinClickedActions");
     expect(verifier).toContain("expectedTargetCategories");
     expect(verifier).toContain("expectedDomDiffTextAdded");
+    expect(verifier).toContain("Discovered insight open");
     expect(verifier).toContain("expectedSkippedAction");
     expect(verifier).toContain("action-trace.json");
     expect(verifier).toContain("state-graph.json");
@@ -302,6 +303,7 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("plannedReason");
     expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, and skipped-action scenarios");
     expect(readme).toContain("demo/scenarios/interactive-agentic-states.yaml");
+    expect(readme).toContain("depth-1 replanning");
     expect(readme).toContain("demo/scenarios/interactive-skip.yaml");
     expect(progress).toContain("Interactive Demo Artifact Gate");
     expect(progress).toContain("Agentic Benign State Demo Gate");

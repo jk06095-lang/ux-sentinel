@@ -1664,6 +1664,25 @@ function buildClickCandidateDecisions(
   });
 }
 
+function upsertClickCandidateDecisions(
+  candidatesById: Map<string, InteractiveClickCandidateDecision>,
+  decisions: InteractiveClickCandidateDecision[]
+): void {
+  for (const decision of decisions) {
+    candidatesById.set(decision.id, decision);
+  }
+}
+
+function snapshotFingerprint(snapshot: StateSnapshot): string {
+  return [
+    snapshot.node.url,
+    snapshot.node.visibleTextHash,
+    snapshot.node.domStructureHash,
+    snapshot.node.accessibilityHash,
+    JSON.stringify(snapshot.node.openStates)
+  ].join("|");
+}
+
 function bboxOverlayStyle(box: ElementBox): string {
   const viewportWidth = 1280;
   const viewportHeight = 720;
@@ -2595,18 +2614,31 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         maxDepth: config.maxDepth,
         maxClicks: config.maxClicks,
         maxStateChanges: config.maxStateChanges,
-        safeClickEnabled: config.capabilityPolicy.capabilities.safe_click
+        safeClickEnabled: config.capabilityPolicy.capabilities.safe_click,
+        depth: 0
       }
     });
-    const clickCandidates = buildClickCandidateDecisions(
-      targets,
-      plannedActions,
-      options.scenario,
-      config.capabilityPolicy.capabilities
+    const clickCandidatesById = new Map<string, InteractiveClickCandidateDecision>();
+    upsertClickCandidateDecisions(
+      clickCandidatesById,
+      buildClickCandidateDecisions(targets, plannedActions, options.scenario, config.capabilityPolicy.capabilities)
     );
+    const seenPlannedStateKeys = new Set(plannedActions.map((plannedAction) => plannedAction.stateKey));
+    const seenPlannedTargetIds = new Set(plannedActions.map((plannedAction) => plannedAction.target.id));
+    const seenStateFingerprints = new Set<string>([snapshotFingerprint(currentState)]);
+    let remainingPlannedClicks = config.capabilityPolicy.capabilities.safe_click
+      ? Math.max(0, config.maxClicks - plannedActions.filter((plannedAction) => plannedAction.plannedSafeClick).length)
+      : 0;
+    let remainingPlannedStateChanges = config.capabilityPolicy.capabilities.safe_click
+      ? Math.max(0, config.maxStateChanges - plannedActions.filter((plannedAction) => plannedAction.plannedSafeClick).length)
+      : 0;
+    let replannedActionCount = 0;
     let sequence = 1;
     let stateSequence = 1;
-    for (const plannedAction of plannedActions) {
+    let plannedIndex = 0;
+    while (plannedIndex < plannedActions.length && sequence <= config.maxActions) {
+      const plannedAction = plannedActions[plannedIndex];
+      plannedIndex += 1;
       const result =
         plannedAction.kind === "scroll"
           ? await performScrollAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors)
@@ -2624,11 +2656,12 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       if (result.pointerEnd) {
         currentPointer = result.pointerEnd;
       }
+      const previousState = currentState;
       const evidence = await recordActionStateEvidence({
         page,
         action: result.action,
         screenMap: result.screenMap,
-        beforeState: currentState,
+        beforeState: previousState,
         stateSequence,
         actionsDir,
         detectNoFeedback: config.mode === "agentic"
@@ -2652,6 +2685,54 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         );
         break;
       }
+      const currentFingerprint = snapshotFingerprint(currentState);
+      const stateChanged = currentFingerprint !== snapshotFingerprint(previousState);
+      if (
+        config.mode === "agentic" &&
+        stateChanged &&
+        plannedAction.depth < config.maxDepth &&
+        plannedActions.length < config.maxActions
+      ) {
+        if (seenStateFingerprints.has(currentFingerprint)) {
+          notes.push(`State ${currentState.node.id} repeated an already-seen fingerprint after ${result.action.id}; skipped replanning.`);
+        } else {
+          seenStateFingerprints.add(currentFingerprint);
+          const latestTargets = config.hoverAllClickables ? await collectVisibleInteractiveTargets(page, config.avoidClickText) : [];
+          const latestScrollTargets = config.scrollContainers ? await collectScrollableTargets(page, config.avoidClickText) : [];
+          const freshTargets = latestTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
+          const freshScrollTargets = latestScrollTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
+          const replannedActions = planInteractiveActions({
+            targets: freshTargets,
+            scrollTargets: freshScrollTargets,
+            scenario: options.scenario,
+            config: {
+              mode: config.mode,
+              maxActions: config.maxActions - plannedActions.length,
+              maxDepth: config.maxDepth,
+              maxClicks: remainingPlannedClicks,
+              maxStateChanges: remainingPlannedStateChanges,
+              safeClickEnabled: config.capabilityPolicy.capabilities.safe_click,
+              depth: plannedAction.depth + 1
+            }
+          }).filter((candidate) => !seenPlannedStateKeys.has(candidate.stateKey) && !seenPlannedTargetIds.has(candidate.target.id));
+
+          if (replannedActions.length > 0) {
+            for (const replannedAction of replannedActions) {
+              plannedActions.push(replannedAction);
+              seenPlannedStateKeys.add(replannedAction.stateKey);
+              seenPlannedTargetIds.add(replannedAction.target.id);
+            }
+            const newlyAllocatedClicks = replannedActions.filter((replannedAction) => replannedAction.plannedSafeClick).length;
+            remainingPlannedClicks = Math.max(0, remainingPlannedClicks - newlyAllocatedClicks);
+            remainingPlannedStateChanges = Math.max(0, remainingPlannedStateChanges - newlyAllocatedClicks);
+            replannedActionCount += replannedActions.length;
+            upsertClickCandidateDecisions(
+              clickCandidatesById,
+              buildClickCandidateDecisions(latestTargets, plannedActions, options.scenario, config.capabilityPolicy.capabilities)
+            );
+          }
+        }
+      }
     }
 
     const numberedFindings = renumberInteractiveFindings(findings);
@@ -2665,7 +2746,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       screenMap,
       accessibilitySnapshot,
       actions,
-      clickCandidates,
+      clickCandidates: Array.from(clickCandidatesById.values()),
       findings: numberedFindings,
       artifacts: {
         traceDir,
@@ -2691,9 +2772,10 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         maxDepth: config.maxDepth,
         maxClicks: config.maxClicks,
         maxStateChanges: config.maxStateChanges,
-        plannedActionCount: plannedActions.length
+        plannedActionCount: plannedActions.length,
+        replannedActionCount
       },
-      clickCandidates,
+      clickCandidates: Array.from(clickCandidatesById.values()),
       actions
     });
     await writeJson(stateGraphPath, buildStateGraph(stateNodes, attachFindingsToStateEdges(stateEdges, numberedFindings)));

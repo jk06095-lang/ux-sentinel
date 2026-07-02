@@ -465,7 +465,16 @@ Extended demo verification so interactive evidence is part of the automated loca
 
 Added a deterministic demo gate for planner continuation across benign UI state changes:
 
-- Added `demo/interactive-agentic-states.html` with safe controls for a primary CTA, tab, menu trigger, help trigger, and accordion.
+- Added `demo/interactive-agentic-states.html` with safe controls for a primary CTA, tab, menu trigger, help trigger, accordion, and a safe control that appears only after the first state change.
 - Added `demo/scenarios/interactive-agentic-states.yaml` with `interactive_exploration.mode: agentic`, safe scenario click opt-in, and explicit fail conditions for missing feedback or unrelated state changes.
 - Routed `/interactive-agentic-states` through the demo server.
-- Extended `npm run demo:verify` to assert agentic planner mode, at least five actions, at least five clicked actions, expected target categories, state-graph edges, and DOM diff text for each benign state change.
+- Extended `npm run demo:verify` to assert agentic planner mode, at least six actions, at least six clicked actions, expected target categories, state-graph edges, and DOM diff text for each benign state change.
+
+### Checkpoint: Agentic Replanning For Discovered Controls
+
+Added bounded depth replanning on top of the existing safe-click policy:
+
+- After an agentic action changes the state fingerprint, the runner can recollect visible targets and append newly discovered controls while `max_actions`, `max_depth`, `max_clicks`, and `max_state_changes` still have room.
+- Replanning filters out already planned target ids and state keys so repeated identical controls are not explored endlessly.
+- Dynamic click candidates are merged into `action-trace.json`, preserving explicit allow/skip decisions for discovered controls.
+- `demo/scenarios/interactive-agentic-states.yaml` now proves a depth-1 discovered control is clicked and evidenced by DOM diff text.

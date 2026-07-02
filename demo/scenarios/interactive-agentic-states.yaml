@@ -25,10 +25,10 @@ visual_contract:
 interactive_exploration:
   enabled: true
   mode: agentic
-  max_actions: 5
+  max_actions: 6
   max_depth: 2
-  max_clicks: 5
-  max_state_changes: 5
+  max_clicks: 6
+  max_state_changes: 6
   hover_all_clickables: true
   click_all_safe_controls: true
   focus_all_keyboard_targets: true

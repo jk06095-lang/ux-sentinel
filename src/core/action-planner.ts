@@ -10,6 +10,7 @@ export interface PlannerConfig {
   maxClicks: number;
   maxStateChanges: number;
   safeClickEnabled: boolean;
+  depth?: number;
 }
 
 export interface PlannedInteractiveAction {
@@ -96,7 +97,7 @@ export function planInteractiveActions(input: PlanInteractiveActionsInput): Plan
   let stateChangeSlots = input.config.safeClickEnabled ? maxStateChanges : 0;
 
   return planned.slice(0, maxActions).map((candidate) => {
-    const depth = 0;
+    const depth = Math.max(0, Math.floor(input.config.depth ?? 0));
     const eligibleForPlannedClick =
       candidate.kind === "target" &&
       depth <= maxDepth &&

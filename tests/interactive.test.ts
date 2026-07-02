@@ -730,6 +730,63 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("replans newly revealed controls after benign state changes", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button onclick="document.getElementById('discovered').hidden = false; document.getElementById('status').textContent = 'Review started';">Start review</button>
+          <button id="discovered" data-ux-action="open-discovered-panel" hidden onclick="document.getElementById('status').textContent = 'Discovered insight open';">Open discovered insight</button>
+          <p id="status">Ready</p>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "agentic-replan",
+          title: "Agentic replan",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Start review"] } },
+          interactive_exploration: {
+            enabled: true,
+            mode: "agentic",
+            click_all_safe_controls: true,
+            max_actions: 2,
+            max_depth: 2,
+            max_clicks: 2,
+            max_state_changes: 2
+          }
+        }
+      });
+
+      expect(result.actions).toHaveLength(2);
+      expect(result.actions[0].target.visibleText).toBe("Start review");
+      expect(result.actions[1].target.visibleText).toBe("Open discovered insight");
+      expect(result.actions[1].planDepth).toBe(1);
+      expect(result.actions[1].targetCategory).toBe("dialog_trigger");
+      expect(result.actions[1].clicked).toBe(true);
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        planner: { plannedActionCount: number; replannedActionCount: number };
+        clickCandidates: Array<{ visibleText: string; plannedActionId?: string; clickDecision: string }>;
+      };
+      expect(actionTrace.planner.plannedActionCount).toBe(2);
+      expect(actionTrace.planner.replannedActionCount).toBe(1);
+      expect(actionTrace.clickCandidates.find((candidate) => candidate.visibleText === "Open discovered insight")).toMatchObject({
+        clickDecision: "allowed",
+        plannedActionId: "a002"
+      });
+
+      const domDiff = JSON.parse(await readFile(result.actions[1].domDiff!, "utf8")) as {
+        visibleTextAdded: string[];
+      };
+      expect(domDiff.visibleTextAdded).toContain("Discovered insight open");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("records every baseline click candidate decision in action trace and contact sheet", async () => {
     const traceRoot = await tempTraceRoot();
     try {
