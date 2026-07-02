@@ -1145,14 +1145,78 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function uniqueValues(values: Array<string | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
+}
+
+function relativeArtifact(traceDir: string, filePath: string | undefined): string {
+  return filePath ? path.relative(traceDir, filePath).replace(/\\/g, "/") : "none";
+}
+
+function bboxOverlayStyle(box: ElementBox): string {
+  const viewportWidth = 1280;
+  const viewportHeight = 720;
+  return [
+    `left:${Math.max(0, (box.x / viewportWidth) * 100).toFixed(2)}%`,
+    `top:${Math.max(0, (box.y / viewportHeight) * 100).toFixed(2)}%`,
+    `width:${Math.max(0, (box.width / viewportWidth) * 100).toFixed(2)}%`,
+    `height:${Math.max(0, (box.height / viewportHeight) * 100).toFixed(2)}%`
+  ].join(";");
+}
+
 export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult, "actions" | "findings" | "summary" | "artifacts">): string {
+  const findingsByDetector = new Map<string, Finding[]>();
+  for (const findingItem of result.findings) {
+    findingsByDetector.set(findingItem.detector, [...(findingsByDetector.get(findingItem.detector) ?? []), findingItem]);
+  }
+  const severityOptions = uniqueValues(result.findings.map((findingItem) => findingItem.severity));
+  const ruleFamilyOptions = uniqueValues(result.findings.map((findingItem) => findingItem.ruleFamily));
+  const detectorOptions = uniqueValues(result.findings.map((findingItem) => findingItem.detector));
+  const actionTrace = relativeArtifact(result.artifacts.traceDir, result.artifacts.actionTrace);
+  const stateGraph = relativeArtifact(result.artifacts.traceDir, result.artifacts.stateGraph);
+  const stateIds = uniqueValues(result.actions.flatMap((action) => [action.beforeStateId, action.afterStateId]));
+  const filterOptions = (items: string[]) => items.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+  const timeline = result.actions.length
+    ? result.actions
+        .map((action) => {
+          const status = action.skipped ? "skipped" : action.clicked ? "clicked" : action.focused ? "focused" : "observed";
+          return `<a href="#${escapeHtml(action.id)}" title="${escapeHtml(action.plannedReason ?? action.actionType)}">${escapeHtml(action.id)}<span>${escapeHtml(status)}</span></a>`;
+        })
+        .join("\n")
+    : "<p>No action timeline was captured.</p>";
+  const safetyLog = result.actions.length
+    ? result.actions
+        .map((action) => {
+          const decision = action.clickDecision ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}` : "not recorded";
+          const skipped = action.skipped ? `; skipped: ${action.skipReason ?? "unknown reason"}` : "";
+          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}</li>`;
+        })
+        .join("\n")
+    : "<li>No action safety decisions were captured.</li>";
+  const accessibilityCrossCheck = result.actions.length
+    ? result.actions
+        .map((action) => {
+          const focusEvidence = action.focusEvidence
+            ? `focus active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
+            : "focus evidence not captured";
+          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(focusEvidence)}; a11y diff=${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.accessibilityDiff))}</li>`;
+        })
+        .join("\n")
+    : "<li>No accessibility cross-check evidence was captured.</li>";
+  const animationAudit = result.actions.some((action) => action.animationTrace)
+    ? result.actions
+        .filter((action) => action.animationTrace)
+        .map((action) => `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.animationTrace))}</li>`)
+        .join("\n")
+    : "<li>No animation trace was captured for this run.</li>";
   const rows = result.actions
     .map((action) => {
-      const before = path.relative(result.artifacts.traceDir, action.beforeScreenshot).replace(/\\/g, "/");
-      const after = path.relative(result.artifacts.traceDir, action.afterScreenshot).replace(/\\/g, "/");
-      const visualDiff = action.visualDiff
-        ? path.relative(result.artifacts.traceDir, action.visualDiff).replace(/\\/g, "/")
-        : "none";
+      const before = relativeArtifact(result.artifacts.traceDir, action.beforeScreenshot);
+      const after = relativeArtifact(result.artifacts.traceDir, action.afterScreenshot);
+      const visualDiff = relativeArtifact(result.artifacts.traceDir, action.visualDiff);
+      const actionFindings = uniqueValues(action.findingDetectors).flatMap((detector) => findingsByDetector.get(detector) ?? []);
+      const actionSeverities = uniqueValues(actionFindings.map((findingItem) => findingItem.severity));
+      const actionRuleFamilies = uniqueValues(actionFindings.map((findingItem) => findingItem.ruleFamily));
       const findings = action.findingDetectors.length ? action.findingDetectors.join(", ") : "none";
       const status = action.skipped ? `skipped: ${action.skipReason ?? "unknown reason"}` : action.clicked ? "clicked" : "not clicked";
       const clickDecision = action.clickDecision
@@ -1165,12 +1229,21 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
         ? path.relative(result.artifacts.traceDir, action.pointerTrace).replace(/\\/g, "/")
         : "none";
       const animationTrace = action.animationTrace
-        ? path.relative(result.artifacts.traceDir, action.animationTrace).replace(/\\/g, "/")
+        ? relativeArtifact(result.artifacts.traceDir, action.animationTrace)
         : "none";
       const focusEvidence = action.focusEvidence
         ? `active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
         : "none";
-      return `<article>
+      const actionFindingList = actionFindings.length
+        ? actionFindings
+            .map(
+              (findingItem) =>
+                `<li><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong> ${escapeHtml(findingItem.title)}<br /><span>${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span></li>`
+            )
+            .join("\n")
+        : "<li>No findings attached to this action.</li>";
+      const overlay = `<span class="bbox" style="${bboxOverlayStyle(action.target.bbox)}"></span>`;
+      return `<article id="${escapeHtml(action.id)}" data-action-card data-detectors="${escapeHtml(action.findingDetectors.join(" "))}" data-severities="${escapeHtml(actionSeverities.join(" "))}" data-rule-families="${escapeHtml(actionRuleFamilies.join(" "))}">
   <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
@@ -1180,15 +1253,16 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   <p><strong>Animation trace:</strong> ${escapeHtml(animationTrace)}</p>
   <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
-  <p><strong>Diffs:</strong> visual=${escapeHtml(visualDiff)} / dom=${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / a11y=${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
+  <p><strong>Diffs:</strong> visual=${escapeHtml(visualDiff)} / dom=${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.domDiff))} / a11y=${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.accessibilityDiff))}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
+  <details open><summary>UX principle mapping for this action</summary><ul>${actionFindingList}</ul></details>
   <div class="shots">
-    <figure><img src="${escapeHtml(before)}" alt="${escapeHtml(action.id)} before" /><figcaption>before</figcaption></figure>
-    <figure><img src="${escapeHtml(after)}" alt="${escapeHtml(action.id)} after" /><figcaption>after</figcaption></figure>
+    <figure><div class="shot-frame"><img src="${escapeHtml(before)}" alt="${escapeHtml(action.id)} before" />${overlay}</div><figcaption>before</figcaption></figure>
+    <figure><div class="shot-frame"><img src="${escapeHtml(after)}" alt="${escapeHtml(action.id)} after" />${overlay}</div><figcaption>after</figcaption></figure>
     ${
       action.visualDiff
-        ? `<figure><img src="${escapeHtml(visualDiff)}" alt="${escapeHtml(action.id)} visual diff" /><figcaption>visual diff</figcaption></figure>`
+        ? `<figure><div class="shot-frame"><img src="${escapeHtml(visualDiff)}" alt="${escapeHtml(action.id)} visual diff" />${overlay}</div><figcaption>visual diff</figcaption></figure>`
         : ""
     }
   </div>
@@ -1197,7 +1271,12 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
     .join("\n");
 
   const findingList = result.findings.length
-    ? result.findings.map((findingItem) => `<li><strong>${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}</li>`).join("\n")
+    ? result.findings
+        .map(
+          (findingItem) =>
+            `<li data-finding-detail data-detector="${escapeHtml(findingItem.detector)}" data-severity="${escapeHtml(findingItem.severity)}" data-rule-family="${escapeHtml(findingItem.ruleFamily ?? "")}"><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}<br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span></li>`
+        )
+        .join("\n")
     : "<li>No interactive anomalies detected.</li>";
   const notes = result.summary.notes.length
     ? `<h2>Notes</h2><ul>${result.summary.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("\n")}</ul>`
@@ -1212,27 +1291,108 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
     body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #111827; }
     header { padding: 20px 24px; border-bottom: 1px solid #d1d5db; background: #ffffff; }
     main { padding: 20px 24px; display: grid; gap: 18px; }
+    section { border: 1px solid #d1d5db; border-radius: 6px; background: #ffffff; padding: 14px; }
     article { border: 1px solid #d1d5db; border-radius: 6px; background: #ffffff; padding: 14px; }
     h1 { margin: 0 0 8px; font-size: 22px; }
     h2 { margin: 0 0 8px; font-size: 16px; }
+    h3 { margin: 10px 0 6px; font-size: 14px; }
     p { margin: 4px 0; font-size: 13px; color: #374151; }
     ul { margin: 8px 0 0; }
+    label { display: grid; gap: 4px; font-size: 12px; color: #374151; }
+    select, input, button { font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid #9ca3af; border-radius: 4px; background: #ffffff; }
+    button { cursor: pointer; background: #111827; color: #ffffff; }
+    .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; align-items: end; }
+    .timeline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .timeline a { text-decoration: none; color: #111827; border: 1px solid #9ca3af; border-radius: 999px; padding: 6px 9px; font-size: 12px; background: #f9fafb; }
+    .timeline span { color: #6b7280; margin-left: 5px; }
     .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     figure { margin: 0; }
-    img { max-width: 100%; border: 1px solid #d1d5db; background: #111827; }
+    img { width: 100%; display: block; border: 1px solid #d1d5db; background: #111827; }
+    .shot-frame { position: relative; overflow: hidden; background: #111827; }
+    .bbox { position: absolute; border: 2px solid #22c55e; box-shadow: 0 0 0 1px #052e16; pointer-events: none; }
     figcaption { font-size: 12px; color: #4b5563; margin-top: 4px; }
+    [hidden] { display: none; }
   </style>
 </head>
 <body>
   <header>
     <h1>ux-sentinel interactive contact sheet</h1>
     <p>Actions: ${result.summary.actionCount} - screenshots: ${result.summary.screenshotCount} - anomalies: ${result.summary.anomalyCount}</p>
+    <p>Action trace: ${escapeHtml(actionTrace)} - state graph: ${escapeHtml(stateGraph)}</p>
+    <div class="filters" aria-label="Contact sheet filters">
+      <label>Severity filter<select id="severity-filter"><option value="">All severities</option>${filterOptions(severityOptions)}</select></label>
+      <label>Rule-family filter<select id="rule-family-filter"><option value="">All rule families</option>${filterOptions(ruleFamilyOptions)}</select></label>
+      <label>Detector filter<input id="detector-filter" list="detectors" placeholder="Type detector name" /></label>
+      <button id="reset-filters" type="button">Reset filters</button>
+      <datalist id="detectors">${filterOptions(detectorOptions)}</datalist>
+    </div>
     ${notes}
-    <ul>${findingList}</ul>
   </header>
   <main>
+    <section>
+      <h2>Action Timeline</h2>
+      <div class="timeline">${timeline}</div>
+      <h3>State Graph Summary</h3>
+      <p>States observed: ${stateIds.length || "unknown"} - edges: ${result.actions.length} - artifact: ${escapeHtml(stateGraph)}</p>
+    </section>
+    <section>
+      <h2>Safety Log</h2>
+      <ul>${safetyLog}</ul>
+    </section>
+    <section>
+      <h2>Accessibility Cross-Check</h2>
+      <ul>${accessibilityCrossCheck}</ul>
+    </section>
+    <section>
+      <h2>Animation Audit</h2>
+      <ul>${animationAudit}</ul>
+    </section>
+    <section>
+      <h2>Finding Evidence And UX Principles</h2>
+      <p>Evidence-backed findings are shown with severity, detector, rule family, confidence, and mapped UX rationale. Lower-confidence entries should be treated as review prompts, not final judgments.</p>
+      <ul>${findingList}</ul>
+    </section>
     ${rows || "<p>No actions were captured.</p>"}
   </main>
+  <script>
+    const severityFilter = document.getElementById("severity-filter");
+    const ruleFamilyFilter = document.getElementById("rule-family-filter");
+    const detectorFilter = document.getElementById("detector-filter");
+    const resetFilters = document.getElementById("reset-filters");
+    const actionCards = Array.from(document.querySelectorAll("[data-action-card]"));
+    const findingDetails = Array.from(document.querySelectorAll("[data-finding-detail]"));
+    function matches(value, haystack) {
+      return !value || haystack.toLowerCase().includes(value.toLowerCase());
+    }
+    function applyFilters() {
+      const severity = severityFilter.value;
+      const ruleFamily = ruleFamilyFilter.value;
+      const detector = detectorFilter.value.trim();
+      for (const card of actionCards) {
+        const visible =
+          matches(severity, card.dataset.severities || "") &&
+          matches(ruleFamily, card.dataset.ruleFamilies || "") &&
+          matches(detector, card.dataset.detectors || "");
+        card.hidden = !visible;
+      }
+      for (const item of findingDetails) {
+        const visible =
+          matches(severity, item.dataset.severity || "") &&
+          matches(ruleFamily, item.dataset.ruleFamily || "") &&
+          matches(detector, item.dataset.detector || "");
+        item.hidden = !visible;
+      }
+    }
+    severityFilter.addEventListener("change", applyFilters);
+    ruleFamilyFilter.addEventListener("change", applyFilters);
+    detectorFilter.addEventListener("input", applyFilters);
+    resetFilters.addEventListener("click", () => {
+      severityFilter.value = "";
+      ruleFamilyFilter.value = "";
+      detectorFilter.value = "";
+      applyFilters();
+    });
+  </script>
 </body>
 </html>
 `;

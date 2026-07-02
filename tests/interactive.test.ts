@@ -204,7 +204,23 @@ describe("interactive exploration helpers", () => {
           findingDetectors: ["tooltip_partially_offscreen"]
         }
       ],
-      findings: [],
+      findings: [
+        {
+          id: "UX-I001",
+          detector: "tooltip_partially_offscreen",
+          title: "Tooltip is partially offscreen",
+          severity: "P2",
+          type: "Perception Mismatch",
+          evidence: "Tooltip bbox extends beyond viewport.",
+          userImpact: "A user may not be able to read the hover help.",
+          suggestedFix: "Keep tooltip content inside the viewport.",
+          regressionCheck: "Rerun the interactive audit.",
+          ruleIds: ["nielsen.visibility_of_system_status"],
+          ruleFamily: "nielsen",
+          whyThisMatters: "Visibility of system status: hover feedback should remain readable.",
+          confidence: "high"
+        }
+      ],
       summary: { actionCount: 1, screenshotCount: 4, anomalyCount: 0, notes: [] },
       artifacts: {
         traceDir: "trace",
@@ -227,6 +243,19 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("a001-pointer-trace.json");
     expect(html).toContain("a001-animation-trace.json");
     expect(html).toContain("tooltip_partially_offscreen");
+    expect(html).toContain("Severity filter");
+    expect(html).toContain("Rule-family filter");
+    expect(html).toContain("Detector filter");
+    expect(html).toContain("Action Timeline");
+    expect(html).toContain("State Graph Summary");
+    expect(html).toContain("Safety Log");
+    expect(html).toContain("Accessibility Cross-Check");
+    expect(html).toContain("Finding Evidence And UX Principles");
+    expect(html).toContain("data-action-card");
+    expect(html).toContain("data-severities=\"P2\"");
+    expect(html).toContain("data-rule-families=\"nielsen\"");
+    expect(html).toContain("bbox");
+    expect(html).toContain("Visibility of system status");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
     expect(html).toContain("Animation trace:");

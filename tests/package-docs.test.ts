@@ -155,6 +155,8 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("contact-sheet.html");
     expect(docs).toContain("state-graph.json");
     expect(docs).toContain("a001-diff.png");
+    expect(docs).toContain("severity, detector, and rule-family filters");
+    expect(docs).toContain("safety log");
     expect(docs).toContain("bbox heuristics");
     expect(docs).toContain("Capability Model");
     expect(docs).toContain("plannedReason");

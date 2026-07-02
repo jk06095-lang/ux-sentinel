@@ -359,3 +359,13 @@ Added per-action visual diff artifacts:
 - Adds `visualDiff` to action records and state graph edges.
 - Shows visual diff thumbnails and paths in `contact-sheet.html`.
 - Counts diff images in the interactive screenshot summary so evidence totals reflect before/after/diff panels.
+
+### Checkpoint: Contact Sheet 2.0 Foundation
+
+Upgraded the static local contact sheet into a richer review surface:
+
+- Added severity, detector, and rule-family filters.
+- Added an action timeline, state graph summary, safety log, accessibility cross-check, and animation audit section.
+- Added bbox overlays on before/after/diff panels.
+- Added per-action UX principle mapping and finding confidence details.
+- Kept the artifact as static HTML that works from local files without a server.

@@ -57,7 +57,7 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `actions/a001-pointer-trace.json`
 - `actions/a001-animation-trace.json` when `animation_audit.enabled: true`
 
-The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace path, optional animation trace path, and finding detectors linked to that action.
+The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace path, optional animation trace path, and finding detectors linked to that action. It also includes severity, detector, and rule-family filters; an action timeline; state graph summary; safety log; accessibility cross-check; animation audit section; bbox overlays; and UX principle mapping for evidence-backed findings.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
@@ -157,6 +157,17 @@ Interactive anomaly detectors include:
 - `animation_uses_layout_paint_properties`
 
 These are geometry, DOM/layout, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
+
+## Reviewing The Contact Sheet
+
+Use `contact-sheet.html` as a local static review surface:
+
+1. Start with the action timeline to see the route through the UI.
+2. Check the safety log to see what was clicked, skipped, or refused.
+3. Use the severity, detector, and rule-family filters to focus the review.
+4. Compare before, after, and visual diff panels for each action.
+5. Inspect bbox overlays, pointer traces, animation traces, DOM diffs, and accessibility diffs before treating a finding as final.
+6. Read `Why this matters` and confidence metadata to separate evidence-backed findings from lower-confidence review prompts.
 
 ## Limits
 
