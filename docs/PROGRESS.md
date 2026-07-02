@@ -313,3 +313,12 @@ Added reconstructable state evidence for interactive audit:
 - Added per-action `aNNN-dom-diff.json` and `aNNN-a11y-diff.json`.
 - Added `beforeStateId`, `afterStateId`, `domDiff`, and `accessibilityDiff` to action records.
 - Added state graph and diff paths to reports, Codex briefs, CLI summaries, and contact-sheet rows.
+
+### Checkpoint: Pointer Trace Evidence
+
+Added cursor movement evidence for interactive audit:
+
+- Added `actions/aNNN-pointer-trace.json` for hover, focus, and click-capable actions.
+- Recorded start/end/intermediate cursor points, movement duration, hover duration, target movement, overlay appearance, and final hit-test match state.
+- Skips otherwise allowed safe clicks when hover or target movement causes final pointer hit-test drift.
+- Added pointer trace paths to action records, state graph edges, and contact-sheet rows.

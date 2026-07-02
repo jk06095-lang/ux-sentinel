@@ -237,6 +237,36 @@ export interface ClickBlockage {
   };
 }
 
+export interface PointerPoint {
+  x: number;
+  y: number;
+}
+
+export interface PointerTracePoint extends PointerPoint {
+  t: number;
+}
+
+export interface PointerTraceHitTest {
+  bbox?: ElementBox;
+  hitTestMatchedTarget: boolean;
+  blocker?: ClickBlockage["blocker"];
+}
+
+export interface PointerTrace {
+  actionId: string;
+  from: PointerPoint;
+  to: PointerPoint;
+  targetCenter: PointerPoint;
+  points: PointerTracePoint[];
+  movementDurationMs: number;
+  hoverDurationMs: number;
+  initialHitTest: PointerTraceHitTest;
+  finalHitTest: PointerTraceHitTest;
+  targetMovedDuringApproach: boolean;
+  overlayAppearedDuringApproach: boolean;
+  finalHitTestMatchedTarget: boolean;
+}
+
 export interface InteractiveActionRecord {
   id: string;
   sequence: number;
@@ -261,6 +291,7 @@ export interface InteractiveActionRecord {
   afterStateId?: string;
   domDiff?: string;
   accessibilityDiff?: string;
+  pointerTrace?: string;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;

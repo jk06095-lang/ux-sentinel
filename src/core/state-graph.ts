@@ -40,6 +40,7 @@ export interface StateGraphEdge {
   afterScreenshot: string;
   domDiff: string;
   accessibilityDiff: string;
+  pointerTrace?: string;
   findingDetectors: string[];
 }
 

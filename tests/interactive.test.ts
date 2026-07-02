@@ -194,6 +194,7 @@ describe("interactive exploration helpers", () => {
           beforeScreenshot: "trace/actions/a001-before.png",
           afterScreenshot: "trace/actions/a001-after.png",
           screenMap: "trace/actions/a001-screen-map.json",
+          pointerTrace: "trace/actions/a001-pointer-trace.json",
           clicked: false,
           focused: false,
           consoleErrorCount: 0,
@@ -220,8 +221,10 @@ describe("interactive exploration helpers", () => {
 
     expect(html).toContain("a001-before.png");
     expect(html).toContain("a001-after.png");
+    expect(html).toContain("a001-pointer-trace.json");
     expect(html).toContain("tooltip_partially_offscreen");
     expect(html).toContain("Safe click decision:");
+    expect(html).toContain("Pointer trace:");
   });
 
   it("skips stale targets instead of clicking old coordinates", async () => {
@@ -389,16 +392,32 @@ describe("interactive exploration helpers", () => {
       expect(result.actions[0].afterStateId).toBe("s001");
       expect(result.actions[0].domDiff).toContain("a001-dom-diff.json");
       expect(result.actions[0].accessibilityDiff).toContain("a001-a11y-diff.json");
+      expect(result.actions[0].pointerTrace).toContain("a001-pointer-trace.json");
       await stat(result.artifacts.stateGraph);
       await stat(result.actions[0].domDiff!);
       await stat(result.actions[0].accessibilityDiff!);
+      await stat(result.actions[0].pointerTrace!);
+      const pointerTrace = JSON.parse(await readFile(result.actions[0].pointerTrace!, "utf8")) as {
+        points: Array<{ x: number; y: number; t: number }>;
+        finalHitTestMatchedTarget: boolean;
+      };
+      expect(pointerTrace.points.length).toBeGreaterThan(2);
+      expect(pointerTrace.finalHitTestMatchedTarget).toBe(true);
       const stateGraph = JSON.parse(await readFile(result.artifacts.stateGraph, "utf8")) as {
         nodes: Array<{ id: string; visibleTextHash: string; domStructureHash: string }>;
-        edges: Array<{ actionId: string; beforeStateId: string; afterStateId: string; domDiff: string; accessibilityDiff: string }>;
+        edges: Array<{
+          actionId: string;
+          beforeStateId: string;
+          afterStateId: string;
+          domDiff: string;
+          accessibilityDiff: string;
+          pointerTrace?: string;
+        }>;
       };
       expect(stateGraph.nodes.map((node) => node.id)).toEqual(["s000", "s001"]);
       expect(stateGraph.nodes[0].visibleTextHash).toMatch(/^[a-f0-9]{64}$/);
       expect(stateGraph.edges[0]).toMatchObject({ actionId: "a001", beforeStateId: "s000", afterStateId: "s001" });
+      expect(stateGraph.edges[0].pointerTrace).toContain("a001-pointer-trace.json");
       const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
         beforeStateId: string;
         afterStateId: string;
@@ -406,6 +425,44 @@ describe("interactive exploration helpers", () => {
       };
       expect(domDiff.beforeStateId).toBe("s000");
       expect(domDiff.afterStateId).toBe("s001");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("skips safe clicks when hover changes the final pointer hit-test", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            body { margin: 0; min-height: 320px; }
+            button { position: absolute; left: 100px; top: 100px; width: 180px; height: 48px; }
+            #overlay { position: fixed; left: 90px; top: 90px; width: 240px; height: 100px; z-index: 999; background: white; }
+          </style>
+          <button onmouseenter="document.getElementById('overlay').hidden = false" onclick="document.body.dataset.clicked='true'">Open panel</button>
+          <div id="overlay" hidden>Hover panel</div>
+        `),
+        traceRoot,
+        commandMode: "explore",
+        clickSafeOverride: true,
+        maxActions: 1,
+        settleMs: 20
+      });
+
+      expect(result.actions[0].clicked).toBe(false);
+      expect(result.actions[0].clickDecision).toBe("skipped");
+      expect(result.actions[0].clickDecisionReason).toBe("cursor target drift");
+      expect(result.actions[0].pointerTrace).toContain("a001-pointer-trace.json");
+      expect(result.findings.map((finding) => finding.detector)).toEqual(
+        expect.arrayContaining(["overlay_appeared_during_cursor_approach", "hover_trigger_blocks_target", "cursor_target_drift"])
+      );
+      const pointerTrace = JSON.parse(await readFile(result.actions[0].pointerTrace!, "utf8")) as {
+        overlayAppearedDuringApproach: boolean;
+        finalHitTestMatchedTarget: boolean;
+      };
+      expect(pointerTrace.overlayAppearedDuringApproach).toBe(true);
+      expect(pointerTrace.finalHitTestMatchedTarget).toBe(false);
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

@@ -6,6 +6,7 @@ import { defaultPreferredLabels } from "./scenario.js";
 import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files.js";
 import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
+import { recordPointerTrace } from "./pointer-trace.js";
 import {
   buildStateGraph,
   collectStateSnapshot,
@@ -27,6 +28,8 @@ import type {
   InteractiveExplorationResult,
   InteractiveTarget,
   NetworkIssue,
+  PointerPoint,
+  PointerTrace,
   Scenario,
   ScreenMap,
   Severity
@@ -64,6 +67,7 @@ interface ActionExecutionResult {
   action: InteractiveActionRecord;
   findings: Finding[];
   screenMap: ScreenMap;
+  pointerEnd?: PointerPoint;
 }
 
 export interface VisualBox {
@@ -837,6 +841,74 @@ function buildBlockedClickFinding(target: InteractiveTarget, blockage: ClickBloc
   );
 }
 
+function buildPointerTraceFindings(trace: PointerTrace, tracePath: string, target: InteractiveTarget, actionId: string): Finding[] {
+  const findings: Finding[] = [];
+  const targetName = targetLabel(target) || target.tag;
+  const evidence = `Pointer trace: ${tracePath}. Cursor moved toward target ${target.id} "${targetName}" from (${trace.from.x}, ${trace.from.y}) to (${trace.to.x}, ${trace.to.y}).`;
+
+  if (trace.targetMovedDuringApproach) {
+    findings.push(
+      finding(
+        "target_moved_during_cursor_approach",
+        "Target moved during cursor approach",
+        "P2",
+        evidence,
+        "A user may chase a moving target or click a different point than intended.",
+        "Keep the control stable during hover approach or reserve layout space before interaction.",
+        "Rerun interactive exploration and confirm the pointer trace shows a stable target bbox.",
+        actionId
+      )
+    );
+  }
+
+  if (trace.overlayAppearedDuringApproach) {
+    findings.push(
+      finding(
+        "overlay_appeared_during_cursor_approach",
+        "Overlay appeared during cursor approach",
+        "P2",
+        `${evidence} Final blocker: ${trace.finalHitTest.blocker?.tag ?? "unknown element"} "${trace.finalHitTest.blocker?.text || trace.finalHitTest.blocker?.ariaLabel || ""}".`,
+        "A hover-triggered layer can hide or intercept the action before the user completes it.",
+        "Position hover content so it does not cover the trigger or intended action path.",
+        "Rerun interactive exploration and confirm the pointer trace remains target-matched after hover.",
+        actionId
+      )
+    );
+  }
+
+  if (trace.overlayAppearedDuringApproach && !trace.finalHitTestMatchedTarget) {
+    findings.push(
+      finding(
+        "hover_trigger_blocks_target",
+        "Hover content blocks the target",
+        "P1",
+        `${evidence} The final hit-test did not resolve to the target or a descendant.`,
+        "A user can see the action but the cursor lands on hover content instead of the intended control.",
+        "Move the hover layer away from the trigger or make it non-intercepting when it overlaps.",
+        "Rerun the same action and confirm final elementFromPoint still resolves to the target.",
+        actionId
+      )
+    );
+  }
+
+  if (!trace.finalHitTestMatchedTarget) {
+    findings.push(
+      finding(
+        "cursor_target_drift",
+        "Cursor final hit-test drifted away from the target",
+        "P1",
+        `${evidence} The final elementFromPoint result no longer matched the target.`,
+        "The click affordance may be visually available while the actual pointer target has changed.",
+        "Stabilize the hit target during hover, or update the control so overlays cannot steal the final hit-test.",
+        "Rerun interactive exploration and confirm the pointer trace finalHitTestMatchedTarget is true.",
+        actionId
+      )
+    );
+  }
+
+  return findings;
+}
+
 function renumberInteractiveFindings(findings: Finding[]): Finding[] {
   return findings.map((item, index) => ({
     ...item,
@@ -865,12 +937,16 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
       const planned = action.plannedReason
         ? `${action.targetCategory ?? "unknown"} / ${action.riskLevel ?? "unknown"} risk: ${action.plannedReason}`
         : "not recorded";
+      const pointerTrace = action.pointerTrace
+        ? path.relative(result.artifacts.traceDir, action.pointerTrace).replace(/\\/g, "/")
+        : "none";
       return `<article>
   <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
+  <p><strong>Pointer trace:</strong> ${escapeHtml(pointerTrace)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
   <p><strong>Diffs:</strong> ${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / ${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
@@ -971,6 +1047,7 @@ async function recordActionStateEvidence(options: {
       afterScreenshot: options.action.afterScreenshot,
       domDiff: domDiffPath,
       accessibilityDiff: accessibilityDiffPath,
+      pointerTrace: options.action.pointerTrace,
       findingDetectors: options.action.findingDetectors
     }
   };
@@ -1114,6 +1191,7 @@ async function performTargetAction(
   planned: PlannedInteractiveAction,
   sequence: number,
   actionsDir: string,
+  pointerStart: PointerPoint,
   config: InteractiveConfig,
   scenario: Scenario | undefined,
   consoleErrors: ConsoleIssue[],
@@ -1129,6 +1207,8 @@ async function performTargetAction(
   let clicked = false;
   let focused = false;
   let clickSkippedReason = target.skipClickReason;
+  let pointerTracePath: string | undefined;
+  let pointerEnd: PointerPoint | undefined;
   const urlBefore = page.url();
 
   await locator.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
@@ -1149,10 +1229,24 @@ async function performTargetAction(
     findings.push(buildBlockedClickFinding(liveTarget, blockage, actionId));
   }
   const livePlanned = { ...planned, target: liveTarget };
-  const clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, livePlanned, blockage);
+  let clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, livePlanned, blockage);
 
-  await page.mouse.move(liveTarget.center.x, liveTarget.center.y);
-  await page.waitForTimeout(config.settleMs);
+  const pointerTrace = await recordPointerTrace(page, liveTarget, actionId, actionsDir, {
+    from: pointerStart,
+    movementDurationMs: Math.min(240, Math.max(0, config.settleMs)),
+    hoverDurationMs: config.settleMs
+  });
+  pointerTracePath = pointerTrace.path;
+  pointerEnd = pointerTrace.trace.to;
+  findings.push(...buildPointerTraceFindings(pointerTrace.trace, pointerTrace.path, liveTarget, actionId));
+
+  if (clickDecision.decision === "allowed" && !pointerTrace.trace.finalHitTestMatchedTarget) {
+    clickDecision = {
+      decision: "skipped",
+      reason: "cursor target drift"
+    };
+    clickSkippedReason = clickDecision.reason;
+  }
 
   if (config.focusAllKeyboardTargets && liveTarget.focusable) {
     await locator.focus({ timeout: 500 }).then(() => {
@@ -1162,7 +1256,8 @@ async function performTargetAction(
   }
 
   if (clickDecision.decision === "allowed") {
-    await page.mouse.click(liveTarget.center.x, liveTarget.center.y).then(() => {
+    const clickPoint = pointerEnd ?? liveTarget.center;
+    await page.mouse.click(clickPoint.x, clickPoint.y).then(() => {
       clicked = true;
     }).catch((error: unknown) => {
       clickSkippedReason = error instanceof Error ? error.message : String(error);
@@ -1187,6 +1282,7 @@ async function performTargetAction(
     beforeScreenshot,
     afterScreenshot,
     screenMap: screenMapPath,
+    pointerTrace: pointerTracePath,
     clicked,
     focused,
     clickBlockage: blockage,
@@ -1206,7 +1302,7 @@ async function performTargetAction(
     findingDetectors: findings.map((item) => item.detector)
   };
 
-  return { action, findings, screenMap };
+  return { action, findings, screenMap, pointerEnd };
 }
 
 async function collectScrollableTargets(page: Page, avoidClickText: string[]): Promise<InteractiveTarget[]> {
@@ -1362,6 +1458,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
   const stateNodes: StateGraphNode[] = [];
   const stateEdges: StateGraphEdge[] = [];
   const notes = [...config.notes];
+  let currentPointer: PointerPoint = { x: 40, y: 40 };
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -1421,7 +1518,20 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       const result =
         plannedAction.kind === "scroll"
           ? await performScrollAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors)
-          : await performTargetAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
+          : await performTargetAction(
+              page,
+              plannedAction,
+              sequence,
+              actionsDir,
+              currentPointer,
+              config,
+              options.scenario,
+              consoleErrors,
+              networkErrors
+            );
+      if (result.pointerEnd) {
+        currentPointer = result.pointerEnd;
+      }
       const evidence = await recordActionStateEvidence({
         page,
         action: result.action,

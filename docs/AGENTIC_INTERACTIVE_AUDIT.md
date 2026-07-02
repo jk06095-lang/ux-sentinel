@@ -14,6 +14,7 @@ The current implementation adds a deterministic planning layer:
 4. Respect action and click budgets.
 5. Record the planner decision in `action-trace.json` and `contact-sheet.html`.
 6. Write `state-graph.json` plus per-action DOM and accessibility diff files so a reviewer can reconstruct the path.
+7. Write per-action pointer traces so hover, focus, and click-capable actions show the cursor path and final hit-test result.
 
 The runner still uses the hardened safety policy from [SAFETY_POLICY.md](SAFETY_POLICY.md). `explore --click-safe` is the standalone opt-in for safe clicks. `run --interactive --click-safe` is intentionally not a click override; scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
@@ -69,20 +70,22 @@ Each action record includes:
 - `plannedSafeClick`
 - `clickDecision`
 - `clickDecisionReason`
+- `pointerTrace`
 
 The action trace also includes a root `planner` object with the selected mode and action/click/depth/state-change budgets.
 
 `state-graph.json` includes:
 
 - state nodes with URL, viewport, screenshot, screen map path, accessibility hash, visible text hash, DOM structure hash, open UI state, console error count, and network error count
-- action edges with action id, action type, target id, target category, before/after state ids, before/after screenshots, DOM diff path, accessibility diff path, and finding detectors
+- action edges with action id, action type, target id, target category, before/after state ids, before/after screenshots, DOM diff path, accessibility diff path, pointer trace path, and finding detectors
+
+Pointer traces are written as `actions/aNNN-pointer-trace.json`. They record the start point, target center, intermediate points, movement and hover duration, whether the target moved during approach, whether an overlay appeared, and whether the final `elementFromPoint` still matched the target. If a safe click was otherwise allowed but the final hit-test drifts away from the target, the runner skips the click and records `cursor target drift`.
 
 ## Current Limits
 
 This is the planner foundation, not the full professional audit surface yet. Upcoming work should add:
 
 - visual diffs
-- real pointer traces
 - UX rule registry mappings
 - expanded detector batches
 - animation audit

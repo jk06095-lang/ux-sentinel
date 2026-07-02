@@ -270,6 +270,8 @@ visual_anomaly_contract:
 
 For standalone `explore`, clicking requires `--click-safe`. For scenario-driven `run --interactive`, `--click-safe` is intentionally not a run override; clicking requires `interactive_exploration.click_all_safe_controls: true`. Elements with `data-ux-role` are collected as analysis metadata by default; add `data-ux-clickable="true"` or `data-ux-action="..."` to opt a non-native element into safe-click filtering.
 
+Interactive traces include `actions/a001-pointer-trace.json` for hover, focus, and click-capable actions. Pointer traces record the cursor path, hover duration, target movement, overlay appearance, and whether the final hit-test still matched the target. If a safe click would land on a different element after hover, ux-sentinel skips the click and records `cursor target drift`.
+
 ## Sample Report Output
 
 ```markdown

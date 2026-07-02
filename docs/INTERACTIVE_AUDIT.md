@@ -49,12 +49,13 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `actions/a001-screen-map.json`
 - `actions/a001-dom-diff.json`
 - `actions/a001-a11y-diff.json`
+- `actions/a001-pointer-trace.json`
 
-The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, and finding detectors linked to that action.
+The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, pointer trace path, and finding detectors linked to that action.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
-Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, or a previous action changed the page. The action trace also records the resolved capability policy, planner budget, target category, planned reason, risk level, and each action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, DOM diff files, accessibility diff files, and finding detectors.
+Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, when pointer approach reveals an overlay, or when the final hit-test drifts away from the intended target. The action trace also records the resolved capability policy, planner budget, target category, planned reason, risk level, pointer trace path, and each action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, DOM diff files, accessibility diff files, pointer trace files, and finding detectors.
 
 ## Safe Target Collection
 
@@ -114,6 +115,10 @@ visual_anomaly_contract:
 Interactive anomaly detectors include:
 
 - `click_target_blocked_by_overlay`
+- `target_moved_during_cursor_approach`
+- `overlay_appeared_during_cursor_approach`
+- `hover_trigger_blocks_target`
+- `cursor_target_drift`
 - `floating_panel_overlaps_primary_action`
 - `tooltip_partially_offscreen`
 - `text_occluded_by_graph_edge`

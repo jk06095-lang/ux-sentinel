@@ -153,6 +153,8 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("Capability Model");
     expect(docs).toContain("plannedReason");
     expect(docs).toContain("targetCategory");
+    expect(docs).toContain("a001-pointer-trace.json");
+    expect(docs).toContain("cursor target drift");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {
