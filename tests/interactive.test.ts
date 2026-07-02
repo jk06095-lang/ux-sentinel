@@ -28,6 +28,7 @@ function emptyAnalysis() {
     svgTexts: [],
     cards: [],
     clippedText: [],
+    stickyLayerOverlaps: [],
     dagContainers: [],
     emptyDagColumns: []
   };
@@ -192,6 +193,67 @@ describe("interactive exploration helpers", () => {
     }).map((finding) => finding.detector);
 
     expect(findings).toContain("tooltip_blocks_trigger");
+  });
+
+  it("detects sticky layers that hide content outside their own subtree", () => {
+    const findings = detectVisualAnomalies({
+      ...emptyAnalysis(),
+      stickyLayerOverlaps: [
+        {
+          id: "sticky1",
+          kind: "sticky_layer",
+          text: "Global nav",
+          bbox: { x: 0, y: 0, width: 1280, height: 72 },
+          position: "fixed",
+          coveredId: "target1",
+          coveredKind: "interactive_target",
+          coveredText: "Create first project",
+          coveredBox: { x: 40, y: 24, width: 180, height: 44 },
+          hitTestPoint: { x: 130, y: 46 },
+          overlapRatio: 0.78
+        }
+      ]
+    });
+
+    expect(findings.map((finding) => finding.detector)).toContain("sticky_layer_hides_content");
+    expect(findings.find((finding) => finding.detector === "sticky_layer_hides_content")?.evidence).toContain(
+      "Create first project"
+    );
+  });
+
+  it("collects sticky layer overlap evidence from a real page", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            body { margin: 0; }
+            .topbar { position: fixed; z-index: 20; left: 0; top: 0; width: 100%; height: 80px; background: white; }
+            main { position: relative; min-height: 240px; }
+            button { position: absolute; left: 40px; top: 24px; width: 180px; height: 44px; }
+          </style>
+          <div class="topbar">Global navigation</div>
+          <main><button>Create first project</button></main>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "sticky-overlap",
+          title: "Sticky overlap",
+          persona: "tester",
+          interactive_exploration: { enabled: true }
+        }
+      });
+
+      const finding = result.findings.find((item) => item.detector === "sticky_layer_hides_content");
+
+      expect(finding?.evidence).toContain("Create first project");
+      expect(finding?.ruleIds).toContain("gestalt.common_region");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
   });
 
   it("renders a contact sheet with before and after screenshots", () => {

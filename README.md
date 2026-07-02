@@ -479,6 +479,7 @@ Interactive visual anomaly detectors:
 - `floating_panel_overlaps_primary_action`
 - `tooltip_partially_offscreen`
 - `tooltip_blocks_trigger`
+- `sticky_layer_hides_content`
 - `text_occluded_by_graph_edge`
 - `edge_label_crosses_node`
 - `selected_path_not_traceable`

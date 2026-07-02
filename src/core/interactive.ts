@@ -108,6 +108,16 @@ export interface DagContainerMetric extends VisualBox {
   unusedRatio: number;
 }
 
+export interface StickyLayerOverlapMetric extends VisualBox {
+  position: "fixed" | "sticky";
+  coveredId: string;
+  coveredKind: string;
+  coveredText: string;
+  coveredBox: ElementBox;
+  hitTestPoint: PointerPoint;
+  overlapRatio: number;
+}
+
 export interface VisualAnalysis {
   viewport: {
     width: number;
@@ -122,6 +132,7 @@ export interface VisualAnalysis {
   svgTexts: VisualBox[];
   cards: VisualBox[];
   clippedText: TextClipMetric[];
+  stickyLayerOverlaps: StickyLayerOverlapMetric[];
   dagContainers: DagContainerMetric[];
   emptyDagColumns: VisualBox[];
 }
@@ -565,6 +576,103 @@ async function collectVisualAnalysis(page: Page, scenario?: Scenario): Promise<V
         .filter((item) => item.overlayish && visibleBox(item.bbox))
         .map(({ overlayish, ...item }) => item);
 
+      const overlapRatioFor = (a: ElementBox, b: ElementBox) => {
+        const left = Math.max(a.x, b.x);
+        const top = Math.max(a.y, b.y);
+        const right = Math.min(a.x + a.width, b.x + b.width);
+        const bottom = Math.min(a.y + a.height, b.y + b.height);
+        const area = Math.max(0, right - left) * Math.max(0, bottom - top);
+        const smallestArea = Math.max(1, Math.min(a.width * a.height, b.width * b.height));
+        return area / smallestArea;
+      };
+      const overlapCenterFor = (a: ElementBox, b: ElementBox) => {
+        const left = Math.max(a.x, b.x);
+        const top = Math.max(a.y, b.y);
+        const right = Math.min(a.x + a.width, b.x + b.width);
+        const bottom = Math.min(a.y + a.height, b.y + b.height);
+        return {
+          x: Math.round(left + Math.max(0, right - left) / 2),
+          y: Math.round(top + Math.max(0, bottom - top) / 2)
+        };
+      };
+      const layerOwnsHitTestPoint = (layer: HTMLElement, point: PointerPoint) => {
+        const top = document.elementFromPoint(point.x, point.y);
+        return Boolean(top && (top === layer || layer.contains(top)));
+      };
+
+      const stickyLayerCandidates = Array.from(document.querySelectorAll<HTMLElement>("body *"))
+        .map((element, index) => {
+          const style = window.getComputedStyle(element);
+          const position = style.position === "fixed" || style.position === "sticky" ? style.position : undefined;
+          const role = element.getAttribute("role") ?? "";
+          const className = String(element.getAttribute("class") ?? "").toLowerCase();
+          const explicitOverlay = /tooltip|popover|modal|dialog|menu/.test(`${role.toLowerCase()} ${className}`);
+          const bbox = boxFor(element);
+          const zIndex = Number.parseInt(style.zIndex || "0", 10);
+          return {
+            id: `sticky${index + 1}`,
+            kind: "sticky_layer",
+            text: normalize(element.innerText || element.textContent || element.getAttribute("aria-label") || ""),
+            bbox,
+            element,
+            position,
+            include:
+              Boolean(position) &&
+              !explicitOverlay &&
+              visibleBox(bbox) &&
+              bbox.width >= 32 &&
+              bbox.height >= 24 &&
+              (zIndex > 0 || position === "fixed")
+          };
+        })
+        .filter((item) => item.include && item.position)
+        .slice(0, 40);
+
+      const occlusionCandidates = [
+        ...Array.from(document.querySelectorAll<HTMLElement>(interactiveSelector)).map((element, index) => ({
+          id: `target${index + 1}`,
+          kind: "interactive_target",
+          text: normalize([element.innerText || element.textContent || "", element.getAttribute("aria-label"), element.getAttribute("title")].filter(Boolean).join(" ")),
+          bbox: boxFor(element),
+          element
+        })),
+        ...Array.from(document.querySelectorAll<HTMLElement>("main *, [data-ux-role='content'] *, article *, section *")).map((element, index) => ({
+          id: `content${index + 1}`,
+          kind: "content",
+          text: normalize(element.innerText || element.textContent || element.getAttribute("aria-label") || ""),
+          bbox: boxFor(element),
+          element
+        }))
+      ].filter((item) => visibleBox(item.bbox) && normalize(item.text).length > 0 && item.bbox.width >= 12 && item.bbox.height >= 10);
+
+      const stickyLayerOverlaps = stickyLayerCandidates.flatMap((layer) => {
+        const covered = occlusionCandidates
+          .filter((candidate) => candidate.element !== layer.element && !layer.element.contains(candidate.element) && !candidate.element.contains(layer.element))
+          .map((candidate) => ({
+            candidate,
+            overlapRatio: overlapRatioFor(layer.bbox, candidate.bbox),
+            hitTestPoint: overlapCenterFor(layer.bbox, candidate.bbox)
+          }))
+          .filter((item) => item.overlapRatio > (item.candidate.kind === "interactive_target" ? 0.2 : 0.35))
+          .filter((item) => layerOwnsHitTestPoint(layer.element, item.hitTestPoint))
+          .sort((first, second) => second.overlapRatio - first.overlapRatio)
+          .slice(0, 3);
+
+        return covered.map(({ candidate, overlapRatio, hitTestPoint }) => ({
+          id: layer.id,
+          kind: "sticky_layer",
+          text: layer.text,
+          bbox: layer.bbox,
+          position: layer.position as "fixed" | "sticky",
+          coveredId: candidate.id,
+          coveredKind: candidate.kind,
+          coveredText: candidate.text.slice(0, 160),
+          coveredBox: candidate.bbox,
+          hitTestPoint,
+          overlapRatio
+        }));
+      });
+
       const svgNodes = visualBoxes("svg rect, svg circle, svg ellipse, svg polygon", "svg_node");
       const svgEdges = visualBoxes("svg path, svg line, svg polyline", "svg_edge");
       const svgTexts = visualBoxes("svg text", "svg_text");
@@ -639,6 +747,7 @@ async function collectVisualAnalysis(page: Page, scenario?: Scenario): Promise<V
         svgTexts,
         cards,
         clippedText,
+        stickyLayerOverlaps,
         dagContainers,
         emptyDagColumns
       };
@@ -839,6 +948,22 @@ export function detectVisualAnomalies(analysis: VisualAnalysis, scenario?: Scena
         }
       }
     }
+  }
+
+  for (const overlap of analysis.stickyLayerOverlaps) {
+    pushOnce(
+      findings,
+      finding(
+        "sticky_layer_hides_content",
+        "Sticky layer hides page content",
+        overlap.coveredKind === "interactive_target" ? "P1" : "P2",
+        `${overlap.id} (${overlap.position}) overlaps ${overlap.coveredKind} "${overlap.coveredText || overlap.coveredId}" by ${(overlap.overlapRatio * 100).toFixed(1)}%; elementFromPoint at x=${overlap.hitTestPoint.x}, y=${overlap.hitTestPoint.y} resolves to the sticky layer. Layer bbox ${overlap.bbox.width}x${overlap.bbox.height} at x=${overlap.bbox.x}, y=${overlap.bbox.y}; covered bbox ${overlap.coveredBox.width}x${overlap.coveredBox.height} at x=${overlap.coveredBox.x}, y=${overlap.coveredBox.y}.`,
+        "Sticky or fixed chrome can cover content or controls while DOM checks still see them as present.",
+        "Reserve layout space for sticky chrome, raise covered content below it, or make the layer collapsible without blocking task content.",
+        "Rerun interactive exploration and confirm fixed or sticky layers no longer intersect content or controls outside their own subtree.",
+        actionId
+      )
+    );
   }
 
   if (graphDag?.enabled !== false) {
