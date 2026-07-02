@@ -42,12 +42,15 @@ The current deterministic motion batch includes:
 - `animation_duration_blocks_task`
 - `animation_causes_layout_shift`
 - `animation_uses_layout_paint_properties`
+- `animation_jank_detected`
+- `inconsistent_motion_tokens`
 
 Reduced-motion comparison is optional and only runs when `compare_reduced_motion: true`. It emulates `prefers-reduced-motion: reduce` and compares whether elements that animate normally still report animation or transition evidence under the reduced-motion preference.
+Jank and token-consistency findings are deterministic trace heuristics: they use visible animated element counts, risky property evidence, target bbox movement, duration spread, and easing spread from `actions/aNNN-animation-trace.json`.
 
 ## Limits
 
 - This is not a video or visual-AI motion review.
 - Layout shift is an approximation based on target bbox movement around the action.
-- Long tasks and jank are not yet measured directly.
+- Long tasks are not yet measured directly.
 - Motion findings are evidence-backed heuristics; review the screenshots and trace before treating them as final.

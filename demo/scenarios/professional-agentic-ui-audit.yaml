@@ -84,6 +84,7 @@ fail_conditions:
   - popover_blocks_primary_action
   - destructive_action_without_confirmation
   - animation_ignores_reduced_motion
+  - animation_jank_detected
   - floating_panel_overlaps_primary_action
   - important_text_truncated
   - edge_label_crosses_node

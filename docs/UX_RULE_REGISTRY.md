@@ -71,7 +71,7 @@ The registry currently maps the MVP detectors, interactive visual detectors, poi
 - feedback and safety: `no_feedback_after_action`, `status_change_not_announced`, `loading_without_progress_or_timeout`, `dead_end_state_without_recovery`, `empty_state_without_next_step`, `dialog_close_unavailable`, `modal_trap_without_escape`, `destructive_action_without_confirmation`
 - visual hierarchy: `primary_cta_low_visual_weight`, `multiple_primary_ctas_conflict`, `secondary_action_overpowers_primary`
 - layout, graph, and pointer traces: `card_overlap`, `card_content_clipped`, `popover_blocks_primary_action`, `edge_label_crosses_node`, `edge_crosses_critical_label`, `selected_path_not_traceable`, `graph_control_not_discoverable`, `node_label_truncated`, `text_occluded_by_graph_edge`, `cursor_target_drift`, `target_moved_during_cursor_approach`, `overlay_appeared_during_cursor_approach`
-- motion audit: `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, `animation_uses_layout_paint_properties`
+- motion audit: `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, `animation_uses_layout_paint_properties`, `animation_jank_detected`, `inconsistent_motion_tokens`
 
 ## Adding A Detector
 

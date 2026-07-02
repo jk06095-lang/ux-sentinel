@@ -481,6 +481,15 @@ Interactive visual anomaly detectors:
 - `dag_canvas_excessive_unused_space`
 - `empty_dag_column_without_explanation`
 
+Opt-in motion audit detectors:
+
+- `animation_ignores_reduced_motion`
+- `animation_duration_blocks_task`
+- `animation_causes_layout_shift`
+- `animation_uses_layout_paint_properties`
+- `animation_jank_detected`
+- `inconsistent_motion_tokens`
+
 ## Limitations
 
 - This MVP uses deterministic DOM, layout, accessibility, console, and network evidence. It does not use a visual AI model.

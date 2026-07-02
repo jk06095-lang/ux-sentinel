@@ -240,3 +240,75 @@ export function animationTraceHasLongDuration(trace: AnimationTrace): boolean {
 export function animationTraceHasRiskyProperties(trace: AnimationTrace): boolean {
   return trace.riskyProperties.length > 0;
 }
+
+function activeMotionDuration(target: AnimationTargetTrace): number {
+  return Math.max(
+    target.transitionDurationMs + target.transitionDelayMs,
+    target.animationDurationMs + target.animationDelayMs,
+    ...target.webAnimations.map((animation) => animation.durationMs + animation.delayMs)
+  );
+}
+
+function motionDurations(trace: AnimationTrace): number[] {
+  return trace.normal
+    .flatMap((target) => [
+      target.transitionDurationMs,
+      target.animationDurationMs,
+      ...target.webAnimations.map((animation) => animation.durationMs)
+    ])
+    .filter((duration) => duration > 0);
+}
+
+function motionEasings(trace: AnimationTrace): string[] {
+  return trace.normal
+    .flatMap((target) => [
+      ...splitProperties(target.transitionTimingFunction),
+      ...splitProperties(target.animationTimingFunction),
+      ...target.webAnimations.map((animation) => animation.easing.trim().toLowerCase())
+    ])
+    .filter((easing) => easing && easing !== "normal" && easing !== "none");
+}
+
+export function animationTraceJankIndicators(trace: AnimationTrace): string[] {
+  const indicators: string[] = [];
+  const activeTargets = trace.normal.filter(traceIsAnimating);
+  const riskyAnimatedTargets = activeTargets.filter((target) => target.riskyProperties.length > 0);
+
+  if (riskyAnimatedTargets.some((target) => activeMotionDuration(target) > 150)) {
+    indicators.push("layout or paint-heavy properties animate for more than 150ms");
+  }
+
+  if (trace.riskyProperties.includes("all")) {
+    indicators.push("transition-property: all can animate layout or paint unexpectedly");
+  }
+
+  if (activeTargets.length >= 6) {
+    indicators.push(`${activeTargets.length} visible elements report simultaneous motion evidence`);
+  }
+
+  if (trace.layoutShiftApproximationPx > 8 && trace.riskyProperties.length > 0) {
+    indicators.push(`target layout moved ${trace.layoutShiftApproximationPx}px while risky properties were present`);
+  }
+
+  return Array.from(new Set(indicators));
+}
+
+export function animationTraceInconsistentMotionTokens(trace: AnimationTrace): string[] {
+  const issues: string[] = [];
+  const durations = Array.from(new Set(motionDurations(trace).map((duration) => Math.round(duration)))).sort((a, b) => a - b);
+  const easings = Array.from(new Set(motionEasings(trace))).sort((a, b) => a.localeCompare(b));
+
+  if (durations.length >= 2) {
+    const shortest = durations[0];
+    const longest = durations[durations.length - 1];
+    if (longest - shortest >= 250 || longest / Math.max(1, shortest) >= 3) {
+      issues.push(`duration tokens vary from ${shortest}ms to ${longest}ms`);
+    }
+  }
+
+  if (easings.length >= 3) {
+    issues.push(`easing tokens vary across ${easings.slice(0, 4).join(", ")}`);
+  }
+
+  return issues;
+}

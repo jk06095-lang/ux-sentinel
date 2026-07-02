@@ -9,6 +9,8 @@ import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
 import { recordPointerTrace } from "./pointer-trace.js";
 import {
+  animationTraceInconsistentMotionTokens,
+  animationTraceJankIndicators,
   animationTraceHasLongDuration,
   animationTraceHasRiskyProperties,
   recordAnimationTrace,
@@ -1122,6 +1124,38 @@ function buildAnimationFindings(trace: AnimationTrace, tracePath: string, target
         "Users who request reduced motion may still experience motion that distracts from or blocks the task.",
         "Add prefers-reduced-motion styles that disable or substantially shorten non-essential motion.",
         "Rerun the motion audit with reduced-motion comparison enabled and confirm no non-essential animation remains.",
+        actionId
+      )
+    );
+  }
+
+  const jankIndicators = animationTraceJankIndicators(trace);
+  if (jankIndicators.length) {
+    findings.push(
+      finding(
+        "animation_jank_detected",
+        "Animation has deterministic jank indicators",
+        "P2",
+        `${evidencePrefix} Jank indicators: ${jankIndicators.join("; ")}.`,
+        "Janky motion can make state changes feel broken and can distract from the next available action.",
+        "Use fewer simultaneous animations, avoid layout/paint-heavy properties, and keep task-critical motion short.",
+        "Rerun the motion audit and confirm no jank indicators are reported for the action.",
+        actionId
+      )
+    );
+  }
+
+  const inconsistentMotionTokens = animationTraceInconsistentMotionTokens(trace);
+  if (inconsistentMotionTokens.length) {
+    findings.push(
+      finding(
+        "inconsistent_motion_tokens",
+        "Animation uses inconsistent motion tokens",
+        "P3",
+        `${evidencePrefix} Token issues: ${inconsistentMotionTokens.join("; ")}.`,
+        "Inconsistent motion timing can make related UI changes feel uncoordinated or harder to predict.",
+        "Align related transitions and animations to a small set of duration and easing tokens.",
+        "Rerun the motion audit and confirm related motion uses consistent duration and easing tokens.",
         actionId
       )
     );

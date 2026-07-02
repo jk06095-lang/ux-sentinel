@@ -173,6 +173,8 @@ Interactive anomaly detectors include:
 - `animation_duration_blocks_task`
 - `animation_causes_layout_shift`
 - `animation_uses_layout_paint_properties`
+- `animation_jank_detected`
+- `inconsistent_motion_tokens`
 
 These are geometry, DOM/layout, label/action consistency, visual-hierarchy, graph/DAG metadata, status/recovery, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. Static graph/DAG screen-map detectors only run when `visual_anomaly_contract.graph_dag.enabled: true` and graph surface evidence is present. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
 

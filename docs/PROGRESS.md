@@ -347,7 +347,7 @@ Added the first deterministic motion-audit slice:
 
 - Added scenario parsing for `animation_audit`.
 - Added `actions/aNNN-animation-trace.json` with CSS transition, CSS animation, Web Animations API, risky property, reduced-motion comparison, and target bbox evidence.
-- Added motion findings for `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, and `animation_uses_layout_paint_properties`.
+- Added motion findings for `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, `animation_uses_layout_paint_properties`, `animation_jank_detected`, and `inconsistent_motion_tokens`.
 - Linked animation traces into action records, state graph edges, contact-sheet rows, and UX rule evidence paths.
 - Documented the opt-in behavior in `docs/MOTION_AUDIT.md`.
 
