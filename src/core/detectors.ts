@@ -129,6 +129,58 @@ function intersectionRatio(a: ScreenElement["bbox"], b: ScreenElement["bbox"]): 
   return intersectionArea(a, b) / smallestArea;
 }
 
+function containsBox(outer: ScreenElement["bbox"], inner: ScreenElement["bbox"]): boolean {
+  return (
+    outer.x <= inner.x &&
+    outer.y <= inner.y &&
+    outer.x + outer.width >= inner.x + inner.width &&
+    outer.y + outer.height >= inner.y + inner.height
+  );
+}
+
+function likelyContainerRelationship(first: ScreenElement, second: ScreenElement): boolean {
+  const firstText = normalizedKey(first.visibleText);
+  const secondText = normalizedKey(second.visibleText);
+  const firstContainsSecond = containsBox(first.bbox, second.bbox) && firstText.includes(secondText);
+  const secondContainsFirst = containsBox(second.bbox, first.bbox) && secondText.includes(firstText);
+  return (firstContainsSecond && !first.clickable) || (secondContainsFirst && !second.clickable);
+}
+
+function isResponsiveLayoutElement(element: ScreenElement): boolean {
+  return (
+    element.visible &&
+    element.bbox.width >= 24 &&
+    element.bbox.height >= 16 &&
+    element.bbox.width * element.bbox.height >= 600 &&
+    Boolean(meaningfulText(element.visibleText) || element.clickable || element.dataUxRole)
+  );
+}
+
+function responsiveBreakpointOverlap(screenMap: ScreenMap): { first: ScreenElement; second: ScreenElement; ratio: number } | undefined {
+  if (screenMap.viewport.width > 900) {
+    return undefined;
+  }
+
+  const elements = screenMap.elements.filter(isResponsiveLayoutElement);
+  for (let index = 0; index < elements.length; index += 1) {
+    for (let other = index + 1; other < elements.length; other += 1) {
+      const first = elements[index];
+      const second = elements[other];
+      if (likelyContainerRelationship(first, second)) {
+        continue;
+      }
+
+      const overlapArea = intersectionArea(first.bbox, second.bbox);
+      const ratio = intersectionRatio(first.bbox, second.bbox);
+      if (overlapArea >= 400 && ratio >= 0.3) {
+        return { first, second, ratio };
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function focusOrderCandidates(screenMap: ScreenMap): Array<{ element: ScreenElement; sourceIndex: number }> {
   return screenMap.elements
     .map((element, sourceIndex) => ({ element, sourceIndex }))
@@ -481,6 +533,22 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         "A user may miss important state, consequence, setup, or recovery copy because the initial screen gives no reason to scroll.",
         "Move the important text above the fold, add a visible cue that more content follows, or keep a partial next section visible at the viewport edge.",
         "Run the scenario at the target viewport and confirm important below-fold copy is either above the fold or paired with an explicit scroll cue."
+      )
+    );
+  }
+
+  const breakpointOverlap = responsiveBreakpointOverlap(screenMap);
+  if (breakpointOverlap) {
+    findings.push(
+      finding(
+        "responsive_layout_breakpoint_overlap",
+        "Responsive breakpoint causes visible elements to overlap",
+        "P2",
+        "Perception Mismatch",
+        `Viewport ${screenMap.viewport.width}x${screenMap.viewport.height}: ${breakpointOverlap.first.id} "${elementActionLabel(breakpointOverlap.first)}" bbox ${breakpointOverlap.first.bbox.x},${breakpointOverlap.first.bbox.y},${breakpointOverlap.first.bbox.width}x${breakpointOverlap.first.bbox.height} overlaps ${breakpointOverlap.second.id} "${elementActionLabel(breakpointOverlap.second)}" bbox ${breakpointOverlap.second.bbox.x},${breakpointOverlap.second.bbox.y},${breakpointOverlap.second.bbox.width}x${breakpointOverlap.second.bbox.height} by ratio ${breakpointOverlap.ratio.toFixed(2)}.`,
+        "At the audited responsive breakpoint, users may not be able to read or distinguish controls and content that collide visually.",
+        "Adjust the responsive layout, wrapping, spacing, or stacking order so the elements no longer overlap at this viewport.",
+        "Run observe or the scenario at the same viewport and confirm the overlapping bboxes no longer intersect."
       )
     );
   }

@@ -450,6 +450,68 @@ describe("detectors", () => {
     expect(finding?.ruleIds).toContain("interaction_law.visual_hierarchy");
   });
 
+  it("detects visible element overlap at responsive breakpoints", () => {
+    const screenMap = baseScreenMap({
+      viewport: { width: 390, height: 720 },
+      document: { width: 390, height: 720, hasHorizontalScroll: false },
+      visibleText: ["Dashboard insights", "Create first project"],
+      elements: [
+        baseElement({
+          id: "headline",
+          tag: "h1",
+          visibleText: "Dashboard insights",
+          bbox: { x: 20, y: 100, width: 260, height: 48 }
+        }),
+        baseElement({
+          id: "cta",
+          tag: "button",
+          role: "button",
+          visibleText: "Create first project",
+          bbox: { x: 180, y: 110, width: 180, height: 44 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        })
+      ]
+    });
+
+    const finding = runDetectors(screenMap, scenario).find((item) => item.detector === "responsive_layout_breakpoint_overlap");
+
+    expect(finding?.evidence).toContain("Viewport 390x720");
+    expect(finding?.evidence).toContain("headline");
+    expect(finding?.evidence).toContain("cta");
+    expect(finding?.ruleIds).toEqual(expect.arrayContaining(["wcag22.reflow_and_readability", "gestalt.common_region"]));
+  });
+
+  it("does not treat normal responsive parent-child containment as overlap", () => {
+    const screenMap = baseScreenMap({
+      viewport: { width: 390, height: 720 },
+      document: { width: 390, height: 720, hasHorizontalScroll: false },
+      visibleText: ["Projects Create first project", "Create first project"],
+      elements: [
+        baseElement({
+          id: "panel",
+          visibleText: "Projects Create first project",
+          bbox: { x: 16, y: 80, width: 350, height: 220 }
+        }),
+        baseElement({
+          id: "cta",
+          tag: "button",
+          role: "button",
+          visibleText: "Create first project",
+          bbox: { x: 40, y: 180, width: 180, height: 44 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).not.toContain("responsive_layout_breakpoint_overlap");
+  });
+
   it("detects positive tabindex focus order jumps against visual order", () => {
     const screenMap = baseScreenMap({
       visibleText: ["First card", "Second card"],

@@ -87,6 +87,7 @@ fail_conditions:
   - popover_blocks_primary_action
   - tooltip_blocks_trigger
   - sticky_layer_hides_content
+  - responsive_layout_breakpoint_overlap
   - destructive_action_without_confirmation
   - animation_ignores_reduced_motion
   - animation_hides_critical_action

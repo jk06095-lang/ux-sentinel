@@ -7,7 +7,13 @@ export const gestaltRules: UxRule[] = [
     title: "Common region and grouping",
     principle: "Visual groups should have clear boundaries so users can tell which text, controls, and panels belong together.",
     appliesTo: ["static", "hover", "scroll"],
-    detectors: ["card_overlap", "floating_panel_overlaps_primary_action", "popover_blocks_primary_action", "sticky_layer_hides_content"],
+    detectors: [
+      "card_overlap",
+      "responsive_layout_breakpoint_overlap",
+      "floating_panel_overlaps_primary_action",
+      "popover_blocks_primary_action",
+      "sticky_layer_hides_content"
+    ],
     severityDefault: "P2",
     evidenceRequired: ["screenshot", "bbox"]
   },

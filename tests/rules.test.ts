@@ -39,6 +39,7 @@ const knownDetectors = [
   "primary_cta_low_visual_weight",
   "multiple_primary_ctas_conflict",
   "secondary_action_overpowers_primary",
+  "responsive_layout_breakpoint_overlap",
   "same_label_different_actions",
   "same_action_different_labels",
   "click_target_blocked_by_overlay",

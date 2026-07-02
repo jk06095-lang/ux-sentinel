@@ -165,6 +165,7 @@ Interactive anomaly detectors include:
 - `tooltip_partially_offscreen`
 - `tooltip_blocks_trigger`
 - `sticky_layer_hides_content`
+- `responsive_layout_breakpoint_overlap`
 - `text_occluded_by_graph_edge`
 - `edge_label_crosses_node`
 - `selected_path_not_traceable`

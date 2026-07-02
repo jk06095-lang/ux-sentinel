@@ -40,7 +40,13 @@ export const wcag22Rules: UxRule[] = [
     title: "Reflow and readable content",
     principle: "Important content should remain readable without two-dimensional scrolling, clipping, or overlap at the audited viewport.",
     appliesTo: ["static", "scroll"],
-    detectors: ["horizontal_scroll", "important_text_truncated", "card_content_clipped", "text_truncated"],
+    detectors: [
+      "horizontal_scroll",
+      "responsive_layout_breakpoint_overlap",
+      "important_text_truncated",
+      "card_content_clipped",
+      "text_truncated"
+    ],
     severityDefault: "P1",
     evidenceRequired: ["screenshot", "bbox"]
   }
