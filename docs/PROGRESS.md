@@ -312,6 +312,7 @@ Added reconstructable state evidence for interactive audit:
 
 - Added `state-graph.json` with state nodes and action edges.
 - Added state node hashes for visible text, DOM structure, and accessibility snapshots.
+- Captures open dialog/menu/popover/expanded-trigger state with id, bbox, ARIA, `data-state`, and `data-ux-role` evidence.
 - Added per-action `aNNN-dom-diff.json` and `aNNN-a11y-diff.json`.
 - Added `beforeStateId`, `afterStateId`, `domDiff`, and `accessibilityDiff` to action records.
 - Added state graph and diff paths to reports, Codex briefs, CLI summaries, and contact-sheet rows.

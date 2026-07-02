@@ -1,13 +1,18 @@
 import { createHash } from "node:crypto";
 import type { Page } from "playwright";
-import type { ScreenMap } from "./types.js";
+import type { ElementBox, ScreenMap } from "./types.js";
 
 export interface OpenUiState {
+  id: string | null;
   tag: string;
   role: string | null;
   text: string;
   ariaLabel: string | null;
+  ariaExpanded: string | null;
+  ariaModal: string | null;
+  dataState: string | null;
   dataUxRole: string | null;
+  bbox: ElementBox;
 }
 
 export interface StateGraphNode {
@@ -153,13 +158,26 @@ export async function collectStateSnapshot(
         );
       })
       .slice(0, 50)
-      .map((element) => ({
-        tag: element.tagName.toLowerCase(),
-        role: element.getAttribute("role"),
-        text: normalize(element.innerText || element.textContent || "").slice(0, 160),
-        ariaLabel: element.getAttribute("aria-label"),
-        dataUxRole: element.getAttribute("data-ux-role")
-      }));
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          id: element.id || null,
+          tag: element.tagName.toLowerCase(),
+          role: element.getAttribute("role"),
+          text: normalize(element.innerText || element.textContent || "").slice(0, 160),
+          ariaLabel: element.getAttribute("aria-label"),
+          ariaExpanded: element.getAttribute("aria-expanded"),
+          ariaModal: element.getAttribute("aria-modal"),
+          dataState: element.getAttribute("data-state"),
+          dataUxRole: element.getAttribute("data-ux-role"),
+          bbox: {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          }
+        };
+      });
 
     return {
       visibleText,
