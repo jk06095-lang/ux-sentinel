@@ -1564,6 +1564,14 @@ function relativeArtifact(traceDir: string, filePath: string | undefined): strin
   return filePath ? path.relative(traceDir, filePath).replace(/\\/g, "/") : "none";
 }
 
+function artifactLink(traceDir: string, filePath: string | undefined, label?: string): string {
+  const artifact = relativeArtifact(traceDir, filePath);
+  if (artifact === "none") {
+    return "none";
+  }
+  return `<a href="${escapeHtml(artifact)}">${escapeHtml(label ?? artifact)}</a>`;
+}
+
 function buildClickCandidateDecisions(
   targets: InteractiveTarget[],
   plannedActions: PlannedInteractiveAction[],
@@ -1654,12 +1662,12 @@ export function buildContactSheetHtml(
           const decision = action.clickDecision ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}` : "not recorded";
           const skipped = action.skipped ? `; skipped: ${action.skipReason ?? "unknown reason"}` : "";
           const evidence = [
-            `before=${relativeArtifact(result.artifacts.traceDir, action.beforeScreenshot)}`,
-            `after=${relativeArtifact(result.artifacts.traceDir, action.afterScreenshot)}`,
-            `diff=${relativeArtifact(result.artifacts.traceDir, action.visualDiff)}`,
-            `screen-map=${relativeArtifact(result.artifacts.traceDir, action.screenMap)}`
+            `before=${artifactLink(result.artifacts.traceDir, action.beforeScreenshot)}`,
+            `after=${artifactLink(result.artifacts.traceDir, action.afterScreenshot)}`,
+            `diff=${artifactLink(result.artifacts.traceDir, action.visualDiff)}`,
+            `screen-map=${artifactLink(result.artifacts.traceDir, action.screenMap)}`
           ].join(" / ");
-          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}<br /><span>Evidence: ${escapeHtml(evidence)}</span></li>`;
+          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}<br /><span>Evidence: ${evidence}</span></li>`;
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
@@ -1678,14 +1686,14 @@ export function buildContactSheetHtml(
           const focusEvidence = action.focusEvidence
             ? `focus active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
             : "focus evidence not captured";
-          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(focusEvidence)}; a11y diff=${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.accessibilityDiff))}</li>`;
+          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(focusEvidence)}; a11y diff=${artifactLink(result.artifacts.traceDir, action.accessibilityDiff)}</li>`;
         })
         .join("\n")
     : "<li>No accessibility cross-check evidence was captured.</li>";
   const animationAudit = result.actions.some((action) => action.animationTrace)
     ? result.actions
         .filter((action) => action.animationTrace)
-        .map((action) => `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.animationTrace))}</li>`)
+        .map((action) => `<li><strong>${escapeHtml(action.id)}</strong> ${artifactLink(result.artifacts.traceDir, action.animationTrace)}</li>`)
         .join("\n")
     : "<li>No animation trace was captured for this run.</li>";
   const rows = result.actions
@@ -1705,9 +1713,7 @@ export function buildContactSheetHtml(
       const planned = action.plannedReason
         ? `${action.targetCategory ?? "unknown"} / ${action.riskLevel ?? "unknown"} risk: ${action.plannedReason}`
         : "not recorded";
-      const pointerTrace = action.pointerTrace
-        ? path.relative(result.artifacts.traceDir, action.pointerTrace).replace(/\\/g, "/")
-        : "none";
+      const pointerTraceLink = artifactLink(result.artifacts.traceDir, action.pointerTrace);
       const pointerTraceSummary = action.pointerTraceSummary
         ? [
             `points=${action.pointerTraceSummary.pointCount}`,
@@ -1718,9 +1724,7 @@ export function buildContactSheetHtml(
             `finalHit=${action.pointerTraceSummary.finalHitTestMatchedTarget}`
           ].join(", ")
         : "none";
-      const animationTrace = action.animationTrace
-        ? relativeArtifact(result.artifacts.traceDir, action.animationTrace)
-        : "none";
+      const animationTraceLink = artifactLink(result.artifacts.traceDir, action.animationTrace);
       const focusEvidence = action.focusEvidence
         ? `active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
         : "none";
@@ -1739,21 +1743,22 @@ export function buildContactSheetHtml(
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
-  <p><strong>Pointer trace:</strong> ${escapeHtml(pointerTrace)}</p>
+  <p><strong>Pointer trace:</strong> ${pointerTraceLink}</p>
   <p><strong>Pointer metadata:</strong> ${escapeHtml(pointerTraceSummary)}</p>
-  <p><strong>Animation trace:</strong> ${escapeHtml(animationTrace)}</p>
+  <p><strong>Animation trace:</strong> ${animationTraceLink}</p>
   <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
-  <p><strong>Diffs:</strong> visual=${escapeHtml(visualDiff)} / dom=${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.domDiff))} / a11y=${escapeHtml(relativeArtifact(result.artifacts.traceDir, action.accessibilityDiff))}</p>
+  <p><strong>Diffs:</strong> visual=${artifactLink(result.artifacts.traceDir, action.visualDiff)} / dom=${artifactLink(result.artifacts.traceDir, action.domDiff)} / a11y=${artifactLink(result.artifacts.traceDir, action.accessibilityDiff)}</p>
+  <p><strong>Screen map:</strong> ${artifactLink(result.artifacts.traceDir, action.screenMap)}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
   <details open><summary>UX principle mapping for this action</summary><ul>${actionFindingList}</ul></details>
   <div class="shots">
-    <figure><div class="shot-frame"><img src="${escapeHtml(before)}" alt="${escapeHtml(action.id)} before" />${overlay}</div><figcaption>before</figcaption></figure>
-    <figure><div class="shot-frame"><img src="${escapeHtml(after)}" alt="${escapeHtml(action.id)} after" />${overlay}</div><figcaption>after</figcaption></figure>
+    <figure><div class="shot-frame"><a href="${escapeHtml(before)}"><img src="${escapeHtml(before)}" alt="${escapeHtml(action.id)} before" /></a>${overlay}</div><figcaption>before</figcaption></figure>
+    <figure><div class="shot-frame"><a href="${escapeHtml(after)}"><img src="${escapeHtml(after)}" alt="${escapeHtml(action.id)} after" /></a>${overlay}</div><figcaption>after</figcaption></figure>
     ${
       action.visualDiff
-        ? `<figure><div class="shot-frame"><img src="${escapeHtml(visualDiff)}" alt="${escapeHtml(action.id)} visual diff" />${overlay}</div><figcaption>visual diff</figcaption></figure>`
+        ? `<figure><div class="shot-frame"><a href="${escapeHtml(visualDiff)}"><img src="${escapeHtml(visualDiff)}" alt="${escapeHtml(action.id)} visual diff" /></a>${overlay}</div><figcaption>visual diff</figcaption></figure>`
         : ""
     }
   </div>
@@ -1809,7 +1814,7 @@ export function buildContactSheetHtml(
   <header>
     <h1>ux-sentinel interactive contact sheet</h1>
     <p>Actions: ${result.summary.actionCount} - screenshots: ${result.summary.screenshotCount} - anomalies: ${result.summary.anomalyCount}</p>
-    <p>Action trace: ${escapeHtml(actionTrace)} - state graph: ${escapeHtml(stateGraph)}</p>
+    <p>Action trace: ${artifactLink(result.artifacts.traceDir, result.artifacts.actionTrace, actionTrace)} - state graph: ${artifactLink(result.artifacts.traceDir, result.artifacts.stateGraph, stateGraph)}</p>
     <div class="filters" aria-label="Contact sheet filters">
       <label>Severity filter<select id="severity-filter"><option value="">All severities</option>${filterOptions(severityOptions)}</select></label>
       <label>Rule-family filter<select id="rule-family-filter"><option value="">All rule families</option>${filterOptions(ruleFamilyOptions)}</select></label>
@@ -1825,7 +1830,7 @@ export function buildContactSheetHtml(
       <h2>Action Timeline</h2>
       <div class="timeline">${timeline}</div>
       <h3>State Graph Summary</h3>
-      <p>States observed: ${stateIds.length || "unknown"} - edges: ${result.actions.length} - artifact: ${escapeHtml(stateGraph)}</p>
+      <p>States observed: ${stateIds.length || "unknown"} - edges: ${result.actions.length} - artifact: ${artifactLink(result.artifacts.traceDir, result.artifacts.stateGraph, stateGraph)}</p>
     </section>
     <section>
       <h2>Safety Log</h2>

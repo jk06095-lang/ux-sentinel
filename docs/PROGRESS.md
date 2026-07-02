@@ -378,6 +378,7 @@ Upgraded the static local contact sheet into a richer review surface:
 - Added per-action UX principle mapping and finding confidence details.
 - Added evidence, user impact, suggested fix, and regression check details to per-action and global finding rows.
 - Added confidence filtering and explicit evidence-status labels so lower-confidence heuristic prompts are not presented like evidence-backed findings.
+- Linked contact-sheet action trace, state graph, screenshots, visual diffs, screen maps, pointer traces, animation traces, DOM diffs, and accessibility diffs as local static artifact links.
 - Kept the artifact as static HTML that works from local files without a server.
 
 ### Checkpoint: Visual Hierarchy And Action Consistency Detectors

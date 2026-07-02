@@ -409,7 +409,12 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Safety Log");
     expect(html).toContain("Click Candidate Decisions");
     expect(html).toContain("safe_click capability enabled and target passed planner budget checks");
-    expect(html).toContain("Evidence: before=actions/a001-before.png / after=actions/a001-after.png / diff=actions/a001-diff.png / screen-map=actions/a001-screen-map.json");
+    expect(html).toContain('Action trace: <a href="action-trace.json">action-trace.json</a>');
+    expect(html).toContain('state graph: <a href="state-graph.json">state-graph.json</a>');
+    expect(html).toContain('before=<a href="actions/a001-before.png">actions/a001-before.png</a>');
+    expect(html).toContain('after=<a href="actions/a001-after.png">actions/a001-after.png</a>');
+    expect(html).toContain('diff=<a href="actions/a001-diff.png">actions/a001-diff.png</a>');
+    expect(html).toContain('screen-map=<a href="actions/a001-screen-map.json">actions/a001-screen-map.json</a>');
     expect(html).toContain("Accessibility Cross-Check");
     expect(html).toContain("Finding Evidence And UX Principles");
     expect(html).toContain("data-action-card");
@@ -427,9 +432,12 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Regression check: Rerun the interactive audit.");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
+    expect(html).toContain('href="actions/a001-pointer-trace.json"');
     expect(html).toContain("Pointer metadata:");
     expect(html).toContain("points=5, move=240ms, hover=100ms, targetMoved=false, overlayAppeared=false, finalHit=true");
     expect(html).toContain("Animation trace:");
+    expect(html).toContain('href="actions/a001-animation-trace.json"');
+    expect(html).toContain('href="actions/a001-diff.png"');
     expect(html).toContain("visual diff");
     expect(html).toContain("Focus evidence:");
   });
@@ -469,9 +477,10 @@ describe("interactive exploration helpers", () => {
       expect(actionTrace.actions[1].clickDecisionReason).toContain("no longer exists");
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("skipped:");
-      expect(contactSheet).toContain(
-        "Evidence: before=actions/a002-before.png / after=actions/a002-after.png / diff=actions/a002-diff.png / screen-map=actions/a002-screen-map.json"
-      );
+      expect(contactSheet).toContain('before=<a href="actions/a002-before.png">actions/a002-before.png</a>');
+      expect(contactSheet).toContain('after=<a href="actions/a002-after.png">actions/a002-after.png</a>');
+      expect(contactSheet).toContain('diff=<a href="actions/a002-diff.png">actions/a002-diff.png</a>');
+      expect(contactSheet).toContain('screen-map=<a href="actions/a002-screen-map.json">actions/a002-screen-map.json</a>');
       expect(contactSheet).toContain("no longer exists");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
