@@ -1223,6 +1223,95 @@ function buildFeedbackFindings(action: InteractiveActionRecord, diff: StateDiff,
   ];
 }
 
+const unrelatedStateRiskHints = [
+  "delete",
+  "remove",
+  "removed",
+  "pay",
+  "payment",
+  "purchase",
+  "billing",
+  "invoice",
+  "logout",
+  "sign out",
+  "account",
+  "security",
+  "permission",
+  "forbidden",
+  "access denied",
+  "삭제",
+  "제거",
+  "결제",
+  "로그아웃"
+];
+
+function meaningfulTokens(value: string): Set<string> {
+  return new Set(
+    normalizeText(value)
+      .toLowerCase()
+      .split(/[^a-z0-9가-힣]+/u)
+      .filter((token) => token.length >= 4)
+  );
+}
+
+function targetRelatedToStateSignal(action: InteractiveActionRecord, signal: string): boolean {
+  const targetTokens = meaningfulTokens(
+    [
+      action.target.visibleText,
+      action.target.ariaLabel,
+      action.target.title,
+      action.target.dataUxAction,
+      action.targetCategory
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const signalTokens = meaningfulTokens(signal);
+
+  return Array.from(signalTokens).some((token) => targetTokens.has(token));
+}
+
+function riskyUnrelatedStateSignal(action: InteractiveActionRecord, diff: StateDiff): string | undefined {
+  const beforeOpenStateKeys = new Set(
+    diff.openStatesBefore.map((state) => `${state.tag}|${state.role ?? ""}|${state.dataUxRole ?? ""}|${normalizeText(state.text).toLowerCase()}`)
+  );
+  const newOpenStateSignals = diff.openStatesAfter
+    .filter((state) => !beforeOpenStateKeys.has(`${state.tag}|${state.role ?? ""}|${state.dataUxRole ?? ""}|${normalizeText(state.text).toLowerCase()}`))
+    .map((state) => [state.text, state.ariaLabel, state.dataUxRole, state.role].filter(Boolean).join(" "));
+  const signals = [...diff.visibleTextAdded, ...newOpenStateSignals]
+    .map((signal) => normalizeText(signal))
+    .filter(Boolean);
+
+  return signals.find((signal) => {
+    const normalized = signal.toLowerCase();
+    return unrelatedStateRiskHints.some((hint) => normalized.includes(hint.toLowerCase())) && !targetRelatedToStateSignal(action, signal);
+  });
+}
+
+function buildSafeClickUnrelatedStateFindings(action: InteractiveActionRecord, diff: StateDiff, domDiffPath: string): Finding[] {
+  if (!action.clicked || action.clickDecision !== "allowed") {
+    return [];
+  }
+
+  const signal = riskyUnrelatedStateSignal(action, diff);
+  if (!signal) {
+    return [];
+  }
+
+  return [
+    finding(
+      "safe_click_changed_unrelated_state",
+      "Safe click changed an unrelated state",
+      "P2",
+      `${action.id} clicked ${action.target.id} "${targetLabel(action.target) || action.target.tag}", but the state diff introduced unrelated high-risk copy "${signal.slice(0, 160)}". DOM diff: ${domDiffPath}.`,
+      "A user may choose a safe-looking control and unexpectedly land in an account, billing, permission, logout, or destructive state.",
+      "Align the click consequence with the visible label, or make the consequence explicit before activation.",
+      "Run the same agentic interactive scenario and confirm the safe click no longer introduces unrelated high-risk state copy.",
+      action.id
+    )
+  ];
+}
+
 function buildFocusContextFindings(action: InteractiveActionRecord, diff: StateDiff, domDiffPath: string): Finding[] {
   if (!action.focused || action.clicked) {
     return [];
@@ -1711,6 +1800,7 @@ async function recordActionStateEvidence(options: {
   options.action.accessibilityDiff = accessibilityDiffPath;
   const findings = [
     ...(options.detectNoFeedback ? buildFeedbackFindings(options.action, domDiff, domDiffPath) : []),
+    ...(options.detectNoFeedback ? buildSafeClickUnrelatedStateFindings(options.action, domDiff, domDiffPath) : []),
     ...buildFocusContextFindings(options.action, domDiff, domDiffPath)
   ];
   if (findings.length) {

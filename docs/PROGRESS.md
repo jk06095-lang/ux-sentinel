@@ -338,7 +338,7 @@ Added the first expanded detector batch:
 
 - Static screen-map detectors for `click_target_too_small`, `click_target_spacing_too_tight`, `clickable_without_visible_affordance`, `looks_clickable_but_not_actionable`, `visible_label_not_in_accessible_name`, `aria_label_contradicts_visible_text`, and `destructive_action_without_confirmation`.
 - Interactive focus detectors for `focus_ring_missing`, `focus_obscured_by_author_content`, `focus_caused_context_change`, and `keyboard_target_not_reachable`.
-- Agentic state-diff detector for `no_feedback_after_action`.
+- Agentic state-diff detectors for `no_feedback_after_action` and `safe_click_changed_unrelated_state`.
 - Added screen-map style/action metadata and focus evidence so these findings are grounded in bbox, computed style, hit-test, and state-diff evidence.
 
 ### Checkpoint: Optional Motion Audit Foundation

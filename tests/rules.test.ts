@@ -27,6 +27,7 @@ const knownDetectors = [
   "focus_caused_context_change",
   "keyboard_target_not_reachable",
   "no_feedback_after_action",
+  "safe_click_changed_unrelated_state",
   "loading_without_progress_or_timeout",
   "dead_end_state_without_recovery",
   "empty_state_without_next_step",

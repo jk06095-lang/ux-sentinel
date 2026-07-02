@@ -473,6 +473,7 @@ Interactive focus and state detectors:
 - `focus_caused_context_change`
 - `keyboard_target_not_reachable`
 - `no_feedback_after_action`
+- `safe_click_changed_unrelated_state`
 
 Interactive visual anomaly detectors:
 

@@ -558,6 +558,69 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("detects safe clicks that introduce unrelated high-risk state", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button onclick="document.getElementById('panel').hidden = false">Create first project</button>
+          <section id="panel" hidden>Billing settings opened</section>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "unrelated-state",
+          title: "Unrelated state",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Create first project"] } },
+          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, max_clicks: 1 }
+        }
+      });
+
+      expect(result.actions[0].clicked).toBe(true);
+      expect(result.actions[0].findingDetectors).toContain("safe_click_changed_unrelated_state");
+      expect(result.findings.find((finding) => finding.detector === "safe_click_changed_unrelated_state")?.evidence).toContain(
+        "Billing settings opened"
+      );
+      const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
+        visibleTextAdded: string[];
+      };
+      expect(domDiff.visibleTextAdded).toContain("Billing settings opened");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not flag safe click state changes that match the target label", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button onclick="document.getElementById('panel').hidden = false">Open billing</button>
+          <section id="panel" hidden>Billing settings opened</section>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "related-state",
+          title: "Related state",
+          persona: "tester",
+          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, max_clicks: 1 }
+        }
+      });
+
+      expect(result.actions[0].clicked).toBe(true);
+      expect(result.actions[0].findingDetectors).not.toContain("safe_click_changed_unrelated_state");
+      expect(result.findings.map((finding) => finding.detector)).not.toContain("safe_click_changed_unrelated_state");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("detects missing and obscured focus evidence after focusing keyboard targets", async () => {
     const traceRoot = await tempTraceRoot();
     try {

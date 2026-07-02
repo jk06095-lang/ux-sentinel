@@ -178,6 +178,7 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("focus_caused_context_change");
     expect(docs).toContain("click_target_too_small");
     expect(docs).toContain("no_feedback_after_action");
+    expect(docs).toContain("safe_click_changed_unrelated_state");
     expect(docs).toContain("important_text_below_fold_without_cue");
     expect(docs).toContain("primary_cta_low_visual_weight");
     expect(docs).toContain("multiple_primary_ctas_conflict");
