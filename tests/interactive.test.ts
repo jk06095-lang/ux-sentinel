@@ -401,6 +401,10 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("data-rule-families=\"nielsen\"");
     expect(html).toContain("bbox");
     expect(html).toContain("Visibility of system status");
+    expect(html).toContain("Evidence: Tooltip bbox extends beyond viewport.");
+    expect(html).toContain("User impact: A user may not be able to read the hover help.");
+    expect(html).toContain("Suggested fix: Keep tooltip content inside the viewport.");
+    expect(html).toContain("Regression check: Rerun the interactive audit.");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
     expect(html).toContain("Pointer metadata:");

@@ -1716,7 +1716,7 @@ export function buildContactSheetHtml(
         ? actionFindings
             .map(
               (findingItem) =>
-                `<li><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong> ${escapeHtml(findingItem.title)}<br /><span>${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span></li>`
+                `<li><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong> ${escapeHtml(findingItem.title)}<br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span><br /><span>Evidence: ${escapeHtml(findingItem.evidence)}</span><br /><span>User impact: ${escapeHtml(findingItem.userImpact)}</span><br /><span>Suggested fix: ${escapeHtml(findingItem.suggestedFix)}</span><br /><span>Regression check: ${escapeHtml(findingItem.regressionCheck)}</span></li>`
             )
             .join("\n")
         : "<li>No findings attached to this action.</li>";
@@ -1753,7 +1753,7 @@ export function buildContactSheetHtml(
     ? result.findings
         .map(
           (findingItem) =>
-            `<li data-finding-detail data-detector="${escapeHtml(findingItem.detector)}" data-severity="${escapeHtml(findingItem.severity)}" data-rule-family="${escapeHtml(findingItem.ruleFamily ?? "")}"><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}<br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span></li>`
+            `<li data-finding-detail data-detector="${escapeHtml(findingItem.detector)}" data-severity="${escapeHtml(findingItem.severity)}" data-rule-family="${escapeHtml(findingItem.ruleFamily ?? "")}"><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}<br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span><br /><span>Evidence: ${escapeHtml(findingItem.evidence)}</span><br /><span>User impact: ${escapeHtml(findingItem.userImpact)}</span><br /><span>Suggested fix: ${escapeHtml(findingItem.suggestedFix)}</span><br /><span>Regression check: ${escapeHtml(findingItem.regressionCheck)}</span></li>`
         )
         .join("\n")
     : "<li>No interactive anomalies detected.</li>";

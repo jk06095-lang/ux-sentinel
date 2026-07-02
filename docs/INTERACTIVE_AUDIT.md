@@ -57,7 +57,7 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `actions/a001-pointer-trace.json`
 - `actions/a001-animation-trace.json` when `animation_audit.enabled: true`
 
-The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace path, pointer movement metadata, optional animation trace path, and finding detectors linked to that action. It also includes severity, detector, and rule-family filters; an action timeline; state graph summary; a safety log that lists before/after/diff/screen-map evidence paths for each action; accessibility cross-check; animation audit section; bbox overlays; and UX principle mapping for evidence-backed findings.
+The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace path, pointer movement metadata, optional animation trace path, and finding detectors linked to that action. It also includes severity, detector, and rule-family filters; an action timeline; state graph summary; a safety log that lists before/after/diff/screen-map evidence paths for each action; accessibility cross-check; animation audit section; bbox overlays; and UX principle mapping for evidence-backed findings. Per-action and global finding rows include the concrete evidence, user impact, suggested fix, and regression check so the sheet can drive repairs without opening the Markdown report first.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
