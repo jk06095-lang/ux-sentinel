@@ -70,6 +70,7 @@ The registry currently maps the MVP detectors, interactive visual detectors, poi
 - label and accessibility: `visible_label_not_in_accessible_name`, `aria_label_contradicts_visible_text`, `primary_cta_icon_only`, `dom_visible_but_human_invisible`
 - feedback and safety: `no_feedback_after_action`, `destructive_action_without_confirmation`
 - layout, graph, and pointer traces: `card_overlap`, `card_content_clipped`, `edge_label_crosses_node`, `text_occluded_by_graph_edge`, `cursor_target_drift`, `target_moved_during_cursor_approach`, `overlay_appeared_during_cursor_approach`
+- motion audit: `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, `animation_uses_layout_paint_properties`
 
 ## Adding A Detector
 

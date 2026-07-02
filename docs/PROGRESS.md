@@ -340,3 +340,13 @@ Added the first expanded detector batch:
 - Interactive focus detectors for `focus_ring_missing`, `focus_obscured_by_author_content`, and `keyboard_target_not_reachable`.
 - Agentic state-diff detector for `no_feedback_after_action`.
 - Added screen-map style/action metadata and focus evidence so these findings are grounded in bbox, computed style, hit-test, and state-diff evidence.
+
+### Checkpoint: Optional Motion Audit Foundation
+
+Added the first deterministic motion-audit slice:
+
+- Added scenario parsing for `animation_audit`.
+- Added `actions/aNNN-animation-trace.json` with CSS transition, CSS animation, Web Animations API, risky property, reduced-motion comparison, and target bbox evidence.
+- Added motion findings for `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, and `animation_uses_layout_paint_properties`.
+- Linked animation traces into action records, state graph edges, contact-sheet rows, and UX rule evidence paths.
+- Documented the opt-in behavior in `docs/MOTION_AUDIT.md`.

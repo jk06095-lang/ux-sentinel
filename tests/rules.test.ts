@@ -35,7 +35,11 @@ const knownDetectors = [
   "card_content_clipped",
   "card_overlap",
   "dag_canvas_excessive_unused_space",
-  "empty_dag_column_without_explanation"
+  "empty_dag_column_without_explanation",
+  "animation_ignores_reduced_motion",
+  "animation_duration_blocks_task",
+  "animation_causes_layout_shift",
+  "animation_uses_layout_paint_properties"
 ];
 
 describe("UX rule registry", () => {
@@ -69,5 +73,12 @@ describe("UX rule registry", () => {
 
     expect(rules.map((rule) => rule.id)).toEqual(expect.arrayContaining(["nielsen.error_prevention", "interaction_law.fitts_law"]));
     expect(rules.some((rule) => rule.evidenceRequired.includes("pointer_trace"))).toBe(true);
+  });
+
+  it("links animation detectors to animation-trace evidence requirements", () => {
+    const rules = rulesForDetector("animation_ignores_reduced_motion");
+
+    expect(rules.map((rule) => rule.id)).toContain("motion.reduced_motion_respect");
+    expect(rules.some((rule) => rule.evidenceRequired.includes("animation_trace"))).toBe(true);
   });
 });

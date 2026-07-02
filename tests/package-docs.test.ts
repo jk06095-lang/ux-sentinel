@@ -142,6 +142,7 @@ describe("Codex integration docs", () => {
       readText("README.md"),
       readText("docs/INTERACTIVE_AUDIT.md"),
       readText("docs/AGENTIC_INTERACTIVE_AUDIT.md"),
+      readText("docs/MOTION_AUDIT.md"),
       readText("docs/SAFETY_POLICY.md"),
       readText("docs/prompts/04-interactive-visual-audit.md")
     ].join("\n");
@@ -158,8 +159,12 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("plannedReason");
     expect(docs).toContain("targetCategory");
     expect(docs).toContain("a001-pointer-trace.json");
+    expect(docs).toContain("a001-animation-trace.json");
     expect(docs).toContain("cursor target drift");
+    expect(docs).toContain("animation_ignores_reduced_motion");
     expect(docs).toContain("UX_RULE_REGISTRY.md");
+    expect(docs).toContain("MOTION_AUDIT.md");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("animation_audit:");
     expect(docs).toContain("Why this matters");
     expect(docs).toContain("focus_ring_missing");
     expect(docs).toContain("click_target_too_small");

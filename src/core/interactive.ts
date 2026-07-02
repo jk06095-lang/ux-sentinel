@@ -7,6 +7,12 @@ import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files
 import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
 import { recordPointerTrace } from "./pointer-trace.js";
+import {
+  animationTraceHasLongDuration,
+  animationTraceHasRiskyProperties,
+  recordAnimationTrace,
+  resolveAnimationAuditOptions
+} from "./animation-audit.js";
 import { enrichFindingsWithRules } from "./rules/registry.js";
 import {
   buildStateGraph,
@@ -19,6 +25,8 @@ import {
   type StateSnapshot
 } from "./state-graph.js";
 import type {
+  AnimationAuditOptions,
+  AnimationTrace,
   ClickBlockage,
   ConsoleIssue,
   ElementBox,
@@ -62,6 +70,7 @@ export interface InteractiveConfig {
   settleMs: number;
   avoidClickText: string[];
   allowNavigation: boolean;
+  animationAudit: AnimationAuditOptions;
   capabilityPolicy: InteractiveCapabilityPolicy;
   notes: string[];
 }
@@ -219,6 +228,7 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
     settleMs: Math.max(0, Math.min(5_000, Math.floor(settleMs))),
     avoidClickText: [...defaultAvoidClickText, ...(source?.avoid_click_text ?? [])],
     allowNavigation: capabilityPolicy.capabilities.navigation,
+    animationAudit: resolveAnimationAuditOptions(scenario?.animation_audit),
     capabilityPolicy,
     notes
   };
@@ -1051,6 +1061,74 @@ function buildFeedbackFindings(action: InteractiveActionRecord, diff: StateDiff,
   ];
 }
 
+function buildAnimationFindings(trace: AnimationTrace, tracePath: string, target: InteractiveTarget, actionId: string, config: InteractiveConfig): Finding[] {
+  const findings: Finding[] = [];
+  const label = targetLabel(target) || target.tag;
+  const evidencePrefix = `Animation trace: ${tracePath}. Target ${target.id} "${label}".`;
+
+  if (config.animationAudit.detectRiskyProperties && animationTraceHasRiskyProperties(trace)) {
+    findings.push(
+      finding(
+        "animation_uses_layout_paint_properties",
+        "Animation uses layout or paint-heavy properties",
+        "P2",
+        `${evidencePrefix} Risky properties: ${trace.riskyProperties.join(", ")}.`,
+        "Layout and paint-heavy animations can cause jank or unstable target positions during interaction.",
+        "Prefer transform and opacity for motion, and avoid animating layout or expensive paint properties.",
+        "Rerun the motion audit and confirm risky animated properties are absent.",
+        actionId
+      )
+    );
+  }
+
+  if (animationTraceHasLongDuration(trace)) {
+    findings.push(
+      finding(
+        "animation_duration_blocks_task",
+        "Animation duration may block the task",
+        "P2",
+        `${evidencePrefix} At least one animation or transition exceeds ${trace.maxAnimationMs}ms including delay.`,
+        "Long motion can delay recognition of state, consequence, or the next available action.",
+        "Shorten the animation duration or show usable feedback before the motion completes.",
+        "Rerun the motion audit and confirm durations stay within the scenario max animation window.",
+        actionId
+      )
+    );
+  }
+
+  if (config.animationAudit.detectLayoutShift && trace.layoutShiftApproximationPx > 8) {
+    findings.push(
+      finding(
+        "animation_causes_layout_shift",
+        "Animation appears to move the target layout",
+        "P2",
+        `${evidencePrefix} Target layout shift approximation is ${trace.layoutShiftApproximationPx}px.`,
+        "Moving controls can make the visible target difficult to track or click confidently.",
+        "Reserve stable layout space or animate transform without changing the target's layout position.",
+        "Rerun the motion audit and confirm the target bbox remains stable during the action.",
+        actionId
+      )
+    );
+  }
+
+  if (config.animationAudit.compareReducedMotion && trace.reducedMotionStillAnimating) {
+    findings.push(
+      finding(
+        "animation_ignores_reduced_motion",
+        "Animation still runs under reduced-motion preference",
+        "P1",
+        `${evidencePrefix} Reduced-motion comparison still reported active animation or transition evidence.`,
+        "Users who request reduced motion may still experience motion that distracts from or blocks the task.",
+        "Add prefers-reduced-motion styles that disable or substantially shorten non-essential motion.",
+        "Rerun the motion audit with reduced-motion comparison enabled and confirm no non-essential animation remains.",
+        actionId
+      )
+    );
+  }
+
+  return findings;
+}
+
 function renumberInteractiveFindings(findings: Finding[]): Finding[] {
   return enrichFindingsWithRules(findings).map((item, index) => ({
     ...item,
@@ -1082,6 +1160,9 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
       const pointerTrace = action.pointerTrace
         ? path.relative(result.artifacts.traceDir, action.pointerTrace).replace(/\\/g, "/")
         : "none";
+      const animationTrace = action.animationTrace
+        ? path.relative(result.artifacts.traceDir, action.animationTrace).replace(/\\/g, "/")
+        : "none";
       const focusEvidence = action.focusEvidence
         ? `active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
         : "none";
@@ -1092,6 +1173,7 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
   <p><strong>Pointer trace:</strong> ${escapeHtml(pointerTrace)}</p>
+  <p><strong>Animation trace:</strong> ${escapeHtml(animationTrace)}</p>
   <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
   <p><strong>Diffs:</strong> ${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / ${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
@@ -1201,6 +1283,7 @@ async function recordActionStateEvidence(options: {
       domDiff: domDiffPath,
       accessibilityDiff: accessibilityDiffPath,
       pointerTrace: options.action.pointerTrace,
+      animationTrace: options.action.animationTrace,
       findingDetectors: options.action.findingDetectors
     }
   };
@@ -1361,6 +1444,7 @@ async function performTargetAction(
   let focused = false;
   let clickSkippedReason = target.skipClickReason;
   let pointerTracePath: string | undefined;
+  let animationTracePath: string | undefined;
   let pointerEnd: PointerPoint | undefined;
   let focusEvidence: FocusEvidence | undefined;
   const urlBefore = page.url();
@@ -1426,6 +1510,12 @@ async function performTargetAction(
     clickSkippedReason = clickDecision.reason;
   }
 
+  const animationTrace = await recordAnimationTrace(page, liveTarget, actionId, actionsDir, config.animationAudit, liveTarget.bbox);
+  if (animationTrace) {
+    animationTracePath = animationTrace.path;
+    findings.push(...buildAnimationFindings(animationTrace.trace, animationTrace.path, liveTarget, actionId, config));
+  }
+
   await page.screenshot({ path: afterScreenshot, fullPage: false });
 
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
@@ -1441,6 +1531,7 @@ async function performTargetAction(
     afterScreenshot,
     screenMap: screenMapPath,
     pointerTrace: pointerTracePath,
+    animationTrace: animationTracePath,
     focusEvidence,
     clicked,
     focused,

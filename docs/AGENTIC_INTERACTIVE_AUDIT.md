@@ -16,6 +16,7 @@ The current implementation adds a deterministic planning layer:
 6. Write `state-graph.json` plus per-action DOM and accessibility diff files so a reviewer can reconstruct the path.
 7. Write per-action pointer traces so hover, focus, and click-capable actions show the cursor path and final hit-test result.
 8. Enrich findings with UX rule mappings so reports explain why each detector matters.
+9. Optionally write per-action animation traces when `animation_audit.enabled: true`.
 
 The runner still uses the hardened safety policy from [SAFETY_POLICY.md](SAFETY_POLICY.md). `explore --click-safe` is the standalone opt-in for safe clicks. `run --interactive --click-safe` is rejected; scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
@@ -36,6 +37,8 @@ interactive_exploration:
   allow_navigation: false
   settle_ms: 350
 ```
+
+The fuller professional-audit template lives at `demo/scenarios/professional-agentic-ui-audit.yaml`. It combines agentic planning, clean English/Korean dangerous-label avoids, visual anomaly contracts, and opt-in motion audit.
 
 ## Target Categories
 
@@ -72,6 +75,7 @@ Each action record includes:
 - `clickDecision`
 - `clickDecisionReason`
 - `pointerTrace`
+- `animationTrace` when motion audit is enabled
 
 The action trace also includes a root `planner` object with the selected mode and action/click/depth/state-change budgets.
 
@@ -81,6 +85,8 @@ The action trace also includes a root `planner` object with the selected mode an
 - action edges with action id, action type, target id, target category, before/after state ids, before/after screenshots, DOM diff path, accessibility diff path, pointer trace path, and finding detectors
 
 Pointer traces are written as `actions/aNNN-pointer-trace.json`. They record the start point, target center, intermediate points, movement and hover duration, whether the target moved during approach, whether an overlay appeared, and whether the final `elementFromPoint` still matched the target. If a safe click was otherwise allowed but the final hit-test drifts away from the target, the runner skips the click and records `cursor target drift`.
+
+Animation traces are written as `actions/aNNN-animation-trace.json` only when motion audit is enabled. They record CSS transition/animation evidence, Web Animations API entries, risky properties, optional reduced-motion comparison, and target bbox movement. See [MOTION_AUDIT.md](MOTION_AUDIT.md).
 
 Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, and `Confidence`.
 
@@ -92,5 +98,4 @@ This is the planner foundation, not the full professional audit surface yet. Upc
 
 - visual diffs
 - expanded detector batches
-- animation audit
 - contact sheet 2.0 filters and timelines

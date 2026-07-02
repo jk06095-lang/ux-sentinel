@@ -113,6 +113,13 @@ export interface Scenario {
       max_unused_canvas_ratio?: number;
     };
   };
+  animation_audit?: {
+    enabled?: boolean;
+    compare_reduced_motion?: boolean;
+    detect_layout_shift?: boolean;
+    detect_risky_properties?: boolean;
+    max_animation_ms?: number;
+  };
   fail_conditions?: string[];
   fail_conditions_explicit?: boolean;
 }
@@ -310,6 +317,52 @@ export interface FocusEvidence {
   blocker?: ClickBlockage["blocker"];
 }
 
+export interface AnimationAuditOptions {
+  enabled: boolean;
+  compareReducedMotion: boolean;
+  detectLayoutShift: boolean;
+  detectRiskyProperties: boolean;
+  maxAnimationMs: number;
+}
+
+export interface AnimationTargetTrace {
+  id: string;
+  tag: string;
+  role: string | null;
+  text: string;
+  bbox: ElementBox;
+  transitionProperty: string;
+  transitionDurationMs: number;
+  transitionDelayMs: number;
+  transitionTimingFunction: string;
+  animationName: string;
+  animationDurationMs: number;
+  animationDelayMs: number;
+  animationTimingFunction: string;
+  webAnimationCount: number;
+  webAnimations: Array<{
+    playState: string;
+    durationMs: number;
+    delayMs: number;
+    easing: string;
+  }>;
+  riskyProperties: string[];
+}
+
+export interface AnimationTrace {
+  actionId: string;
+  enabled: boolean;
+  maxAnimationMs: number;
+  compareReducedMotion: boolean;
+  beforeTargetBbox?: ElementBox;
+  afterTargetBbox?: ElementBox;
+  layoutShiftApproximationPx: number;
+  riskyProperties: string[];
+  normal: AnimationTargetTrace[];
+  reducedMotion?: AnimationTargetTrace[];
+  reducedMotionStillAnimating: boolean;
+}
+
 export interface InteractiveActionRecord {
   id: string;
   sequence: number;
@@ -336,6 +389,7 @@ export interface InteractiveActionRecord {
   accessibilityDiff?: string;
   pointerTrace?: string;
   focusEvidence?: FocusEvidence;
+  animationTrace?: string;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;

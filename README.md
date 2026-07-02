@@ -267,13 +267,24 @@ visual_anomaly_contract:
     selected_path_must_be_traceable: true
     edge_labels_must_not_cross_nodes: true
     max_unused_canvas_ratio: 0.65
+
+animation_audit:
+  enabled: true
+  compare_reduced_motion: true
+  detect_layout_shift: true
+  detect_risky_properties: true
+  max_animation_ms: 1200
 ```
 
 For standalone `explore`, clicking requires `--click-safe`. Scenario-driven `run --interactive` rejects `--click-safe`; clicking requires `interactive_exploration.click_all_safe_controls: true`. Elements with `data-ux-role` are collected as analysis metadata by default; add `data-ux-clickable="true"` or `data-ux-action="..."` to opt a non-native element into safe-click filtering.
 
 Interactive traces include `actions/a001-pointer-trace.json` for hover, focus, and click-capable actions. Pointer traces record the cursor path, hover duration, target movement, overlay appearance, and whether the final hit-test still matched the target. If a safe click would land on a different element after hover, ux-sentinel skips the click and records `cursor target drift`.
 
-Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, focus visibility, destructive-action cues, and agentic click feedback.
+When `animation_audit.enabled: true`, interactive runs also write `actions/a001-animation-trace.json` with CSS transition/animation evidence, optional reduced-motion comparison, risky properties, and motion findings such as `animation_ignores_reduced_motion`.
+
+Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, focus visibility, destructive-action cues, agentic click feedback, and opt-in motion audit.
+
+For a larger opt-in template, see `demo/scenarios/professional-agentic-ui-audit.yaml`.
 
 ## Sample Report Output
 

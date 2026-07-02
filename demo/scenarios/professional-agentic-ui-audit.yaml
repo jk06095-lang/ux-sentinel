@@ -1,0 +1,80 @@
+id: professional-agentic-ui-audit
+title: Professional Agentic UI Audit
+persona: first-time-user
+mode: visual_contract
+
+goal:
+  user_wants: "Complete the primary task without confusion"
+  primary_intent: "discover_and_execute_main_next_action"
+
+visual_contract:
+  page_must_answer:
+    - "Where am I?"
+    - "What can I do next?"
+    - "What changed after I acted?"
+  primary_cta:
+    preferred_labels:
+      - "Create first project"
+      - "Create project"
+      - "New project"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+
+interactive_exploration:
+  enabled: true
+  mode: agentic
+  max_actions: 120
+  max_depth: 2
+  max_clicks: 20
+  max_state_changes: 40
+  hover_all_clickables: true
+  focus_all_keyboard_targets: true
+  scroll_containers: true
+  click_all_safe_controls: true
+  allow_navigation: false
+  settle_ms: 350
+  avoid_click_text:
+    - "Delete"
+    - "Remove"
+    - "Pay"
+    - "Purchase"
+    - "Logout"
+    - "Sign out"
+    - "삭제"
+    - "제거"
+    - "결제"
+    - "로그아웃"
+
+animation_audit:
+  enabled: true
+  compare_reduced_motion: true
+  detect_layout_shift: true
+  detect_risky_properties: true
+  max_animation_ms: 1200
+
+visual_anomaly_contract:
+  no_text_occlusion: true
+  no_click_target_blocking: true
+  no_floating_panel_covering_primary_action: true
+  no_svg_edge_label_overlap: true
+  no_card_overlap: true
+  no_important_text_truncation: true
+  graph_dag:
+    enabled: true
+    columns_must_have_labels: true
+    selected_path_must_be_traceable: true
+    edge_labels_must_not_cross_nodes: true
+    max_unused_canvas_ratio: 0.65
+
+fail_conditions:
+  - click_target_blocked_by_overlay
+  - focus_ring_missing
+  - focus_obscured_by_author_content
+  - visible_label_not_in_accessible_name
+  - no_feedback_after_action
+  - destructive_action_without_confirmation
+  - animation_ignores_reduced_motion
+  - floating_panel_overlaps_primary_action
+  - important_text_truncated
+  - edge_label_crosses_node

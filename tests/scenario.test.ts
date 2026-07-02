@@ -111,4 +111,24 @@ visual_anomaly_contract:
     expect(scenario.visual_anomaly_contract?.graph_dag?.max_unused_canvas_ratio).toBe(0.5);
     expect(scenario.fail_conditions_explicit).toBe(false);
   });
+
+  it("parses animation audit options", () => {
+    const scenario = parseScenarioText(`
+id: motion-audit
+title: Motion audit
+persona: first-time-user
+animation_audit:
+  enabled: true
+  compare_reduced_motion: true
+  detect_layout_shift: false
+  detect_risky_properties: true
+  max_animation_ms: 900
+`);
+
+    expect(scenario.animation_audit?.enabled).toBe(true);
+    expect(scenario.animation_audit?.compare_reduced_motion).toBe(true);
+    expect(scenario.animation_audit?.detect_layout_shift).toBe(false);
+    expect(scenario.animation_audit?.detect_risky_properties).toBe(true);
+    expect(scenario.animation_audit?.max_animation_ms).toBe(900);
+  });
 });

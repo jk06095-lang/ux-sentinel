@@ -93,6 +93,15 @@ export function parseScenarioText(source: string): Scenario {
             : undefined
         }
       : undefined,
+    animation_audit: parsed.animation_audit
+      ? {
+          enabled: parsed.animation_audit.enabled ?? false,
+          compare_reduced_motion: parsed.animation_audit.compare_reduced_motion ?? false,
+          detect_layout_shift: parsed.animation_audit.detect_layout_shift ?? true,
+          detect_risky_properties: parsed.animation_audit.detect_risky_properties ?? true,
+          max_animation_ms: parsed.animation_audit.max_animation_ms ?? 1200
+        }
+      : undefined,
     fail_conditions:
       explicitFailConditions
         ? explicitFailConditions

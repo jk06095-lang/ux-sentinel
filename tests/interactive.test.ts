@@ -195,6 +195,7 @@ describe("interactive exploration helpers", () => {
           afterScreenshot: "trace/actions/a001-after.png",
           screenMap: "trace/actions/a001-screen-map.json",
           pointerTrace: "trace/actions/a001-pointer-trace.json",
+          animationTrace: "trace/actions/a001-animation-trace.json",
           clicked: false,
           focused: false,
           consoleErrorCount: 0,
@@ -222,9 +223,11 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("a001-before.png");
     expect(html).toContain("a001-after.png");
     expect(html).toContain("a001-pointer-trace.json");
+    expect(html).toContain("a001-animation-trace.json");
     expect(html).toContain("tooltip_partially_offscreen");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
+    expect(html).toContain("Animation trace:");
     expect(html).toContain("Focus evidence:");
   });
 

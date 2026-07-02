@@ -41,6 +41,7 @@ export interface StateGraphEdge {
   domDiff: string;
   accessibilityDiff: string;
   pointerTrace?: string;
+  animationTrace?: string;
   findingDetectors: string[];
 }
 

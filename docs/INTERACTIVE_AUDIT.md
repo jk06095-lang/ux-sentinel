@@ -12,6 +12,8 @@ Agentic planning details live in [AGENTIC_INTERACTIVE_AUDIT.md](AGENTIC_INTERACT
 
 UX rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Reports include `Why this matters` text so detector output is tied to professional UX principles instead of only detector names.
 
+Optional motion checks live in [MOTION_AUDIT.md](MOTION_AUDIT.md). Motion audit is disabled by default and only runs when a scenario sets `animation_audit.enabled: true`.
+
 ## Commands
 
 Explore a page without a scenario:
@@ -52,8 +54,9 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `actions/a001-dom-diff.json`
 - `actions/a001-a11y-diff.json`
 - `actions/a001-pointer-trace.json`
+- `actions/a001-animation-trace.json` when `animation_audit.enabled: true`
 
-The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, pointer trace path, and finding detectors linked to that action.
+The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, pointer trace path, optional animation trace path, and finding detectors linked to that action.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
@@ -110,6 +113,13 @@ visual_anomaly_contract:
     selected_path_must_be_traceable: true
     edge_labels_must_not_cross_nodes: true
     max_unused_canvas_ratio: 0.65
+
+animation_audit:
+  enabled: true
+  compare_reduced_motion: true
+  detect_layout_shift: true
+  detect_risky_properties: true
+  max_animation_ms: 1200
 ```
 
 ## Detectors
@@ -140,6 +150,10 @@ Interactive anomaly detectors include:
 - `card_overlap`
 - `dag_canvas_excessive_unused_space`
 - `empty_dag_column_without_explanation`
+- `animation_ignores_reduced_motion`
+- `animation_duration_blocks_task`
+- `animation_causes_layout_shift`
+- `animation_uses_layout_paint_properties`
 
 These are geometry, DOM/layout, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
 
@@ -151,4 +165,5 @@ These are geometry, DOM/layout, focus-style, hit-test, and state-diff heuristics
 - Scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`; `run --interactive` does not accept `--click-safe` as a one-off click override.
 - The core runner records safe-click allow/skip decisions for action trace review.
 - It does not use visual AI by default.
+- Motion audit is opt-in and records deterministic animation traces; it does not perform video-based review.
 - Graph and DAG checks are bbox heuristics; humans should review `contact-sheet.html` before treating a finding as final.
