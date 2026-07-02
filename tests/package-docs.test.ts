@@ -273,6 +273,24 @@ describe("Codex integration docs", () => {
     expect(readme).toContain("intended detector evidence");
   });
 
+  it("verifies interactive demo artifacts in demo:verify", () => {
+    const verifier = readText("scripts/verify-demo.mjs");
+    const readme = readText("README.md");
+    const progress = readText("docs/PROGRESS.md");
+
+    expect(verifier).toContain("expectedInteractiveArtifacts");
+    expect(verifier).toContain("demo/scenarios/interactive-dag-clarity.yaml");
+    expect(verifier).toContain("action-trace.json");
+    expect(verifier).toContain("state-graph.json");
+    expect(verifier).toContain("contact-sheet.html");
+    expect(verifier).toContain("visualDiff");
+    expect(verifier).toContain("pointerTrace");
+    expect(verifier).toContain("clickDecision");
+    expect(verifier).toContain("plannedReason");
+    expect(readme).toContain("`demo:verify` also runs the interactive DAG scenario");
+    expect(progress).toContain("Interactive Demo Artifact Gate");
+  });
+
   it("keeps the README copy prompt self-contained for clone fallback", () => {
     const readme = readText("README.md");
 

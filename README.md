@@ -139,6 +139,8 @@ Verdict: pass
 demo verification passed
 ```
 
+`demo:verify` also runs the interactive DAG scenario and checks that the local evidence bundle is reconstructable: `action-trace.json`, `state-graph.json`, `contact-sheet.html`, per-action screenshots, visual diffs, DOM/a11y diffs, pointer traces, click decisions, and planner metadata must all be present.
+
 Initialize UX Sentinel config in a project:
 
 ```bash

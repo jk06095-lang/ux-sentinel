@@ -448,3 +448,12 @@ Added `ux_rule_profile` as first-class scenario metadata:
 - `parseScenarioText` now preserves `enabled`, `rule_sets`, and `require_rule_mapping`.
 - `demo/scenarios/professional-agentic-ui-audit.yaml` declares the professional rule sets: Nielsen, WCAG 2.2 interaction, motion accessibility, Gestalt grouping, interaction laws, and graph/DAG readability.
 - Markdown reports render the enabled rule profile so reviewers can confirm the intended UX review lens alongside enriched detector rule metadata.
+
+### Checkpoint: Interactive Demo Artifact Gate
+
+Extended demo verification so interactive evidence is part of the automated local gate:
+
+- `npm run demo:verify` now runs `demo/scenarios/interactive-dag-clarity.yaml` with `--interactive --max-actions 10 --settle-ms 100`.
+- The verifier reads `action-trace.json`, `state-graph.json`, `anomalies.json`, and `contact-sheet.html` instead of trusting stdout alone.
+- It asserts planner metadata, safe-click decisions, click-candidate decisions, before/after screenshots, visual diffs, DOM diffs, accessibility diffs, and pointer traces for recorded actions.
+- It checks state graph nodes/edges and contact-sheet review surface text so the demo gate proves the local artifacts are reconstructable by a human reviewer.
