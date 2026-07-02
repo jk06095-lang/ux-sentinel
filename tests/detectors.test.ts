@@ -241,6 +241,166 @@ describe("detectors", () => {
     );
   });
 
+  it("detects primary hierarchy conflicts and inconsistent action labels", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Create first project", "Create project", "Learn more", "Open", "Open", "Save", "Save changes"],
+      elements: [
+        {
+          id: "primary-low",
+          tag: "button",
+          role: "button",
+          visibleText: "Create first project",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 40, y: 40, width: 72, height: 28 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0022,
+          dataUxAction: "create-project",
+          hasVisibleAffordance: true
+        },
+        {
+          id: "primary-second",
+          tag: "button",
+          role: "button",
+          visibleText: "Create project",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 130, y: 40, width: 110, height: 36 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0043,
+          dataUxAction: "create-project",
+          hasVisibleAffordance: true
+        },
+        {
+          id: "secondary-heavy",
+          tag: "button",
+          role: "button",
+          visibleText: "Learn more",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 260, y: 32, width: 280, height: 72 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.022,
+          dataUxAction: "open-docs",
+          hasVisibleAffordance: true
+        },
+        {
+          id: "open-settings",
+          tag: "button",
+          role: "button",
+          visibleText: "Open",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 40, y: 120, width: 100, height: 40 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0043,
+          dataUxAction: "open-settings",
+          hasVisibleAffordance: true
+        },
+        {
+          id: "open-billing",
+          tag: "button",
+          role: "button",
+          visibleText: "Open",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 150, y: 120, width: 100, height: 40 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0043,
+          dataUxAction: "open-billing",
+          hasVisibleAffordance: true
+        },
+        {
+          id: "save",
+          tag: "button",
+          role: "button",
+          visibleText: "Save",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 40, y: 180, width: 100, height: 40 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0043,
+          dataUxAction: "save-project",
+          hasVisibleAffordance: true
+        },
+        {
+          id: "save-changes",
+          tag: "button",
+          role: "button",
+          visibleText: "Save changes",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 150, y: 180, width: 140, height: 40 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0061,
+          dataUxAction: "save-project",
+          hasVisibleAffordance: true
+        }
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).toEqual(
+      expect.arrayContaining([
+        "primary_cta_low_visual_weight",
+        "multiple_primary_ctas_conflict",
+        "secondary_action_overpowers_primary",
+        "same_label_different_actions",
+        "same_action_different_labels"
+      ])
+    );
+  });
+
   it("fails when the primary CTA is only below the fold", () => {
     const screenMap = baseScreenMap({
       visibleText: ["Projects", "No projects yet", "Create first project"],

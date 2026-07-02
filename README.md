@@ -282,7 +282,7 @@ Interactive traces include `actions/a001-pointer-trace.json` for hover, focus, a
 
 When `animation_audit.enabled: true`, interactive runs also write `actions/a001-animation-trace.json` with CSS transition/animation evidence, optional reduced-motion comparison, risky properties, and motion findings such as `animation_ignores_reduced_motion`.
 
-Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, focus visibility, destructive-action cues, agentic click feedback, and opt-in motion audit.
+Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, primary-action hierarchy, label/action consistency, focus visibility, destructive-action cues, agentic click feedback, and opt-in motion audit.
 
 For a larger opt-in template, see `demo/scenarios/professional-agentic-ui-audit.yaml`.
 
@@ -443,6 +443,18 @@ Static visual-contract detectors:
 - `console_error`
 - `network_5xx`
 - `important_text_truncated`
+- `primary_cta_low_visual_weight`
+- `multiple_primary_ctas_conflict`
+- `secondary_action_overpowers_primary`
+- `same_label_different_actions`
+- `same_action_different_labels`
+- `click_target_too_small`
+- `click_target_spacing_too_tight`
+- `clickable_without_visible_affordance`
+- `looks_clickable_but_not_actionable`
+- `visible_label_not_in_accessible_name`
+- `aria_label_contradicts_visible_text`
+- `destructive_action_without_confirmation`
 
 Interactive visual anomaly detectors:
 

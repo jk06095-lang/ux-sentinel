@@ -369,3 +369,15 @@ Upgraded the static local contact sheet into a richer review surface:
 - Added bbox overlays on before/after/diff panels.
 - Added per-action UX principle mapping and finding confidence details.
 - Kept the artifact as static HTML that works from local files without a server.
+
+### Checkpoint: Visual Hierarchy And Action Consistency Detectors
+
+Added the next deterministic detector slice for agentic UX review:
+
+- `primary_cta_low_visual_weight` flags above-fold primary CTAs that exist but are too visually weak to read as primary.
+- `multiple_primary_ctas_conflict` flags competing above-fold controls that all match the primary intent.
+- `secondary_action_overpowers_primary` flags a non-primary command whose `visualWeight` overwhelms the intended CTA.
+- `same_label_different_actions` flags repeated visible labels backed by different `data-ux-action` semantics.
+- `same_action_different_labels` flags one `data-ux-action` exposed through inconsistent visible labels.
+
+These checks use screen-map bbox, visualWeight, visible label, and action metadata evidence; they do not depend on external LLM or vision APIs.

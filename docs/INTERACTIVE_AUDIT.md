@@ -143,6 +143,11 @@ Interactive anomaly detectors include:
 - `aria_label_contradicts_visible_text`
 - `no_feedback_after_action`
 - `destructive_action_without_confirmation`
+- `primary_cta_low_visual_weight`
+- `multiple_primary_ctas_conflict`
+- `secondary_action_overpowers_primary`
+- `same_label_different_actions`
+- `same_action_different_labels`
 - `floating_panel_overlaps_primary_action`
 - `tooltip_partially_offscreen`
 - `text_occluded_by_graph_edge`
@@ -156,7 +161,7 @@ Interactive anomaly detectors include:
 - `animation_causes_layout_shift`
 - `animation_uses_layout_paint_properties`
 
-These are geometry, DOM/layout, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
+These are geometry, DOM/layout, label/action consistency, visual-hierarchy, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
 
 ## Reviewing The Contact Sheet
 

@@ -52,6 +52,14 @@ function elementActionLabel(element: ScreenElement): string {
   return meaningfulText([element.visibleText, element.ariaLabel, element.title, element.accessibleName].filter(Boolean).join(" "));
 }
 
+function normalizedKey(value: string | null | undefined): string {
+  return meaningfulText(value).toLowerCase();
+}
+
+function actionSignature(element: ScreenElement): string {
+  return normalizedKey(element.dataUxAction);
+}
+
 function isDestructiveLabel(label: string): boolean {
   const normalized = label.toLowerCase();
   return Boolean(normalized) && destructiveHints.some((hint) => normalized.includes(hint.toLowerCase()));
@@ -72,6 +80,7 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
   const visibleCtas = visiblePrimaryCtas(screenMap, labels);
   const aboveFoldVisibleCtas = visibleCtas.filter((element) => element.aboveFold);
   const ariaCtas = ariaPrimaryCtas(screenMap, labels);
+  const actionable = clickableElements(screenMap);
 
   if (scenario.goal?.primary_intent && visibleCtas.length === 0) {
     findings.push(
@@ -86,6 +95,68 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         "Run the same scenario and confirm a visible primary CTA is detected above the fold."
       )
     );
+  }
+
+  const visibleAboveFoldPrimary = aboveFoldVisibleCtas.find((element) => labelMatchesPreferred(elementLabel(element), labels));
+  if (
+    scenario.visual_contract?.primary_cta?.must_look_clickable !== false &&
+    visibleAboveFoldPrimary &&
+    visibleAboveFoldPrimary.visualWeight > 0 &&
+    visibleAboveFoldPrimary.visualWeight < 0.003
+  ) {
+    findings.push(
+      finding(
+        "primary_cta_low_visual_weight",
+        "Primary CTA has low visual weight",
+        "P2",
+        "Perception Mismatch",
+        `${visibleAboveFoldPrimary.id} "${elementActionLabel(visibleAboveFoldPrimary)}" visualWeight=${visibleAboveFoldPrimary.visualWeight.toFixed(4)} with bbox ${visibleAboveFoldPrimary.bbox.width}x${visibleAboveFoldPrimary.bbox.height}px.`,
+        "The intended next action exists, but it may not stand out enough for a human to identify as primary.",
+        "Increase the CTA size, contrast, placement, or surrounding whitespace so it is visually dominant.",
+        "Run the scenario and confirm the primary CTA visualWeight is no longer below the low-salience threshold."
+      )
+    );
+  }
+
+  if (aboveFoldVisibleCtas.length > 1) {
+    findings.push(
+      finding(
+        "multiple_primary_ctas_conflict",
+        "Multiple visible primary CTAs compete for attention",
+        "P2",
+        "Perception Mismatch",
+        aboveFoldVisibleCtas
+          .map((element) => `${element.id} "${elementActionLabel(element)}" at ${element.bbox.x},${element.bbox.y}`)
+          .join("; "),
+        "Users may hesitate when several above-fold controls appear to be the primary next step.",
+        "Choose one dominant primary action and demote alternatives to secondary styling or supporting placement.",
+        "Run the scenario and confirm only one above-fold control matches the primary intent as the dominant CTA."
+      )
+    );
+  }
+
+  if (visibleAboveFoldPrimary) {
+    const overpoweringSecondary = actionable.find(
+      (element) =>
+        element.id !== visibleAboveFoldPrimary.id &&
+        element.aboveFold &&
+        !labelMatchesPreferred(elementActionLabel(element), labels) &&
+        element.visualWeight >= Math.max(0.006, visibleAboveFoldPrimary.visualWeight * 1.8)
+    );
+    if (overpoweringSecondary) {
+      findings.push(
+        finding(
+          "secondary_action_overpowers_primary",
+          "Secondary action visually overpowers the primary CTA",
+          "P2",
+          "Perception Mismatch",
+          `${overpoweringSecondary.id} "${elementActionLabel(overpoweringSecondary)}" visualWeight=${overpoweringSecondary.visualWeight.toFixed(4)} exceeds primary ${visibleAboveFoldPrimary.id} visualWeight=${visibleAboveFoldPrimary.visualWeight.toFixed(4)}.`,
+          "The page may guide users toward a less important action even though the intended primary CTA exists.",
+          "Reduce the secondary action's visual prominence or strengthen the primary CTA hierarchy.",
+          "Run the scenario and confirm the intended primary action is the most visually prominent command above the fold."
+        )
+      );
+    }
   }
 
   const iconOnlyPrimary = ariaCtas.find((element) => element.isIconOnly || !element.hasVisibleLabel);
@@ -246,7 +317,6 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
     }
   }
 
-  const actionable = clickableElements(screenMap);
   for (let index = 0; index < actionable.length; index += 1) {
     for (let other = index + 1; other < actionable.length; other += 1) {
       const first = actionable[index];
@@ -274,6 +344,55 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         );
         break;
       }
+    }
+  }
+
+  const byVisibleLabel = new Map<string, ScreenElement[]>();
+  const byAction = new Map<string, ScreenElement[]>();
+  for (const element of actionable) {
+    const visibleLabel = normalizedKey(element.visibleText);
+    if (visibleLabel) {
+      byVisibleLabel.set(visibleLabel, [...(byVisibleLabel.get(visibleLabel) ?? []), element]);
+    }
+    const signature = actionSignature(element);
+    if (signature) {
+      byAction.set(signature, [...(byAction.get(signature) ?? []), element]);
+    }
+  }
+
+  for (const [label, elements] of byVisibleLabel) {
+    const actions = new Set(elements.map(actionSignature).filter(Boolean));
+    if (actions.size > 1) {
+      findings.push(
+        finding(
+          "same_label_different_actions",
+          "Same visible label maps to different actions",
+          "P2",
+          "Perception Mismatch",
+          `Visible label "${label}" appears on ${elements.map((element) => `${element.id}:${actionSignature(element)}`).join(", ")}.`,
+          "Users cannot reliably predict the consequence when identical visible labels trigger different actions.",
+          "Give each action a distinct visible label or align the underlying action semantics.",
+          "Run observe and confirm repeated labels either perform the same action or are visually disambiguated."
+        )
+      );
+    }
+  }
+
+  for (const [signature, elements] of byAction) {
+    const labelsForAction = new Set(elements.map((element) => normalizedKey(element.visibleText)).filter(Boolean));
+    if (labelsForAction.size > 1) {
+      findings.push(
+        finding(
+          "same_action_different_labels",
+          "Same action is exposed through inconsistent labels",
+          "P2",
+          "Perception Mismatch",
+          `Action "${signature}" appears as ${elements.map((element) => `${element.id}:"${meaningfulText(element.visibleText)}"`).join(", ")}.`,
+          "Inconsistent command labels make it harder to learn and trust repeated actions across the screen.",
+          "Use one consistent visible label for the same action, or separate the actions if their consequences differ.",
+          "Run observe and confirm controls sharing the same action metadata use consistent visible labels."
+        )
+      );
     }
   }
 

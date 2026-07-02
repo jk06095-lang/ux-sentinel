@@ -93,7 +93,7 @@ Animation traces are written as `actions/aNNN-animation-trace.json` only when mo
 
 Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, and `Confidence`.
 
-The first expanded detector batch adds target-size, target-spacing, visible affordance, visible/accessibility label mismatch, focus-ring, focus-obscuring, destructive-action cue, and click-feedback checks. These rely on screen-map bbox/style evidence, focus evidence, pointer hit-tests, or state diffs.
+The expanded detector batches add target-size, target-spacing, visible affordance, visible/accessibility label mismatch, focus-ring, focus-obscuring, destructive-action cue, click-feedback, primary-action visual hierarchy, and label/action consistency checks. These rely on screen-map bbox/style evidence, `visualWeight`, `data-ux-action`, focus evidence, pointer hit-tests, or state diffs.
 
 The contact sheet now acts as the professional review surface for this evidence. It remains a static local HTML file and includes severity, detector, and rule-family filters; an action timeline; a state graph summary; a safety log; accessibility and animation audit sections; bbox overlays on before/after/diff panels; and UX principle mapping with confidence metadata.
 

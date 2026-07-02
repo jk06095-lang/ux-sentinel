@@ -42,6 +42,8 @@ describe("Codex integration docs", () => {
     "docs/CODEX_MAGIC_PROMPT.md",
     "docs/CODEX_INTEGRATION.md",
     "docs/RELEASE_CHECKLIST.md",
+    "docs/examples/agentic-audit-report.md",
+    "docs/examples/agentic-codex-brief.md",
     ".agents/skills/ux-sentinel/SKILL.md",
     "examples/codex/magic-prompt.md",
     "examples/codex/goal-prompt.md",
@@ -172,6 +174,13 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("focus_ring_missing");
     expect(docs).toContain("click_target_too_small");
     expect(docs).toContain("no_feedback_after_action");
+    expect(docs).toContain("primary_cta_low_visual_weight");
+    expect(docs).toContain("multiple_primary_ctas_conflict");
+    expect(docs).toContain("secondary_action_overpowers_primary");
+    expect(docs).toContain("same_label_different_actions");
+    expect(docs).toContain("same_action_different_labels");
+    expect(readText("docs/examples/agentic-audit-report.md")).toContain("contact-sheet.html");
+    expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {
