@@ -266,6 +266,28 @@ export interface InteractiveTarget {
   skipClickReason?: string;
 }
 
+export interface InteractiveClickCandidateDecision {
+  id: string;
+  tag: string;
+  role: string | null;
+  dataUxRole: string | null;
+  dataUxAction?: string | null;
+  visibleText: string;
+  ariaLabel: string | null;
+  title: string | null;
+  bbox: ElementBox;
+  href: string | null;
+  targetCategory: InteractiveTargetCategory;
+  riskLevel: InteractiveRiskLevel;
+  safeToClick: boolean;
+  clickDecision: ClickDecision;
+  clickDecisionReason: string;
+  planned: boolean;
+  plannedActionId?: string;
+  plannedReason?: string;
+  plannedSafeClick?: boolean;
+}
+
 export interface ClickBlockage {
   blocked: boolean;
   samplePoint: {
@@ -421,6 +443,7 @@ export interface InteractiveExplorationResult {
   screenMap: ScreenMap;
   accessibilitySnapshot: unknown;
   actions: InteractiveActionRecord[];
+  clickCandidates: InteractiveClickCandidateDecision[];
   findings: Finding[];
   artifacts: InteractiveArtifacts;
   summary: {

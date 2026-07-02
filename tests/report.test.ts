@@ -55,6 +55,7 @@ describe("report generation", () => {
         },
         accessibilitySnapshot: null,
         actions: [],
+        clickCandidates: [],
         findings: [],
         artifacts: {
           traceDir: ".ux-sentinel/traces/test",

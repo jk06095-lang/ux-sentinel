@@ -7,6 +7,7 @@ import { defaultPreferredLabels } from "./scenario.js";
 import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files.js";
 import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
+import { classifyInteractiveTarget } from "./target-classifier.js";
 import { recordPointerTrace } from "./pointer-trace.js";
 import {
   animationTraceCriticalActionHideIndicators,
@@ -39,6 +40,7 @@ import type {
   InteractiveCapabilities,
   InteractiveActionRecord,
   InteractiveCapabilityPolicy,
+  InteractiveClickCandidateDecision,
   InteractiveCommandMode,
   InteractiveExplorationResult,
   InteractiveTargetCategory,
@@ -1490,6 +1492,56 @@ function relativeArtifact(traceDir: string, filePath: string | undefined): strin
   return filePath ? path.relative(traceDir, filePath).replace(/\\/g, "/") : "none";
 }
 
+function buildClickCandidateDecisions(
+  targets: InteractiveTarget[],
+  plannedActions: PlannedInteractiveAction[],
+  scenario: Scenario | undefined,
+  capabilities: InteractiveCapabilities
+): InteractiveClickCandidateDecision[] {
+  const plannedByTargetId = new Map(plannedActions.map((planned, index) => [planned.target.id, { planned, index }]));
+
+  return targets.map((target) => {
+    const plannedEntry = plannedByTargetId.get(target.id);
+    const planned = plannedEntry?.planned;
+    const fallbackClassification = planned ? undefined : classifyInteractiveTarget(target, scenario);
+    const targetCategory = planned?.targetCategory ?? fallbackClassification!.category;
+    const riskLevel = planned?.riskLevel ?? fallbackClassification!.riskLevel;
+    const clickDecision: InteractiveClickCandidateDecision["clickDecision"] =
+      target.safeToClick && capabilities.safe_click && planned?.plannedSafeClick ? "allowed" : "skipped";
+    const clickDecisionReason = !target.safeToClick
+      ? target.skipClickReason ?? "target is not safe to click"
+      : !capabilities.safe_click
+        ? "safe_click capability disabled"
+        : !planned
+          ? "not selected by planner within max_actions budget"
+          : planned.plannedSafeClick
+            ? "safe_click capability enabled and target passed planner budget checks"
+            : planned.plannedClickSkipReason ?? "planner did not allocate a safe click";
+
+    return {
+      id: target.id,
+      tag: target.tag,
+      role: target.role,
+      dataUxRole: target.dataUxRole,
+      dataUxAction: target.dataUxAction,
+      visibleText: target.visibleText,
+      ariaLabel: target.ariaLabel,
+      title: target.title,
+      bbox: target.bbox,
+      href: target.href,
+      targetCategory,
+      riskLevel,
+      safeToClick: target.safeToClick,
+      clickDecision,
+      clickDecisionReason,
+      planned: Boolean(planned),
+      plannedActionId: plannedEntry ? `a${String(plannedEntry.index + 1).padStart(3, "0")}` : undefined,
+      plannedReason: planned?.plannedReason,
+      plannedSafeClick: planned?.plannedSafeClick
+    };
+  });
+}
+
 function bboxOverlayStyle(box: ElementBox): string {
   const viewportWidth = 1280;
   const viewportHeight = 720;
@@ -1501,7 +1553,9 @@ function bboxOverlayStyle(box: ElementBox): string {
   ].join(";");
 }
 
-export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult, "actions" | "findings" | "summary" | "artifacts">): string {
+export function buildContactSheetHtml(
+  result: Pick<InteractiveExplorationResult, "actions" | "clickCandidates" | "findings" | "summary" | "artifacts">
+): string {
   const findingsByDetector = new Map<string, Finding[]>();
   for (const findingItem of result.findings) {
     findingsByDetector.set(findingItem.detector, [...(findingsByDetector.get(findingItem.detector) ?? []), findingItem]);
@@ -1530,6 +1584,15 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
+  const clickCandidateSafetyLog = result.clickCandidates.length
+    ? result.clickCandidates
+        .map((candidate) => {
+          const label = targetLabel(candidate);
+          const planned = candidate.planned ? `planned ${candidate.plannedActionId ?? ""}` : "not planned";
+          return `<li><strong>${escapeHtml(candidate.id)}</strong> ${escapeHtml(candidate.clickDecision)}: ${escapeHtml(candidate.clickDecisionReason)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})</li>`;
+        })
+        .join("\n")
+    : "<li>No click candidates were captured.</li>";
   const accessibilityCrossCheck = result.actions.length
     ? result.actions
         .map((action) => {
@@ -1674,6 +1737,9 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
     </section>
     <section>
       <h2>Safety Log</h2>
+      <h3>Click Candidate Decisions</h3>
+      <ul>${clickCandidateSafetyLog}</ul>
+      <h3>Performed Action Decisions</h3>
       <ul>${safetyLog}</ul>
     </section>
     <section>
@@ -2313,6 +2379,12 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         safeClickEnabled: config.capabilityPolicy.capabilities.safe_click
       }
     });
+    const clickCandidates = buildClickCandidateDecisions(
+      targets,
+      plannedActions,
+      options.scenario,
+      config.capabilityPolicy.capabilities
+    );
     let sequence = 1;
     let stateSequence = 1;
     for (const plannedAction of plannedActions) {
@@ -2374,6 +2446,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       screenMap,
       accessibilitySnapshot,
       actions,
+      clickCandidates,
       findings: numberedFindings,
       artifacts: {
         traceDir,
@@ -2401,6 +2474,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         maxStateChanges: config.maxStateChanges,
         plannedActionCount: plannedActions.length
       },
+      clickCandidates,
       actions
     });
     await writeJson(stateGraphPath, buildStateGraph(stateNodes, stateEdges));

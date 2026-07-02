@@ -292,6 +292,7 @@ Started the agentic interactive audit foundation without weakening the hardened 
 - Kept standalone `explore --click-safe` as the only CLI path that enables safe clicks outside a scenario.
 - Rejects `run --interactive --click-safe`; scenario-driven clicking still requires `interactive_exploration.click_all_safe_controls: true`.
 - Added safe-click allow/skip decisions and reasons to action records and contact-sheet rows.
+- Added a baseline click-candidate ledger to `action-trace.json` and the contact-sheet safety log so every collected click candidate has an explicit allow/skip decision.
 - Documented the policy in `docs/SAFETY_POLICY.md`.
 
 ### Checkpoint: Agentic Planner Foundation

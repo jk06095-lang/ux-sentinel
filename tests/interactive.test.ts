@@ -280,7 +280,7 @@ describe("interactive exploration helpers", () => {
   });
 
   it("renders a contact sheet with before and after screenshots", () => {
-    const result: Pick<InteractiveExplorationResult, "actions" | "findings" | "summary" | "artifacts"> = {
+    const result: Pick<InteractiveExplorationResult, "actions" | "clickCandidates" | "findings" | "summary" | "artifacts"> = {
       actions: [
         {
           id: "a001",
@@ -312,6 +312,27 @@ describe("interactive exploration helpers", () => {
           consoleErrorCount: 0,
           networkErrorCount: 0,
           findingDetectors: ["tooltip_partially_offscreen"]
+        }
+      ],
+      clickCandidates: [
+        {
+          id: "t001",
+          tag: "button",
+          role: "button",
+          dataUxRole: null,
+          visibleText: "Open help",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 10, y: 20, width: 120, height: 36 },
+          href: null,
+          targetCategory: "tooltip_help_trigger",
+          riskLevel: "low",
+          safeToClick: true,
+          clickDecision: "allowed",
+          clickDecisionReason: "safe_click capability enabled and target passed planner budget checks",
+          planned: true,
+          plannedActionId: "a001",
+          plannedSafeClick: true
         }
       ],
       findings: [
@@ -359,6 +380,8 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Action Timeline");
     expect(html).toContain("State Graph Summary");
     expect(html).toContain("Safety Log");
+    expect(html).toContain("Click Candidate Decisions");
+    expect(html).toContain("safe_click capability enabled and target passed planner budget checks");
     expect(html).toContain("Accessibility Cross-Check");
     expect(html).toContain("Finding Evidence And UX Principles");
     expect(html).toContain("data-action-card");
@@ -577,6 +600,67 @@ describe("interactive exploration helpers", () => {
       expect(domDiff.beforeStateId).toBe("s000");
       expect(domDiff.afterStateId).toBe("s001");
       expect(result.actions[0].findingDetectors).toContain("no_feedback_after_action");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("records every baseline click candidate decision in action trace and contact sheet", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button onclick="document.body.dataset.created='true'">Create first project</button>
+          <button>Delete project</button>
+          <a href="/billing">Billing</a>
+          <div data-ux-role="dag-node">Graph node metadata</div>
+          <form><button>Save profile</button></form>
+          <button disabled>Disabled action</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "candidate-decisions",
+          title: "Candidate decisions",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Create first project"] } },
+          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, max_clicks: 1 }
+        }
+      });
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        clickCandidates: Array<{
+          visibleText: string;
+          clickDecision: string;
+          clickDecisionReason: string;
+          planned: boolean;
+          plannedActionId?: string;
+        }>;
+      };
+
+      expect(actionTrace.clickCandidates).toHaveLength(6);
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Create first project")).toMatchObject({
+        clickDecision: "allowed",
+        planned: true,
+        plannedActionId: "a001"
+      });
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Delete project")?.clickDecisionReason).toBe(
+        "dangerous label"
+      );
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Billing")?.clickDecisionReason).toBe("navigation link");
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Graph node metadata")?.clickDecisionReason).toBe(
+        "data-ux-role metadata only"
+      );
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Save profile")?.clickDecisionReason).toBe("inside form");
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Disabled action")?.clickDecisionReason).toBe("disabled");
+
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("Click Candidate Decisions");
+      expect(contactSheet).toContain("dangerous label");
+      expect(contactSheet).toContain("data-ux-role metadata only");
+      expect(contactSheet).toContain("inside form");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
