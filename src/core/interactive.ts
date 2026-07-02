@@ -1066,6 +1066,37 @@ function buildFeedbackFindings(action: InteractiveActionRecord, diff: StateDiff,
   ];
 }
 
+function buildFocusContextFindings(action: InteractiveActionRecord, diff: StateDiff, domDiffPath: string): Finding[] {
+  if (!action.focused || action.clicked) {
+    return [];
+  }
+
+  const openStatesChanged = JSON.stringify(diff.openStatesBefore) !== JSON.stringify(diff.openStatesAfter);
+  const changedSignals = [
+    diff.urlChanged ? "URL changed" : undefined,
+    diff.visibleTextAdded.length ? `visible text added: ${diff.visibleTextAdded.slice(0, 3).join(" | ")}` : undefined,
+    diff.visibleTextRemoved.length ? `visible text removed: ${diff.visibleTextRemoved.slice(0, 3).join(" | ")}` : undefined,
+    openStatesChanged ? "open dialog/menu/popover state changed" : undefined
+  ].filter((signal): signal is string => Boolean(signal));
+
+  if (!changedSignals.length) {
+    return [];
+  }
+
+  return [
+    finding(
+      "focus_caused_context_change",
+      "Focus caused a visible context change",
+      "P1",
+      `${action.id} focused ${action.target.id} "${targetLabel(action.target) || action.target.tag}", and state diff changed without a click. Signals: ${changedSignals.join("; ")}. DOM diff: ${domDiffPath}.`,
+      "Keyboard users may unexpectedly lose context or trigger UI changes merely by moving focus.",
+      "Avoid opening panels, changing routes, or changing visible task state on focus alone; reserve context changes for activation or make focus-triggered help non-disruptive.",
+      "Run the same interactive scenario and confirm focusing the target does not change URL, open-state, or task-critical visible text.",
+      action.id
+    )
+  ];
+}
+
 function buildAnimationFindings(
   trace: AnimationTrace,
   tracePath: string,
@@ -1521,7 +1552,10 @@ async function recordActionStateEvidence(options: {
   options.action.afterStateId = afterState.node.id;
   options.action.domDiff = domDiffPath;
   options.action.accessibilityDiff = accessibilityDiffPath;
-  const findings = options.detectNoFeedback ? buildFeedbackFindings(options.action, domDiff, domDiffPath) : [];
+  const findings = [
+    ...(options.detectNoFeedback ? buildFeedbackFindings(options.action, domDiff, domDiffPath) : []),
+    ...buildFocusContextFindings(options.action, domDiff, domDiffPath)
+  ];
   if (findings.length) {
     options.action.findingDetectors = Array.from(new Set([...options.action.findingDetectors, ...findings.map((item) => item.detector)]));
   }

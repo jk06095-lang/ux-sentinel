@@ -23,6 +23,7 @@ const knownDetectors = [
   "dialog_without_accessible_name",
   "focus_ring_missing",
   "focus_obscured_by_author_content",
+  "focus_caused_context_change",
   "keyboard_target_not_reachable",
   "no_feedback_after_action",
   "loading_without_progress_or_timeout",

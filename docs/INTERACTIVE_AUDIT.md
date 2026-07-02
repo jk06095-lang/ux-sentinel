@@ -138,6 +138,7 @@ Interactive anomaly detectors include:
 - `cursor_target_drift`
 - `focus_ring_missing`
 - `focus_obscured_by_author_content`
+- `focus_caused_context_change`
 - `keyboard_target_not_reachable`
 - `visible_label_not_in_accessible_name`
 - `icon_button_without_visible_label`

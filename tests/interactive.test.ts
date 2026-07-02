@@ -508,6 +508,48 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("detects visible context changes caused by focus alone", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button { position: absolute; left: 80px; top: 80px; width: 180px; height: 44px; }
+            button:focus { outline: 3px solid #111; }
+            #panel { position: absolute; left: 80px; top: 150px; width: 220px; min-height: 48px; }
+          </style>
+          <button onfocus="document.getElementById('panel').hidden = false">Show details</button>
+          <div id="panel" hidden>Focus opened account details</div>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 20,
+        scenario: {
+          id: "focus-context-change",
+          title: "Focus context change",
+          persona: "keyboard-user",
+          interactive_exploration: { enabled: true, focus_all_keyboard_targets: true }
+        }
+      });
+
+      expect(result.actions[0].focused).toBe(true);
+      expect(result.actions[0].clicked).toBe(false);
+      expect(result.actions[0].findingDetectors).toContain("focus_caused_context_change");
+      expect(result.findings.map((finding) => finding.detector)).toContain("focus_caused_context_change");
+      expect(result.findings.find((finding) => finding.detector === "focus_caused_context_change")?.evidence).toContain(
+        "DOM diff:"
+      );
+
+      const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
+        visibleTextAdded: string[];
+      };
+      expect(domDiff.visibleTextAdded).toContain("Focus opened account details");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("skips safe clicks when hover changes the final pointer hit-test", async () => {
     const traceRoot = await tempTraceRoot();
     try {

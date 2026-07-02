@@ -66,7 +66,7 @@ export interface UxRule {
 The registry currently maps the MVP detectors, interactive visual detectors, pointer-trace detectors, and the first expanded high-priority detector batch:
 
 - click and affordance: `click_target_too_small`, `click_target_spacing_too_tight`, `clickable_without_visible_affordance`, `looks_clickable_but_not_actionable`, `click_target_blocked_by_overlay`
-- focus and keyboard: `focus_ring_missing`, `focus_obscured_by_author_content`, `keyboard_target_not_reachable`
+- focus and keyboard: `focus_ring_missing`, `focus_obscured_by_author_content`, `focus_caused_context_change`, `keyboard_target_not_reachable`
 - label and accessibility: `visible_label_not_in_accessible_name`, `icon_button_without_visible_label`, `aria_label_contradicts_visible_text`, `dialog_without_accessible_name`, `primary_cta_icon_only`, `dom_visible_but_human_invisible`, `same_label_different_actions`, `same_action_different_labels`
 - feedback and safety: `no_feedback_after_action`, `status_change_not_announced`, `loading_without_progress_or_timeout`, `dead_end_state_without_recovery`, `empty_state_without_next_step`, `dialog_close_unavailable`, `modal_trap_without_escape`, `destructive_action_without_confirmation`
 - visual hierarchy: `primary_cta_low_visual_weight`, `multiple_primary_ctas_conflict`, `secondary_action_overpowers_primary`
