@@ -1,79 +1,31 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { enrichFindingWithRules, rulesForDetector, unmappedDetectors } from "../src/core/rules/registry.js";
 import type { Finding } from "../src/core/types.js";
 
-const knownDetectors = [
-  "primary_cta_missing",
-  "primary_cta_icon_only",
-  "empty_state_without_cta",
-  "dom_visible_but_human_invisible",
-  "primary_cta_below_fold",
-  "horizontal_scroll",
-  "console_error",
-  "network_5xx",
-  "important_text_truncated",
-  "important_text_below_fold_without_cue",
-  "clickable_without_visible_affordance",
-  "looks_clickable_but_not_actionable",
-  "click_target_too_small",
-  "click_target_spacing_too_tight",
-  "visible_label_not_in_accessible_name",
-  "icon_button_without_visible_label",
-  "aria_label_contradicts_visible_text",
-  "status_change_not_announced",
-  "dialog_without_accessible_name",
-  "focus_ring_missing",
-  "focus_obscured_by_author_content",
-  "focus_order_unexpected_jump",
-  "focus_caused_context_change",
-  "keyboard_target_not_reachable",
-  "no_feedback_after_action",
-  "safe_click_changed_unrelated_state",
-  "loading_without_progress_or_timeout",
-  "dead_end_state_without_recovery",
-  "empty_state_without_next_step",
-  "dialog_close_unavailable",
-  "modal_trap_without_escape",
-  "popover_blocks_primary_action",
-  "destructive_action_without_confirmation",
-  "primary_cta_low_visual_weight",
-  "multiple_primary_ctas_conflict",
-  "secondary_action_overpowers_primary",
-  "responsive_layout_breakpoint_overlap",
-  "same_label_different_actions",
-  "same_action_different_labels",
-  "click_target_blocked_by_overlay",
-  "target_moved_during_cursor_approach",
-  "overlay_appeared_during_cursor_approach",
-  "hover_trigger_blocks_target",
-  "hover_content_blocks_trigger",
-  "cursor_target_drift",
-  "floating_panel_overlaps_primary_action",
-  "tooltip_partially_offscreen",
-  "tooltip_blocks_trigger",
-  "sticky_layer_hides_content",
-  "text_occluded_by_graph_edge",
-  "edge_label_crosses_node",
-  "selected_path_not_traceable",
-  "edge_crosses_critical_label",
-  "graph_control_not_discoverable",
-  "node_label_truncated",
-  "card_content_clipped",
-  "card_overlap",
-  "dag_canvas_excessive_unused_space",
-  "empty_dag_column_without_explanation",
-  "animation_ignores_reduced_motion",
-  "animation_hides_critical_action",
-  "animation_duration_blocks_task",
-  "animation_causes_layout_shift",
-  "animation_uses_layout_paint_properties",
-  "animation_jank_detected",
-  "inconsistent_motion_tokens"
-];
+const repoRoot = process.cwd();
+
+function implementedDetectors(): string[] {
+  const detectorNames = new Set<string>();
+  for (const sourceFile of ["src/core/detectors.ts", "src/core/interactive.ts"]) {
+    const source = readFileSync(path.join(repoRoot, sourceFile), "utf8");
+    for (const match of source.matchAll(/finding\(\s*["']([a-z0-9_]+)["']/g)) {
+      detectorNames.add(match[1]);
+    }
+  }
+
+  return Array.from(detectorNames).sort((a, b) => a.localeCompare(b));
+}
 
 describe("UX rule registry", () => {
   it("maps every implemented detector to at least one UX rule", () => {
-    expect(unmappedDetectors(knownDetectors)).toEqual([]);
+    const detectors = implementedDetectors();
+
+    expect(detectors.length).toBeGreaterThan(60);
+    expect(detectors).toContain("primary_cta_missing");
+    expect(detectors).toContain("animation_ignores_reduced_motion");
+    expect(unmappedDetectors(detectors)).toEqual([]);
   });
 
   it("enriches findings with rule metadata and confidence", () => {
