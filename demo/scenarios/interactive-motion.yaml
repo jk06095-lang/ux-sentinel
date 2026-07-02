@@ -1,0 +1,62 @@
+id: interactive-motion
+title: Interactive motion audit catches task-critical motion
+persona: first-time-user
+mode: visual_contract
+start_path: /
+
+goal:
+  user_wants: "Start the motion review without confusing task-critical movement"
+  primary_intent: "start_motion_review"
+
+visual_contract:
+  page_must_answer:
+    - "What is the primary action?"
+    - "Did the action produce feedback?"
+    - "Does motion preserve the primary action?"
+  primary_cta:
+    preferred_labels:
+      - "Start motion review"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+
+interactive_exploration:
+  enabled: true
+  mode: agentic
+  max_actions: 1
+  max_depth: 1
+  max_clicks: 1
+  max_state_changes: 1
+  hover_all_clickables: true
+  click_all_safe_controls: true
+  focus_all_keyboard_targets: true
+  scroll_containers: false
+  screenshot_before_after_each_action: true
+  settle_ms: 100
+  allow_navigation: false
+  avoid_click_text:
+    - "Delete"
+    - "Remove"
+    - "Pay"
+    - "Purchase"
+    - "Logout"
+    - "Sign out"
+    - "??젣"
+    - "?쒓굅"
+    - "寃곗젣"
+    - "濡쒓렇?꾩썐"
+
+animation_audit:
+  enabled: true
+  compare_reduced_motion: true
+  detect_layout_shift: true
+  detect_risky_properties: true
+  max_animation_ms: 200
+
+fail_conditions:
+  - animation_ignores_reduced_motion
+  - animation_hides_critical_action
+  - animation_duration_blocks_task
+  - animation_uses_layout_paint_properties
+  - animation_jank_detected
+  - inconsistent_motion_tokens

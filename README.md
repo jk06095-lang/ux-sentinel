@@ -139,7 +139,7 @@ Verdict: pass
 demo verification passed
 ```
 
-`demo:verify` also runs the interactive DAG, agentic benign-state, and skipped-action scenarios and checks that the local evidence bundle is reconstructable: `action-trace.json`, `state-graph.json`, `contact-sheet.html`, per-action screenshots, visual diffs, DOM/a11y diffs, pointer traces, click decisions, skip reasons, and planner metadata must all be present.
+`demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, and motion-audit scenarios and checks that the local evidence bundle is reconstructable: `action-trace.json`, `state-graph.json`, `contact-sheet.html`, per-action screenshots, visual diffs, DOM/a11y diffs, pointer traces, animation traces, click decisions, skip reasons, action-linked finding detectors, and planner metadata must all be present.
 
 Initialize UX Sentinel config in a project:
 
@@ -371,6 +371,8 @@ It also includes a high-priority detector pair:
 - `demo/high-priority-broken.html`: intentionally triggers small click target, visible-label/accessibility-name mismatch, clickable-looking non-action, and destructive-action-without-confirmation findings.
 - `demo/high-priority-fixed.html`: fixes the same UI with a correctly named primary CTA, standard target sizes, real secondary action affordance, and visible confirmation/undo copy.
 
+The interactive demo set also includes `demo/interactive-motion.html` with `demo/scenarios/interactive-motion.yaml`, an intentionally failing motion-audit fixture that proves per-action animation traces and motion findings are attached to the report, action trace, state graph, and contact sheet.
+
 Run the full demo gate. It checks exact fail/pass verdicts and confirms the high-priority broken report includes the intended detector evidence:
 
 ```bash
@@ -414,6 +416,7 @@ node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --se
 node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20
 node dist/cli.js run demo/scenarios/interactive-agentic-states.yaml --url http://127.0.0.1:4173/interactive-agentic-states --interactive --max-actions 6
 node dist/cli.js run demo/scenarios/interactive-skip.yaml --url http://127.0.0.1:4173/interactive-skip --interactive --max-actions 2
+node dist/cli.js run demo/scenarios/interactive-motion.yaml --url http://127.0.0.1:4173/interactive-motion --interactive --max-actions 1
 ```
 
 ## Evidence Artifacts
@@ -439,7 +442,7 @@ Interactive exploration writes:
 - `actions/a001-dom-diff.json`
 - `actions/a001-a11y-diff.json`
 
-Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason; `demo/scenarios/interactive-skip.yaml` exercises this by removing a baseline target before the runner reaches it. `demo/scenarios/interactive-agentic-states.yaml` exercises agentic continuation and depth-1 replanning through benign state changes by clicking a primary CTA, tab, menu trigger, help trigger, accordion, and a newly discovered control while the verifier checks planner mode, target categories, clicked-action count, state-graph edges, and DOM diff text. The action trace also records the resolved capability policy, every baseline click candidate's allow/skip decision, and each performed action's safe-click decision. `state-graph.json` links before/after states, screenshots, visual diffs, screen maps, DOM diffs, and accessibility diffs so a reviewer can reconstruct the audit path. The contact sheet is the primary human review surface for interactive audit.
+Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason; `demo/scenarios/interactive-skip.yaml` exercises this by removing a baseline target before the runner reaches it. `demo/scenarios/interactive-agentic-states.yaml` exercises agentic continuation and depth-1 replanning through benign state changes by clicking a primary CTA, tab, menu trigger, help trigger, accordion, and a newly discovered control while the verifier checks planner mode, target categories, clicked-action count, state-graph edges, and DOM diff text. `demo/scenarios/interactive-motion.yaml` exercises opt-in motion audit by expecting `actions/a001-animation-trace.json`, action-linked motion detector ids, and contact-sheet animation evidence for an intentionally failing primary CTA. The action trace also records the resolved capability policy, every baseline click candidate's allow/skip decision, and each performed action's safe-click decision. `state-graph.json` links before/after states, screenshots, visual diffs, screen maps, DOM diffs, accessibility diffs, and animation traces so a reviewer can reconstruct the audit path. The contact sheet is the primary human review surface for interactive audit.
 
 Each interactive action writes `actions/a001-diff.png` alongside `a001-before.png` and `a001-after.png`, giving reviewers a local static visual diff without an external image service.
 

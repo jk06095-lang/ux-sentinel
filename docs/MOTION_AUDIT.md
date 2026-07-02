@@ -50,6 +50,28 @@ Reduced-motion comparison is optional and only runs when `compare_reduced_motion
 Critical-action hiding findings only fire for targets classified as `primary_cta`, and only when the primary action itself has visibility-affecting transition evidence such as `opacity`, `filter`, or `all` lasting more than 150ms.
 Jank and token-consistency findings are deterministic trace heuristics: they use visible animated element counts, risky property evidence, target bbox movement, duration spread, and easing spread from `actions/aNNN-animation-trace.json`.
 
+## Demo Gate
+
+`demo/scenarios/interactive-motion.yaml` runs against `demo/interactive-motion.html` and intentionally fails. It enables `animation_audit`, safe scenario clicking, reduced-motion comparison, and a low `max_animation_ms` threshold so the demo verifier can prove:
+
+- `actions/a001-animation-trace.json` is written.
+- the trace records normal-motion and reduced-motion evidence.
+- motion detector ids are attached to the interactive action.
+- `state-graph.json` links the animation trace.
+- `contact-sheet.html` exposes the animation audit evidence.
+
+Run it through the full demo gate:
+
+```bash
+npm run demo:verify
+```
+
+Or manually:
+
+```bash
+node dist/cli.js run demo/scenarios/interactive-motion.yaml --url http://127.0.0.1:4173/interactive-motion --interactive --max-actions 1
+```
+
 ## Limits
 
 - This is not a video or visual-AI motion review.

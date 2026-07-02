@@ -94,7 +94,9 @@ function assertInteractiveArtifacts({
   expectedMinActions,
   expectedMinClickedActions,
   expectedTargetCategories = [],
-  expectedDomDiffTextAdded = []
+  expectedDomDiffTextAdded = [],
+  expectedActionFindingDetectors = [],
+  expectedAnimationTrace = false
 }) {
   mustExist(tracePath, "interactive trace directory");
   mustExist(contactSheetPath, "interactive contact sheet");
@@ -143,6 +145,8 @@ function assertInteractiveArtifacts({
   let skippedActionCount = 0;
   let clickedActionCount = 0;
   const domDiffTextAdded = [];
+  const actionFindingDetectors = new Set();
+  const animationTracePaths = [];
   for (const [index, action] of actionTrace.actions.entries()) {
     const actionLabel = `interactive action ${action.id ?? index + 1}`;
     if (!action.plannedReason || !action.targetCategory || !action.riskLevel) {
@@ -168,6 +172,21 @@ function assertInteractiveArtifacts({
     if (action.clicked) {
       clickedActionCount += 1;
     }
+    if (Array.isArray(action.findingDetectors)) {
+      for (const detector of action.findingDetectors) {
+        actionFindingDetectors.add(detector);
+      }
+    }
+    if (action.animationTrace) {
+      animationTracePaths.push(action.animationTrace);
+      const trace = readJson(action.animationTrace, `${actionLabel} animation trace`);
+      if (trace.enabled !== true || !Array.isArray(trace.normal) || trace.normal.length === 0) {
+        throw new Error(`${action.animationTrace} did not record enabled normal-motion evidence`);
+      }
+      if (trace.actionId !== action.id) {
+        throw new Error(`${action.animationTrace} action id ${trace.actionId ?? "unknown"} did not match ${action.id}`);
+      }
+    }
     const domDiff = readJson(action.domDiff, `${actionLabel} DOM diff`);
     domDiffTextAdded.push(...(Array.isArray(domDiff.visibleTextAdded) ? domDiff.visibleTextAdded : []));
   }
@@ -182,6 +201,14 @@ function assertInteractiveArtifacts({
       throw new Error(`${actionTracePath} DOM diffs did not record expected visible text: ${expectedText}`);
     }
   }
+  for (const detector of expectedActionFindingDetectors) {
+    if (!actionFindingDetectors.has(detector)) {
+      throw new Error(`${actionTracePath} did not attach expected finding detector to an action: ${detector}`);
+    }
+  }
+  if (expectedAnimationTrace && animationTracePaths.length === 0) {
+    throw new Error(`${actionTracePath} did not record an expected animation trace`);
+  }
 
   if (!Array.isArray(stateGraph.nodes) || stateGraph.nodes.length === 0) {
     throw new Error(`${stateGraphPath} did not record state nodes`);
@@ -192,6 +219,7 @@ function assertInteractiveArtifacts({
   if (expectedMinActions !== undefined && stateGraph.edges.length < expectedMinActions) {
     throw new Error(`${stateGraphPath} expected at least ${expectedMinActions} edges, got ${stateGraph.edges.length}`);
   }
+  let stateGraphAnimationTraceCount = 0;
   for (const [index, edge] of stateGraph.edges.entries()) {
     const edgeLabel = `state graph edge ${edge.id ?? index + 1}`;
     const action = actionsById.get(edge.actionId);
@@ -208,6 +236,13 @@ function assertInteractiveArtifacts({
     if (!action?.skipped) {
       artifactPath(edge.pointerTrace, `${edgeLabel} pointer trace`);
     }
+    if (edge.animationTrace) {
+      stateGraphAnimationTraceCount += 1;
+      artifactPath(edge.animationTrace, `${edgeLabel} animation trace`);
+    }
+  }
+  if (expectedAnimationTrace && stateGraphAnimationTraceCount === 0) {
+    throw new Error(`${stateGraphPath} did not link the expected animation trace`);
   }
 
   const report = readFileSync(reportPath, "utf8");
@@ -227,6 +262,13 @@ function assertInteractiveArtifacts({
     for (const needle of ["skipped:", "no longer exists", "actions/a002-before.png", "actions/a002-diff.png"]) {
       if (!contactSheet.includes(needle)) {
         throw new Error(`${contactSheetPath} is missing skipped-action evidence text: ${needle}`);
+      }
+    }
+  }
+  if (expectedAnimationTrace) {
+    for (const needle of ["Animation Audit", "Animation trace:", "a001-animation-trace.json"]) {
+      if (!contactSheet.includes(needle)) {
+        throw new Error(`${contactSheetPath} is missing animation evidence text: ${needle}`);
       }
     }
   }
@@ -271,7 +313,9 @@ function runScenario(scenarioPath, path, expectedStatus, options = {}) {
       expectedMinActions: options.expectedMinActions,
       expectedMinClickedActions: options.expectedMinClickedActions,
       expectedTargetCategories: options.expectedTargetCategories,
-      expectedDomDiffTextAdded: options.expectedDomDiffTextAdded
+      expectedDomDiffTextAdded: options.expectedDomDiffTextAdded,
+      expectedActionFindingDetectors: options.expectedActionFindingDetectors,
+      expectedAnimationTrace: options.expectedAnimationTrace === true
     });
   }
 }
@@ -317,6 +361,33 @@ try {
     args: ["--interactive", "--max-actions", "2", "--settle-ms", "100"],
     expectedInteractiveArtifacts: true,
     expectedSkippedAction: true
+  });
+  runScenario("demo/scenarios/interactive-motion.yaml", "/interactive-motion", 1, {
+    expectedVerdict: "fail",
+    args: ["--interactive", "--max-actions", "1", "--settle-ms", "100"],
+    expectedDetectors: [
+      "animation_ignores_reduced_motion",
+      "animation_hides_critical_action",
+      "animation_duration_blocks_task",
+      "animation_uses_layout_paint_properties",
+      "animation_jank_detected",
+      "inconsistent_motion_tokens"
+    ],
+    expectedInteractiveArtifacts: true,
+    expectedPlannerMode: "agentic",
+    expectedMinActions: 1,
+    expectedMinClickedActions: 1,
+    expectedTargetCategories: ["primary_cta"],
+    expectedDomDiffTextAdded: ["Motion review started"],
+    expectedActionFindingDetectors: [
+      "animation_ignores_reduced_motion",
+      "animation_hides_critical_action",
+      "animation_duration_blocks_task",
+      "animation_uses_layout_paint_properties",
+      "animation_jank_detected",
+      "inconsistent_motion_tokens"
+    ],
+    expectedAnimationTrace: true
   });
   settled = true;
   stopServer();

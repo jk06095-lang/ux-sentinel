@@ -478,3 +478,12 @@ Added bounded depth replanning on top of the existing safe-click policy:
 - Replanning filters out already planned target ids and state keys so repeated identical controls are not explored endlessly.
 - Dynamic click candidates are merged into `action-trace.json`, preserving explicit allow/skip decisions for discovered controls.
 - `demo/scenarios/interactive-agentic-states.yaml` now proves a depth-1 discovered control is clicked and evidenced by DOM diff text.
+
+### Checkpoint: Interactive Motion Demo Gate
+
+Added a deterministic demo gate for opt-in motion audit evidence:
+
+- Added `demo/interactive-motion.html`, an intentionally failing primary CTA motion fixture with reduced-motion-ignoring transition evidence.
+- Added `demo/scenarios/interactive-motion.yaml` with `animation_audit.enabled: true`, scenario-approved safe clicking, reduced-motion comparison, and explicit motion fail conditions.
+- Routed `/interactive-motion` through the demo server.
+- Extended `npm run demo:verify` to assert the failing motion report includes the expected motion detectors, `actions/a001-animation-trace.json` exists, action trace finding detectors are attached to the action, `state-graph.json` links the animation trace, contact sheet animation evidence is visible, and DOM diff text proves the safe click produced feedback.

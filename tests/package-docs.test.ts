@@ -301,13 +301,46 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("clickDecision");
     expect(verifier).toContain("skipReason");
     expect(verifier).toContain("plannedReason");
-    expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, and skipped-action scenarios");
+    expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, and motion-audit scenarios");
     expect(readme).toContain("demo/scenarios/interactive-agentic-states.yaml");
     expect(readme).toContain("depth-1 replanning");
     expect(readme).toContain("demo/scenarios/interactive-skip.yaml");
     expect(progress).toContain("Interactive Demo Artifact Gate");
     expect(progress).toContain("Agentic Benign State Demo Gate");
     expect(progress).toContain("stale-target skipped action");
+  });
+
+  it("verifies the interactive motion demo gate and animation evidence docs", () => {
+    const verifier = readText("scripts/verify-demo.mjs");
+    const readme = readText("README.md");
+    const interactiveDocs = readText("docs/INTERACTIVE_AUDIT.md");
+    const motionDocs = readText("docs/MOTION_AUDIT.md");
+
+    expect(existsSync(path.join(repoRoot, "demo/interactive-motion.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/scenarios/interactive-motion.yaml"))).toBe(true);
+
+    const scenario = readText("demo/scenarios/interactive-motion.yaml");
+    expect(scenario).toContain("animation_audit:");
+    expect(scenario).toContain("compare_reduced_motion: true");
+    expect(scenario).toContain("click_all_safe_controls: true");
+    expect(scenario).toContain("animation_ignores_reduced_motion");
+    expect(scenario).toContain("animation_hides_critical_action");
+    expect(scenario).toContain("inconsistent_motion_tokens");
+
+    expect(verifier).toContain("demo/scenarios/interactive-motion.yaml");
+    expect(verifier).toContain("/interactive-motion");
+    expect(verifier).toContain("expectedAnimationTrace");
+    expect(verifier).toContain("expectedActionFindingDetectors");
+    expect(verifier).toContain("a001-animation-trace.json");
+    expect(verifier).toContain("Animation Audit");
+
+    expect(readme).toContain("demo/scenarios/interactive-motion.yaml");
+    expect(readme).toContain("animation traces");
+    expect(interactiveDocs).toContain("interactive-motion");
+    expect(interactiveDocs).toContain("attach motion detector ids to the action");
+    expect(motionDocs).toContain("Demo Gate");
+    expect(motionDocs).toContain("state-graph.json");
+    expect(motionDocs).toContain("contact-sheet.html");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {
