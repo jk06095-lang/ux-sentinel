@@ -20,6 +20,7 @@ function emptyAnalysis() {
   return {
     viewport: { width: 1280, height: 720 },
     textBoxes: [],
+    interactiveTargets: [],
     primaryActions: [],
     floatingOverlays: [],
     svgNodes: [],
@@ -167,6 +168,30 @@ describe("interactive exploration helpers", () => {
     expect(detectVisualAnomalies({ ...emptyAnalysis(), clippedText: [metric] }, scenario).map((finding) => finding.detector)).toContain(
       "card_content_clipped"
     );
+  });
+
+  it("detects tooltips that overlap their trigger target", () => {
+    const findings = detectVisualAnomalies({
+      ...emptyAnalysis(),
+      floatingOverlays: [
+        {
+          id: "floating1",
+          kind: "tooltip",
+          text: "Helpful details",
+          bbox: { x: 90, y: 90, width: 180, height: 64 }
+        }
+      ],
+      interactiveTargets: [
+        {
+          id: "target1",
+          kind: "interactive_target",
+          text: "Help",
+          bbox: { x: 100, y: 104, width: 96, height: 36 }
+        }
+      ]
+    }).map((finding) => finding.detector);
+
+    expect(findings).toContain("tooltip_blocks_trigger");
   });
 
   it("renders a contact sheet with before and after screenshots", () => {

@@ -83,6 +83,7 @@ fail_conditions:
   - dialog_close_unavailable
   - modal_trap_without_escape
   - popover_blocks_primary_action
+  - tooltip_blocks_trigger
   - destructive_action_without_confirmation
   - animation_ignores_reduced_motion
   - animation_hides_critical_action

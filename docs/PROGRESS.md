@@ -402,6 +402,7 @@ Added deterministic modal/popover detector coverage:
 - `dialog_close_unavailable` flags visible dialogs that have no enabled close, dismiss, cancel, done, or back action in the screen map.
 - `modal_trap_without_escape` flags modal-like dialogs with `aria-modal`, native dialog, or modal metadata but no visible escape action.
 - `popover_blocks_primary_action` flags popover-like foreground layers whose bbox overlaps the scenario primary CTA.
+- `tooltip_blocks_trigger` flags tooltip-like foreground layers whose bbox overlaps an interactive trigger target.
 
 Screen maps now preserve `aria-modal` metadata. These checks use role/data-ux-role, visible action labels, and bbox intersection evidence; they do not click or infer hidden behavior.
 

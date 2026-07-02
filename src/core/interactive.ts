@@ -114,6 +114,7 @@ export interface VisualAnalysis {
     height: number;
   };
   textBoxes: VisualBox[];
+  interactiveTargets: VisualBox[];
   primaryActions: VisualBox[];
   floatingOverlays: VisualBox[];
   svgNodes: VisualBox[];
@@ -524,17 +525,25 @@ async function collectVisualAnalysis(page: Page, scenario?: Scenario): Promise<V
         }
       }
 
-      const primaryActions = Array.from(document.querySelectorAll<HTMLElement>(interactiveSelector))
+      const interactiveTargets = Array.from(document.querySelectorAll<HTMLElement>(interactiveSelector))
         .map((element, index) => {
           const text = normalize([element.innerText || element.textContent || "", element.getAttribute("aria-label"), element.getAttribute("title")].filter(Boolean).join(" "));
           return {
-            id: `primary${index + 1}`,
-            kind: "primary_action",
+            id: `target${index + 1}`,
+            kind: "interactive_target",
             text,
             bbox: boxFor(element)
           };
         })
-        .filter((item) => visibleBox(item.bbox) && labelMatches(item.text));
+        .filter((item) => visibleBox(item.bbox));
+
+      const primaryActions = interactiveTargets
+        .filter((item) => labelMatches(item.text))
+        .map((item, index) => ({
+          ...item,
+          id: `primary${index + 1}`,
+          kind: "primary_action"
+        }));
 
       const floatingOverlays = Array.from(document.querySelectorAll<HTMLElement>("body *"))
         .map((element, index) => {
@@ -622,6 +631,7 @@ async function collectVisualAnalysis(page: Page, scenario?: Scenario): Promise<V
           height: window.innerHeight
         },
         textBoxes,
+        interactiveTargets,
         primaryActions,
         floatingOverlays,
         svgNodes,
@@ -719,6 +729,28 @@ export function detectVisualAnomalies(analysis: VisualAnalysis, scenario?: Scena
           actionId
         )
       );
+    }
+
+    if (floating.kind === "tooltip") {
+      for (const target of analysis.interactiveTargets) {
+        const overlapRatio = intersectionRatio(floating.bbox, target.bbox);
+        if (overlapRatio > 0.12) {
+          pushOnce(
+            findings,
+            finding(
+              "tooltip_blocks_trigger",
+              "Tooltip blocks its trigger target",
+              "P2",
+              `${floating.id} overlaps interactive target "${target.text || target.id}" by ${(overlapRatio * 100).toFixed(1)}%.`,
+              "Hover help can cover the control the user is trying to inspect or activate.",
+              "Position tooltips beside the trigger with spacing, flipping, or pointer-event handling so the trigger remains visible and hit-testable.",
+              "Hover the same target and confirm the tooltip does not overlap the trigger bbox.",
+              actionId
+            )
+          );
+          break;
+        }
+      }
     }
   }
 
