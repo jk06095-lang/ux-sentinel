@@ -72,7 +72,13 @@ fail_conditions:
   - focus_ring_missing
   - focus_obscured_by_author_content
   - visible_label_not_in_accessible_name
+  - icon_button_without_visible_label
+  - status_change_not_announced
+  - dialog_without_accessible_name
   - no_feedback_after_action
+  - loading_without_progress_or_timeout
+  - dead_end_state_without_recovery
+  - empty_state_without_next_step
   - destructive_action_without_confirmation
   - animation_ignores_reduced_motion
   - floating_panel_overlaps_primary_action

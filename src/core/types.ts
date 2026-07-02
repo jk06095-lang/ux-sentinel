@@ -141,6 +141,8 @@ export interface ScreenElement {
   visibleText: string;
   accessibleName?: string;
   ariaLabel: string | null;
+  ariaLabelledBy?: string | null;
+  ariaLive?: string | null;
   title: string | null;
   bbox: ElementBox;
   clickable: boolean;

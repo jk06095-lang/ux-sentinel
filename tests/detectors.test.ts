@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runDetectors, verdictForFindings } from "../src/core/detectors.js";
-import type { Finding, Scenario, ScreenMap } from "../src/core/types.js";
+import type { Finding, Scenario, ScreenElement, ScreenMap } from "../src/core/types.js";
 
 const scenario: Scenario = {
   id: "onboarding-empty-state",
@@ -42,6 +42,28 @@ function baseScreenMap(overrides: Partial<ScreenMap>): ScreenMap {
     consoleErrors: [],
     networkErrors: [],
     risks: [],
+    ...overrides
+  };
+}
+
+function baseElement(overrides: Partial<ScreenElement> & Pick<ScreenElement, "id" | "visibleText">): ScreenElement {
+  return {
+    id: overrides.id,
+    tag: "div",
+    role: null,
+    visibleText: overrides.visibleText,
+    ariaLabel: null,
+    title: null,
+    bbox: { x: 20, y: 20, width: 160, height: 40 },
+    clickable: false,
+    disabled: false,
+    aboveFold: true,
+    visible: true,
+    looksClickable: false,
+    hasVisibleLabel: true,
+    isIconOnly: false,
+    textTruncated: false,
+    visualWeight: 0.0043,
     ...overrides
   };
 }
@@ -399,6 +421,90 @@ describe("detectors", () => {
         "same_action_different_labels"
       ])
     );
+  });
+
+  it("detects evidence-backed accessibility and recovery-state issues", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["No projects yet", "Loading projects", "Error loading dashboard", "+"],
+      elements: [
+        baseElement({
+          id: "icon",
+          tag: "button",
+          role: "button",
+          visibleText: "+",
+          ariaLabel: "Create first project",
+          bbox: { x: 20, y: 20, width: 28, height: 28 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleLabel: false,
+          isIconOnly: true,
+          visualWeight: 0.001,
+          hasVisibleAffordance: true
+        }),
+        baseElement({
+          id: "dialog",
+          tag: "dialog",
+          role: "dialog",
+          visibleText: "Settings"
+        }),
+        baseElement({
+          id: "status",
+          visibleText: "Loading projects",
+          dataUxRole: "status"
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).toEqual(
+      expect.arrayContaining([
+        "icon_button_without_visible_label",
+        "dialog_without_accessible_name",
+        "status_change_not_announced",
+        "loading_without_progress_or_timeout",
+        "dead_end_state_without_recovery",
+        "empty_state_without_next_step"
+      ])
+    );
+  });
+
+  it("does not flag announced status messages or named dialogs as recovery issues", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Loading projects", "Retry", "Settings"],
+      elements: [
+        baseElement({
+          id: "dialog",
+          tag: "dialog",
+          role: "dialog",
+          visibleText: "Settings",
+          ariaLabelledBy: "settings-title"
+        }),
+        baseElement({
+          id: "status",
+          role: "status",
+          visibleText: "Loading projects",
+          dataUxRole: "status",
+          ariaLive: "polite"
+        }),
+        baseElement({
+          id: "retry",
+          tag: "button",
+          role: "button",
+          visibleText: "Retry",
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).not.toContain("dialog_without_accessible_name");
+    expect(detectors).not.toContain("status_change_not_announced");
+    expect(detectors).not.toContain("loading_without_progress_or_timeout");
+    expect(detectors).not.toContain("dead_end_state_without_recovery");
   });
 
   it("fails when the primary CTA is only below the fold", () => {

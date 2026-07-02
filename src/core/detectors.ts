@@ -14,6 +14,12 @@ const emptyStateHints = ["No projects", "Nothing here", "Empty", "아직", "없�
 const destructiveHints = ["delete", "remove", "pay", "purchase", "logout", "sign out", "삭제", "제거", "결제", "로그아웃"];
 const confirmationHints = ["confirm", "confirmation", "are you sure", "undo", "복구", "확인"];
 
+const recoveryHints = ["retry", "try again", "back", "go back", "refresh", "recover", "restore", "contact support", "help"];
+const deadEndHints = ["error", "failed", "failure", "unavailable", "not found", "forbidden", "permission", "access denied", "can't continue"];
+const loadingHints = ["loading", "please wait", "processing", "saving", "syncing", "submitting"];
+const statusHints = ["saved", "updated", "complete", "completed", "success", "failed", "error", "loading", "processing"];
+const statusRoles = new Set(["status", "alert", "log", "progressbar"]);
+
 function preferredLabels(scenario: Scenario): string[] {
   return scenario.visual_contract?.primary_cta?.preferred_labels?.length
     ? scenario.visual_contract.primary_cta.preferred_labels
@@ -60,6 +66,23 @@ function actionSignature(element: ScreenElement): string {
   return normalizedKey(element.dataUxAction);
 }
 
+function hasAccessibleDialogName(element: ScreenElement): boolean {
+  return Boolean(meaningfulText(element.ariaLabel) || meaningfulText(element.ariaLabelledBy) || meaningfulText(element.title));
+}
+
+function hasLiveAnnouncement(element: ScreenElement): boolean {
+  return statusRoles.has(element.role ?? "") || ["polite", "assertive"].includes((element.ariaLive ?? "").toLowerCase());
+}
+
+function isStatusLikeElement(element: ScreenElement): boolean {
+  const roleOrUx = `${element.role ?? ""} ${element.dataUxRole ?? ""}`.toLowerCase();
+  const text = elementActionLabel(element).toLowerCase();
+  return (
+    (roleOrUx.includes("status") || roleOrUx.includes("toast") || roleOrUx.includes("notification")) &&
+    statusHints.some((hint) => text.includes(hint))
+  );
+}
+
 function isDestructiveLabel(label: string): boolean {
   const normalized = label.toLowerCase();
   return Boolean(normalized) && destructiveHints.some((hint) => normalized.includes(hint.toLowerCase()));
@@ -72,6 +95,17 @@ function hasConfirmationCue(screenMap: ScreenMap, element: ScreenElement): boole
 
 function clickableElements(screenMap: ScreenMap): ScreenElement[] {
   return screenMap.elements.filter((element) => element.visible && element.clickable && !element.disabled);
+}
+
+function visibleActionWithLabel(elements: ScreenElement[]): ScreenElement | undefined {
+  return elements.find((element) => element.hasVisibleLabel && element.looksClickable);
+}
+
+function recoveryAction(screenMap: ScreenMap): ScreenElement | undefined {
+  return clickableElements(screenMap).find((element) => {
+    const label = elementActionLabel(element).toLowerCase();
+    return recoveryHints.some((hint) => label.includes(hint));
+  });
 }
 
 export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[] {
@@ -190,6 +224,54 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
     );
   }
 
+  if (hasEmptyState(screenMap) && !visibleActionWithLabel(actionable)) {
+    findings.push(
+      finding(
+        "empty_state_without_next_step",
+        "Empty state has no visible next-step action",
+        "P2",
+        "Perception Mismatch",
+        `Visible page text looks like an empty state, but no enabled visible action has a human-readable label. Text: "${pageText(screenMap).slice(0, 180)}".`,
+        "A user can understand that nothing exists yet but still cannot see how to recover or start.",
+        "Add a visible next-step action near the empty-state message, even if it is not the scenario's primary CTA.",
+        "Run the scenario and confirm the empty state includes at least one visible, labeled recovery or creation action."
+      )
+    );
+  }
+
+  const pageTextLower = pageText(screenMap).toLowerCase();
+  if (deadEndHints.some((hint) => pageTextLower.includes(hint)) && !recoveryAction(screenMap)) {
+    findings.push(
+      finding(
+        "dead_end_state_without_recovery",
+        "Dead-end state has no visible recovery action",
+        "P2",
+        "Perception Mismatch",
+        `Visible text suggests a dead end without a retry, back, help, or recovery action: "${pageText(screenMap).slice(0, 180)}".`,
+        "Users can get stuck when the interface states a problem but does not expose a clear recovery path.",
+        "Add a visible recovery action such as retry, go back, refresh, or contact support.",
+        "Run the scenario and confirm dead-end copy is paired with a visible recovery control."
+      )
+    );
+  }
+
+  const loadingText = loadingHints.find((hint) => pageTextLower.includes(hint));
+  const hasAnnouncedLoading = screenMap.elements.some((element) => element.visible && isStatusLikeElement(element) && hasLiveAnnouncement(element));
+  if (loadingText && !hasAnnouncedLoading && !recoveryAction(screenMap)) {
+    findings.push(
+      finding(
+        "loading_without_progress_or_timeout",
+        "Loading state lacks progress announcement or recovery",
+        "P2",
+        "Perception Mismatch",
+        `Visible text includes "${loadingText}", but no visible status/progress/live-region evidence or recovery action was found.`,
+        "Users may not know whether the app is working, stalled, or recoverable.",
+        "Expose loading progress with role=status, role=progressbar, or aria-live, and provide a timeout or recovery path when needed.",
+        "Run the scenario and confirm loading text is announced or paired with visible recovery."
+      )
+    );
+  }
+
   for (const element of screenMap.elements) {
     if (element.visible && element.clickable && element.ariaLabel && (element.isIconOnly || !element.hasVisibleLabel)) {
       findings.push(
@@ -202,6 +284,51 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
           "Agentic or DOM-based checks can find the action, but a human may not understand it from the visible UI.",
           "Give the control visible text or place it near explicit explanatory copy.",
           "Confirm the control has a visible label or is clearly secondary."
+        )
+      );
+    }
+
+    if (element.visible && element.clickable && (element.isIconOnly || !element.hasVisibleLabel) && (element.ariaLabel || element.title)) {
+      findings.push(
+        finding(
+          "icon_button_without_visible_label",
+          "Icon button has no visible label",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} is a ${element.tag} with visible text "${element.visibleText}" and hidden label "${element.ariaLabel ?? element.title ?? ""}".`,
+          "A sighted user may miss the control's purpose even though automation or assistive metadata can identify it.",
+          "Add adjacent visible text or a persistent label for the icon button, especially when the action is important.",
+          "Run observe and confirm icon buttons have visible labels or are clearly decorative/secondary."
+        )
+      );
+    }
+
+    if (element.visible && (element.role === "dialog" || element.tag === "dialog") && !hasAccessibleDialogName(element)) {
+      findings.push(
+        finding(
+          "dialog_without_accessible_name",
+          "Dialog has no accessible name",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} is a visible ${element.tag}${element.role ? ` role=${element.role}` : ""} without aria-label, aria-labelledby, or title evidence.`,
+          "Users may enter a modal or dialog without a clear announced purpose or visible orientation cue.",
+          "Give the dialog an accessible name with aria-labelledby tied to its visible heading, or aria-label when no heading exists.",
+          "Run observe and confirm visible dialogs expose aria-label, aria-labelledby, or title evidence."
+        )
+      );
+    }
+
+    if (element.visible && isStatusLikeElement(element) && !hasLiveAnnouncement(element)) {
+      findings.push(
+        finding(
+          "status_change_not_announced",
+          "Status change is not announced",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} "${elementActionLabel(element)}" is marked ${element.dataUxRole ? `data-ux-role=${element.dataUxRole}` : `role=${element.role ?? "none"}`} but has no role=status/alert/log/progressbar or aria-live evidence.`,
+          "Users may miss an important state change when the visual status is not exposed as an announcement.",
+          "Use role=status, role=alert, role=progressbar, or aria-live for dynamic state messages.",
+          "Run observe and confirm status-like messages have live-region or status-role evidence."
         )
       );
     }

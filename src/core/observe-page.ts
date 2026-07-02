@@ -67,6 +67,8 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
         const tag = element.tagName.toLowerCase();
         const role = element.getAttribute("role");
         const ariaLabel = element.getAttribute("aria-label");
+        const ariaLabelledBy = element.getAttribute("aria-labelledby");
+        const ariaLive = element.getAttribute("aria-live");
         const title = element.getAttribute("title");
         const dataUxRole = element.getAttribute("data-ux-role");
         const dataUxAction = element.getAttribute("data-ux-action");
@@ -123,6 +125,8 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           visibleText: visibleText.slice(0, 240),
           accessibleName: normalize(ariaLabel || title || visibleText).slice(0, 240),
           ariaLabel,
+          ariaLabelledBy,
+          ariaLive,
           title,
           bbox: {
             x: Math.round(rect.x),

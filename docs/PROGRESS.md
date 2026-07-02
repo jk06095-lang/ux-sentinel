@@ -381,3 +381,16 @@ Added the next deterministic detector slice for agentic UX review:
 - `same_action_different_labels` flags one `data-ux-action` exposed through inconsistent visible labels.
 
 These checks use screen-map bbox, visualWeight, visible label, and action metadata evidence; they do not depend on external LLM or vision APIs.
+
+### Checkpoint: Accessibility And Recovery-State Detectors
+
+Added another deterministic detector slice:
+
+- `icon_button_without_visible_label` flags icon-only controls that rely on hidden labels.
+- `dialog_without_accessible_name` flags visible dialogs without `aria-label`, `aria-labelledby`, or title evidence.
+- `status_change_not_announced` flags explicit `data-ux-role=status/toast/notification` messages without status/alert/progress/live-region evidence.
+- `loading_without_progress_or_timeout` flags loading states without announced progress or recovery.
+- `dead_end_state_without_recovery` flags error/dead-end copy without a retry/back/help path.
+- `empty_state_without_next_step` flags empty states with no visible labeled action.
+
+Screen maps now preserve `aria-live` and `aria-labelledby` metadata so these findings can cite concrete DOM/a11y evidence.
