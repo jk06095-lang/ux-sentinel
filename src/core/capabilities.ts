@@ -2,7 +2,6 @@ import type {
   InteractiveCapabilities,
   InteractiveCapability,
   InteractiveCapabilityPolicy,
-  InteractiveCommandMode,
   Scenario
 } from "./types.js";
 
@@ -30,10 +29,14 @@ const defaultCapabilities: InteractiveCapabilities = {
   destructive_action: false
 };
 
-export interface ResolveCapabilityOptions {
-  commandMode: InteractiveCommandMode;
-  clickSafeOverride?: boolean;
-}
+export type ResolveCapabilityOptions =
+  | {
+      commandMode: "explore";
+      clickSafeOverride?: boolean;
+    }
+  | {
+      commandMode: "run";
+    };
 
 export function resolveInteractiveCapabilities(
   scenario: Scenario | undefined,

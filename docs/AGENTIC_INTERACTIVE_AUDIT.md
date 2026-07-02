@@ -17,7 +17,7 @@ The current implementation adds a deterministic planning layer:
 7. Write per-action pointer traces so hover, focus, and click-capable actions show the cursor path and final hit-test result.
 8. Enrich findings with UX rule mappings so reports explain why each detector matters.
 
-The runner still uses the hardened safety policy from [SAFETY_POLICY.md](SAFETY_POLICY.md). `explore --click-safe` is the standalone opt-in for safe clicks. `run --interactive --click-safe` is intentionally not a click override; scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
+The runner still uses the hardened safety policy from [SAFETY_POLICY.md](SAFETY_POLICY.md). `explore --click-safe` is the standalone opt-in for safe clicks. `run --interactive --click-safe` is rejected; scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
 ## Scenario Options
 

@@ -30,6 +30,10 @@ describe("package metadata for GitHub npm exec", () => {
   it("keeps the source CLI shebang for executable output", () => {
     expect(readText("src/cli.ts").startsWith("#!/usr/bin/env node")).toBe(true);
   });
+
+  it("rejects click-safe on scenario-driven run commands", () => {
+    expect(readText("src/cli.ts")).toContain("--click-safe is only supported by `ux-sentinel explore`");
+  });
 });
 
 describe("Codex integration docs", () => {

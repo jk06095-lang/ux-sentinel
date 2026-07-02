@@ -129,6 +129,12 @@ async function exploreCommand(args: ParsedArgs): Promise<void> {
 }
 
 async function runCommand(args: ParsedArgs): Promise<void> {
+  if (args.options.has("click-safe")) {
+    throw new Error(
+      "--click-safe is only supported by `ux-sentinel explore`; for `run --interactive`, set interactive_exploration.click_all_safe_controls: true in the scenario."
+    );
+  }
+
   const scenarioPath = path.resolve(requirePositional(args, "scenario.yaml"));
   const inputUrl = requireOption(args, "url");
   const scenario = await parseScenarioFile(scenarioPath);

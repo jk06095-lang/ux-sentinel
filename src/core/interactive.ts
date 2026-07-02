@@ -196,10 +196,13 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
     notes.push("Interactive audit always captures before/after screenshots so the contact sheet remains evidence-backed.");
   }
   const commandMode = options?.commandMode ?? (scenario ? "run" : "explore");
-  const capabilityPolicy = resolveInteractiveCapabilities(scenario, {
-    commandMode,
-    clickSafeOverride: options?.clickSafeOverride
-  });
+  const capabilityPolicy =
+    commandMode === "explore"
+      ? resolveInteractiveCapabilities(scenario, {
+          commandMode,
+          clickSafeOverride: options?.clickSafeOverride
+        })
+      : resolveInteractiveCapabilities(scenario, { commandMode });
   const clickAllSafeControls = capabilityPolicy.capabilities.safe_click;
 
   return {

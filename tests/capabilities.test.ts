@@ -25,7 +25,7 @@ describe("interactive capability policy", () => {
     expect(
       resolveInteractiveCapabilities(
         { id: "s", title: "S", persona: "tester", interactive_exploration: { enabled: true } },
-        { commandMode: "run", clickSafeOverride: true }
+        { commandMode: "run" }
       ).capabilities.safe_click
     ).toBe(false);
   });

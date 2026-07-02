@@ -290,7 +290,7 @@ Started the agentic interactive audit foundation without weakening the hardened 
 
 - Added an explicit capability model for `observe`, `hover`, `focus`, `scroll`, `safe_click`, `navigation`, `typing`, `form_submit`, and `destructive_action`.
 - Kept standalone `explore --click-safe` as the only CLI path that enables safe clicks outside a scenario.
-- Kept `run --interactive --click-safe` from enabling clicks; scenario-driven clicking still requires `interactive_exploration.click_all_safe_controls: true`.
+- Rejects `run --interactive --click-safe`; scenario-driven clicking still requires `interactive_exploration.click_all_safe_controls: true`.
 - Added safe-click allow/skip decisions and reasons to action records and contact-sheet rows.
 - Documented the policy in `docs/SAFETY_POLICY.md`.
 
