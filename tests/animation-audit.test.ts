@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  animationTraceCriticalActionHideIndicators,
   animationTraceInconsistentMotionTokens,
   animationTraceJankIndicators,
   resolveAnimationAuditOptions
@@ -93,6 +94,36 @@ describe("animation audit", () => {
     expect(animationTraceInconsistentMotionTokens(trace)).toContain("duration tokens vary from 120ms to 600ms");
   });
 
+  it("detects visibility-affecting motion on a critical action target from trace evidence", () => {
+    const trace: AnimationTrace = {
+      actionId: "a001",
+      enabled: true,
+      maxAnimationMs: 1200,
+      compareReducedMotion: false,
+      layoutShiftApproximationPx: 0,
+      riskyProperties: [],
+      normal: [
+        animationTarget({
+          id: "primary",
+          text: "Create first project",
+          transitionProperty: "opacity",
+          transitionDurationMs: 420
+        }),
+        animationTarget({
+          id: "secondary",
+          transitionProperty: "opacity",
+          transitionDurationMs: 80
+        })
+      ],
+      reducedMotionStillAnimating: false
+    };
+
+    expect(animationTraceCriticalActionHideIndicators(trace, "primary")).toContain(
+      "critical action target transitions opacity for 420ms"
+    );
+    expect(animationTraceCriticalActionHideIndicators(trace, "secondary")).toEqual([]);
+  });
+
   it("writes per-action animation traces and evidence-backed motion findings when enabled", async () => {
     const traceRoot = await tempTraceRoot();
     try {
@@ -171,6 +202,57 @@ describe("animation audit", () => {
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("Animation trace:");
       expect(contactSheet).toContain("a001-animation-trace.json");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("reports primary CTA visibility-affecting motion as critical action evidence", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button {
+              position: absolute;
+              left: 32px;
+              top: 48px;
+              width: 180px;
+              height: 44px;
+              transition-property: opacity;
+              transition-duration: 420ms;
+              transition-timing-function: ease;
+            }
+          </style>
+          <button>Create first project</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "critical-motion",
+          title: "Critical motion",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Create first project"] } },
+          interactive_exploration: { enabled: true, mode: "agentic" },
+          animation_audit: {
+            enabled: true,
+            max_animation_ms: 1000
+          }
+        }
+      });
+
+      expect(result.actions[0].targetCategory).toBe("primary_cta");
+      expect(result.findings.map((finding) => finding.detector)).toContain("animation_hides_critical_action");
+      expect(
+        result.findings.find((finding) => finding.detector === "animation_hides_critical_action")?.evidencePaths?.animationTrace
+      ).toContain("a001-animation-trace.json");
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        actions: Array<{ findingDetectors: string[] }>;
+      };
+      expect(actionTrace.actions[0].findingDetectors).toContain("animation_hides_critical_action");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

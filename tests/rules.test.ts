@@ -55,6 +55,7 @@ const knownDetectors = [
   "dag_canvas_excessive_unused_space",
   "empty_dag_column_without_explanation",
   "animation_ignores_reduced_motion",
+  "animation_hides_critical_action",
   "animation_duration_blocks_task",
   "animation_causes_layout_shift",
   "animation_uses_layout_paint_properties",

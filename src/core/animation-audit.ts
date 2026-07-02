@@ -312,3 +312,24 @@ export function animationTraceInconsistentMotionTokens(trace: AnimationTrace): s
 
   return issues;
 }
+
+export function animationTraceCriticalActionHideIndicators(trace: AnimationTrace, targetId: string): string[] {
+  const target = trace.normal.find((item) => item.id === targetId);
+  if (!target) {
+    return [];
+  }
+
+  const transitionProperties = splitProperties(target.transitionProperty);
+  const visibilityAffectingProperties = transitionProperties.filter((property) =>
+    ["opacity", "filter", "all"].includes(property)
+  );
+  const transitionTotalMs = target.transitionDurationMs + target.transitionDelayMs;
+
+  if (transitionTotalMs <= 150 || visibilityAffectingProperties.length === 0) {
+    return [];
+  }
+
+  return [
+    `critical action target transitions ${visibilityAffectingProperties.join(", ")} for ${transitionTotalMs}ms`
+  ];
+}

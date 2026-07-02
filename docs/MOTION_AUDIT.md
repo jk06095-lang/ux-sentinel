@@ -39,6 +39,7 @@ The contact sheet links the animation trace beside pointer trace and focus evide
 The current deterministic motion batch includes:
 
 - `animation_ignores_reduced_motion`
+- `animation_hides_critical_action`
 - `animation_duration_blocks_task`
 - `animation_causes_layout_shift`
 - `animation_uses_layout_paint_properties`
@@ -46,6 +47,7 @@ The current deterministic motion batch includes:
 - `inconsistent_motion_tokens`
 
 Reduced-motion comparison is optional and only runs when `compare_reduced_motion: true`. It emulates `prefers-reduced-motion: reduce` and compares whether elements that animate normally still report animation or transition evidence under the reduced-motion preference.
+Critical-action hiding findings only fire for targets classified as `primary_cta`, and only when the primary action itself has visibility-affecting transition evidence such as `opacity`, `filter`, or `all` lasting more than 150ms.
 Jank and token-consistency findings are deterministic trace heuristics: they use visible animated element counts, risky property evidence, target bbox movement, duration spread, and easing spread from `actions/aNNN-animation-trace.json`.
 
 ## Limits

@@ -9,6 +9,7 @@ import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
 import { recordPointerTrace } from "./pointer-trace.js";
 import {
+  animationTraceCriticalActionHideIndicators,
   animationTraceInconsistentMotionTokens,
   animationTraceJankIndicators,
   animationTraceHasLongDuration,
@@ -40,6 +41,7 @@ import type {
   InteractiveCapabilityPolicy,
   InteractiveCommandMode,
   InteractiveExplorationResult,
+  InteractiveTargetCategory,
   InteractiveTarget,
   NetworkIssue,
   PointerPoint,
@@ -1064,7 +1066,14 @@ function buildFeedbackFindings(action: InteractiveActionRecord, diff: StateDiff,
   ];
 }
 
-function buildAnimationFindings(trace: AnimationTrace, tracePath: string, target: InteractiveTarget, actionId: string, config: InteractiveConfig): Finding[] {
+function buildAnimationFindings(
+  trace: AnimationTrace,
+  tracePath: string,
+  target: InteractiveTarget,
+  actionId: string,
+  config: InteractiveConfig,
+  targetCategory?: InteractiveTargetCategory
+): Finding[] {
   const findings: Finding[] = [];
   const label = targetLabel(target) || target.tag;
   const evidencePrefix = `Animation trace: ${tracePath}. Target ${target.id} "${label}".`;
@@ -1124,6 +1133,23 @@ function buildAnimationFindings(trace: AnimationTrace, tracePath: string, target
         "Users who request reduced motion may still experience motion that distracts from or blocks the task.",
         "Add prefers-reduced-motion styles that disable or substantially shorten non-essential motion.",
         "Rerun the motion audit with reduced-motion comparison enabled and confirm no non-essential animation remains.",
+        actionId
+      )
+    );
+  }
+
+  const criticalActionHideIndicators =
+    targetCategory === "primary_cta" ? animationTraceCriticalActionHideIndicators(trace, target.id) : [];
+  if (criticalActionHideIndicators.length) {
+    findings.push(
+      finding(
+        "animation_hides_critical_action",
+        "Animation may hide the critical action",
+        "P1",
+        `${evidencePrefix} Target category: ${targetCategory}. Indicators: ${criticalActionHideIndicators.join("; ")}.`,
+        "A first-time user may lose sight of the primary action while trying to complete the main task.",
+        "Keep the primary action visible during motion, avoid long opacity/filter transitions on the CTA, or provide immediate stable affordance.",
+        "Rerun the motion audit and confirm the primary CTA has no visibility-affecting transition longer than 150ms.",
         actionId
       )
     );
@@ -1751,7 +1777,7 @@ async function performTargetAction(
   const animationTrace = await recordAnimationTrace(page, liveTarget, actionId, actionsDir, config.animationAudit, liveTarget.bbox);
   if (animationTrace) {
     animationTracePath = animationTrace.path;
-    findings.push(...buildAnimationFindings(animationTrace.trace, animationTrace.path, liveTarget, actionId, config));
+    findings.push(...buildAnimationFindings(animationTrace.trace, animationTrace.path, liveTarget, actionId, config, planned.targetCategory));
   }
 
   await page.screenshot({ path: afterScreenshot, fullPage: false });

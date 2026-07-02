@@ -484,6 +484,7 @@ Interactive visual anomaly detectors:
 Opt-in motion audit detectors:
 
 - `animation_ignores_reduced_motion`
+- `animation_hides_critical_action`
 - `animation_duration_blocks_task`
 - `animation_causes_layout_shift`
 - `animation_uses_layout_paint_properties`

@@ -167,6 +167,7 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("a001-animation-trace.json");
     expect(docs).toContain("cursor target drift");
     expect(docs).toContain("animation_ignores_reduced_motion");
+    expect(docs).toContain("animation_hides_critical_action");
     expect(docs).toContain("animation_jank_detected");
     expect(docs).toContain("inconsistent_motion_tokens");
     expect(docs).toContain("UX_RULE_REGISTRY.md");
