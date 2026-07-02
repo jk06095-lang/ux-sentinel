@@ -63,6 +63,8 @@ describe("interactive exploration helpers", () => {
         <input type="password" aria-label="Account password" />
         <input type="button" value="Delete from input" />
         <button>Delete project</button>
+        <button>Account deletion</button>
+        <button>Irreversible action</button>
         <button>삭제</button>
         <button>제거</button>
         <button>결제</button>
@@ -88,6 +90,8 @@ describe("interactive exploration helpers", () => {
       expect(targets.find((target) => target.ariaLabel === "Upload evidence file")?.skipClickReason).toBe("unsafe input type");
       expect(targets.find((target) => target.ariaLabel === "Account password")?.skipClickReason).toBe("unsafe input type");
       expect(targets.find((target) => target.visibleText === "Delete from input")?.skipClickReason).toBe("dangerous label");
+      expect(targets.find((target) => target.visibleText === "Account deletion")?.skipClickReason).toBe("dangerous label");
+      expect(targets.find((target) => target.visibleText === "Irreversible action")?.skipClickReason).toBe("dangerous label");
       for (const label of dangerousKoreanLabels) {
         expect(targets.find((target) => target.visibleText === label)?.safeToClick).toBe(false);
         expect(targets.find((target) => target.visibleText === label)?.skipClickReason).toBe("dangerous label");
@@ -121,6 +125,8 @@ describe("interactive exploration helpers", () => {
 
   it("detects dangerous click labels", () => {
     expect(isDangerousClickLabel("Delete this project")).toBe(true);
+    expect(isDangerousClickLabel("Account deletion")).toBe(true);
+    expect(isDangerousClickLabel("Irreversible action")).toBe(true);
     expect(isDangerousClickLabel("삭제")).toBe(true);
     expect(isDangerousClickLabel("제거")).toBe(true);
     expect(isDangerousClickLabel("결제")).toBe(true);
@@ -827,6 +833,8 @@ describe("interactive exploration helpers", () => {
         url: dataUrl(`
           <button onclick="document.body.dataset.created='true'">Create first project</button>
           <button>Delete project</button>
+          <button>Account deletion</button>
+          <button>Irreversible action</button>
           <a href="/billing">Billing</a>
           <div data-ux-role="dag-node">Graph node metadata</div>
           <form><button>Save profile</button></form>
@@ -859,13 +867,19 @@ describe("interactive exploration helpers", () => {
         }>;
       };
 
-      expect(actionTrace.clickCandidates).toHaveLength(9);
+      expect(actionTrace.clickCandidates).toHaveLength(11);
       expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Create first project")).toMatchObject({
         clickDecision: "allowed",
         planned: true,
         plannedActionId: "a001"
       });
       expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Delete project")?.clickDecisionReason).toBe(
+        "dangerous label"
+      );
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Account deletion")?.clickDecisionReason).toBe(
+        "dangerous label"
+      );
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Irreversible action")?.clickDecisionReason).toBe(
         "dangerous label"
       );
       expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Billing")?.clickDecisionReason).toBe("navigation link");

@@ -47,7 +47,7 @@ The runner does not click:
 - submit, file, or password inputs
 - navigation links unless navigation is explicitly allowed
 - metadata-only `data-ux-role` elements
-- targets with dangerous labels such as Delete, Remove, Pay, Purchase, Logout, Sign out, 삭제, 제거, 결제, or 로그아웃
+- targets with dangerous labels such as Delete, Remove, Pay, Purchase, Logout, Sign out, Account deletion, Deletion, Irreversible, 삭제, 제거, 결제, or 로그아웃
 - safe-click candidates whose pointer trace shows the final hit-test drifted away from the intended target
 
 ## Evidence Policy

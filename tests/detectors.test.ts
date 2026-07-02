@@ -263,6 +263,42 @@ describe("detectors", () => {
     );
   });
 
+  it("detects account deletion and irreversible labels as destructive actions", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Account deletion", "Irreversible action"],
+      elements: [
+        baseElement({
+          id: "account-deletion",
+          tag: "button",
+          role: "button",
+          visibleText: "Account deletion",
+          bbox: { x: 40, y: 80, width: 180, height: 44 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        }),
+        baseElement({
+          id: "irreversible",
+          tag: "button",
+          role: "button",
+          visibleText: "Irreversible action",
+          bbox: { x: 40, y: 140, width: 180, height: 44 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        })
+      ]
+    });
+
+    const findings = runDetectors(screenMap, scenario).filter(
+      (finding) => finding.detector === "destructive_action_without_confirmation"
+    );
+
+    expect(findings.map((finding) => finding.evidence)).toEqual(
+      expect.arrayContaining([expect.stringContaining("Account deletion"), expect.stringContaining("Irreversible action")])
+    );
+  });
+
   it("detects primary hierarchy conflicts and inconsistent action labels", () => {
     const screenMap = baseScreenMap({
       visibleText: ["Create first project", "Create project", "Learn more", "Open", "Open", "Save", "Save changes"],

@@ -11,7 +11,21 @@ import { defaultPreferredLabels } from "./scenario.js";
 
 const emptyStateHints = ["No projects", "Nothing here", "Empty", "아직", "없습니다", "비어", "0개"];
 
-const destructiveHints = ["delete", "remove", "pay", "purchase", "logout", "sign out", "삭제", "제거", "결제", "로그아웃"];
+const destructiveHints = [
+  "delete",
+  "remove",
+  "pay",
+  "purchase",
+  "logout",
+  "sign out",
+  "account deletion",
+  "deletion",
+  "irreversible",
+  "삭제",
+  "제거",
+  "결제",
+  "로그아웃"
+];
 const confirmationHints = ["confirm", "confirmation", "are you sure", "undo", "복구", "확인"];
 
 const recoveryHints = ["retry", "try again", "back", "go back", "refresh", "recover", "restore", "contact support", "help"];
