@@ -209,6 +209,25 @@ describe("Codex integration docs", () => {
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
   });
 
+  it("ships the high-priority detector demo pair and verifies it in demo:verify", () => {
+    expect(existsSync(path.join(repoRoot, "demo/high-priority-broken.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/high-priority-fixed.html"))).toBe(true);
+
+    const scenario = readText("demo/scenarios/high-priority-detectors.yaml");
+    expect(scenario).toContain("click_target_too_small");
+    expect(scenario).toContain("visible_label_not_in_accessible_name");
+    expect(scenario).toContain("looks_clickable_but_not_actionable");
+    expect(scenario).toContain("destructive_action_without_confirmation");
+
+    const verifier = readText("scripts/verify-demo.mjs");
+    expect(verifier).toContain("/high-priority-broken");
+    expect(verifier).toContain("/high-priority-fixed");
+
+    const readme = readText("README.md");
+    expect(readme).toContain("demo/high-priority-broken.html");
+    expect(readme).toContain("demo/scenarios/high-priority-detectors.yaml");
+  });
+
   it("keeps the README copy prompt self-contained for clone fallback", () => {
     const readme = readText("README.md");
 

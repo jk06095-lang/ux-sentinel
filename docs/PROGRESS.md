@@ -431,3 +431,12 @@ Added graph/DAG detector coverage that only runs when `visual_anomaly_contract.g
 - `edge_crosses_critical_label` flags graph edge bboxes intersecting critical graph label bboxes.
 
 These checks use `data-ux-role`, SVG/canvas tags, bbox intersection, and text truncation evidence rather than visual AI.
+
+### Checkpoint: High-Priority Detector Demo Pair
+
+Added a second broken/fixed demo pair for the first high-priority static detector batch:
+
+- `demo/high-priority-broken.html` intentionally exercises `click_target_too_small`, `visible_label_not_in_accessible_name`, `looks_clickable_but_not_actionable`, and `destructive_action_without_confirmation`.
+- `demo/high-priority-fixed.html` fixes the same UI by using standard target sizes, aligned visible/accessibility labels, real actionable affordances, and confirmation/undo copy for the destructive control.
+- `demo/scenarios/high-priority-detectors.yaml` lists those detector ids as explicit fail conditions.
+- `npm run demo:verify` now checks the original empty-state broken/fixed pair and the high-priority detector broken/fixed pair.

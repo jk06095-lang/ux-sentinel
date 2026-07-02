@@ -10,6 +10,8 @@ const routes = new Map([
   ["/", "fixed.html"],
   ["/broken", "broken.html"],
   ["/fixed", "fixed.html"],
+  ["/high-priority-broken", "high-priority-broken.html"],
+  ["/high-priority-fixed", "high-priority-fixed.html"],
   ["/dashboard", "broken.html"]
 ]);
 

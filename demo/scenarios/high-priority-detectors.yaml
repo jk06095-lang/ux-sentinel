@@ -1,0 +1,27 @@
+id: high-priority-detectors
+title: High-priority perception mismatch detectors
+persona: first-time-user
+mode: visual_contract
+
+goal:
+  user_wants: "Create the first project without confusing or unsafe controls"
+  primary_intent: "create_project"
+
+visual_contract:
+  page_must_answer:
+    - "What is the primary next action?"
+    - "Which controls are safe to use?"
+    - "What happens before a destructive action?"
+  primary_cta:
+    preferred_labels:
+      - "Create first project"
+      - "Create project"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+
+fail_conditions:
+  - click_target_too_small
+  - visible_label_not_in_accessible_name
+  - looks_clickable_but_not_actionable
+  - destructive_action_without_confirmation

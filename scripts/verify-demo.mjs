@@ -35,11 +35,11 @@ function waitForServer() {
   });
 }
 
-function runScenario(path, expectedStatus) {
+function runScenario(scenarioPath, path, expectedStatus) {
   const result = spawnSync(process.execPath, [
     "dist/cli.js",
     "run",
-    "demo/scenarios/onboarding-empty-state.yaml",
+    scenarioPath,
     "--url",
     `http://127.0.0.1:${port}${path}`
   ], {
@@ -56,8 +56,10 @@ function runScenario(path, expectedStatus) {
 
 try {
   await waitForServer();
-  runScenario("/broken", 1);
-  runScenario("/fixed", 0);
+  runScenario("demo/scenarios/onboarding-empty-state.yaml", "/broken", 1);
+  runScenario("demo/scenarios/onboarding-empty-state.yaml", "/fixed", 0);
+  runScenario("demo/scenarios/high-priority-detectors.yaml", "/high-priority-broken", 1);
+  runScenario("demo/scenarios/high-priority-detectors.yaml", "/high-priority-fixed", 0);
   settled = true;
   stopServer();
   console.log("demo verification passed");

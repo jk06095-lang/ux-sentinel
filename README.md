@@ -362,6 +362,11 @@ The demo includes two local pages:
 - `demo/broken.html`: dashboard empty state with only a tiny `+` icon button and `aria-label="Create first project"`.
 - `demo/fixed.html`: dashboard empty state with a visible `Create first project` CTA.
 
+It also includes a high-priority detector pair:
+
+- `demo/high-priority-broken.html`: intentionally triggers small click target, visible-label/accessibility-name mismatch, clickable-looking non-action, and destructive-action-without-confirmation findings.
+- `demo/high-priority-fixed.html`: fixes the same UI with a correctly named primary CTA, standard target sizes, real secondary action affordance, and visible confirmation/undo copy.
+
 Run the full demo gate:
 
 ```bash
@@ -378,6 +383,12 @@ Verdict: fail
 Scenario: onboarding-empty-state
 Verdict: pass
 ...
+Scenario: high-priority-detectors
+Verdict: fail
+...
+Scenario: high-priority-detectors
+Verdict: pass
+...
 demo verification passed
 ```
 
@@ -392,6 +403,8 @@ Then use a second terminal for the checks:
 ```bash
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/broken
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/fixed
+node dist/cli.js run demo/scenarios/high-priority-detectors.yaml --url http://127.0.0.1:4173/high-priority-broken
+node dist/cli.js run demo/scenarios/high-priority-detectors.yaml --url http://127.0.0.1:4173/high-priority-fixed
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250 --click-safe
 node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20
