@@ -6,6 +6,13 @@
 - url: http://127.0.0.1:4173/broken
 - result: fail
 
+## Evidence Artifacts
+
+- screenshot: `.ux-sentinel/traces/<timestamp>/screenshot.png`
+- screen-map: `.ux-sentinel/traces/<timestamp>/screen-map.json`
+- html overlay: `.ux-sentinel/traces/<timestamp>/screen-map.html`
+- accessibility snapshot: `.ux-sentinel/traces/<timestamp>/accessibility.json`
+
 ## Goal
 
 Fix the visible UI perception mismatch without changing the product scope.
@@ -33,7 +40,8 @@ Fix the visible UI perception mismatch without changing the product scope.
 
 ## Forbidden Fixes
 
-- Do not suppress or delete ux-sentinel checks to make the report pass.
+- Do not suppress or delete checks to make the report pass.
+- Do not change scenarios, fail conditions, or visual contracts just to hide findings.
 - Do not rely on aria-label alone for a primary CTA.
 - Do not add SaaS, auth, database, hosted runner, Chrome extension, or required LLM API behavior.
 

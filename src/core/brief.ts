@@ -7,18 +7,41 @@ function matchLine(source: string, label: string): string {
 }
 
 function extractFindings(report: string): string[] {
-  const matches = report.match(/^### UX-\d{3}: .+(?:\n- .+)*/gm);
-  return matches ?? [];
+  const findingsStart = report.search(/^## Findings\s*$/m);
+  if (findingsStart === -1) {
+    return [];
+  }
+
+  const afterFindingsHeading = report.slice(findingsStart).replace(/^## Findings\s*\r?\n/m, "");
+  const nextSectionStart = afterFindingsHeading.search(/^##\s+/m);
+  const findingsSection = nextSectionStart === -1 ? afterFindingsHeading : afterFindingsHeading.slice(0, nextSectionStart);
+  const matches = findingsSection.match(/^### UX-\d{3}: .+(?:\r?\n(?!### UX-\d{3}: |## ).*)*/gm);
+  return matches?.map((finding) => finding.trim()).filter(Boolean) ?? [];
+}
+
+function artifactLine(label: string, value: string): string | undefined {
+  return value === "unknown" ? undefined : `- ${label}: ${value}`;
+}
+
+function formatEvidenceArtifacts(report: string): string {
+  const lines = [
+    artifactLine("screenshot", matchLine(report, "screenshot")),
+    artifactLine("screen-map", matchLine(report, "screen-map")),
+    artifactLine("html overlay", matchLine(report, "html overlay")),
+    artifactLine("accessibility snapshot", matchLine(report, "accessibility snapshot")),
+    artifactLine("interactive action trace", matchLine(report, "interactive action trace")),
+    artifactLine("interactive state graph", matchLine(report, "interactive state graph")),
+    artifactLine("interactive contact sheet", matchLine(report, "interactive contact sheet")),
+    artifactLine("interactive anomalies", matchLine(report, "interactive anomalies"))
+  ].filter(Boolean);
+
+  return lines.length ? lines.join("\n") : "- No artifact paths were parsed from the source report.";
 }
 
 export function buildCodexBriefMarkdown(report: string, sourceReport: string): string {
   const scenario = matchLine(report, "id");
   const url = matchLine(report, "url");
   const result = matchLine(report, "result");
-  const actionTrace = matchLine(report, "interactive action trace");
-  const stateGraph = matchLine(report, "interactive state graph");
-  const contactSheet = matchLine(report, "interactive contact sheet");
-  const anomalies = matchLine(report, "interactive anomalies");
   const findings = extractFindings(report);
 
   return `# Codex Patch Brief
@@ -28,10 +51,9 @@ export function buildCodexBriefMarkdown(report: string, sourceReport: string): s
 - scenario: ${scenario}
 - url: ${url}
 - result: ${result}
-- interactive action trace: ${actionTrace}
-- interactive state graph: ${stateGraph}
-- interactive contact sheet: ${contactSheet}
-- interactive anomalies: ${anomalies}
+
+## Evidence Artifacts
+${formatEvidenceArtifacts(report)}
 
 ## Goal
 
