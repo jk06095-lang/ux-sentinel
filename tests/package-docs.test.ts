@@ -137,6 +137,7 @@ describe("Codex integration docs", () => {
     const docs = [
       readText("README.md"),
       readText("docs/INTERACTIVE_AUDIT.md"),
+      readText("docs/AGENTIC_INTERACTIVE_AUDIT.md"),
       readText("docs/SAFETY_POLICY.md"),
       readText("docs/prompts/04-interactive-visual-audit.md")
     ].join("\n");
@@ -149,6 +150,8 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("contact-sheet.html");
     expect(docs).toContain("bbox heuristics");
     expect(docs).toContain("Capability Model");
+    expect(docs).toContain("plannedReason");
+    expect(docs).toContain("targetCategory");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {

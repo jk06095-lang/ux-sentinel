@@ -196,6 +196,7 @@ node dist/cli.js codex-brief .ux-sentinel/reports/<report>.md
 Interactive audit docs:
 
 - [docs/INTERACTIVE_AUDIT.md](docs/INTERACTIVE_AUDIT.md)
+- [docs/AGENTIC_INTERACTIVE_AUDIT.md](docs/AGENTIC_INTERACTIVE_AUDIT.md)
 - [docs/SAFETY_POLICY.md](docs/SAFETY_POLICY.md)
 - [docs/prompts/04-interactive-visual-audit.md](docs/prompts/04-interactive-visual-audit.md)
 

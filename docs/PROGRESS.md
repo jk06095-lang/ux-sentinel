@@ -293,3 +293,13 @@ Started the agentic interactive audit foundation without weakening the hardened 
 - Kept `run --interactive --click-safe` from enabling clicks; scenario-driven clicking still requires `interactive_exploration.click_all_safe_controls: true`.
 - Added safe-click allow/skip decisions and reasons to action records and contact-sheet rows.
 - Documented the policy in `docs/SAFETY_POLICY.md`.
+
+### Checkpoint: Agentic Planner Foundation
+
+Added the first deterministic planner layer for agentic interactive audit:
+
+- Added target classification for primary CTAs, secondary actions, navigation, tabs, menus, dropdowns, dialogs, tooltips/help, cards, expanders, graph/DAG nodes and controls, form-adjacent controls, scroll containers, and ambiguous targets.
+- Added an action planner that preserves linear order by default and prioritizes meaningful UX exploration when `interactive_exploration.mode: agentic`.
+- Added `plannedReason`, `targetCategory`, `riskLevel`, `planDepth`, `planPriority`, and `plannedSafeClick` to action records.
+- Added planner metadata to `action-trace.json` and contact-sheet rows.
+- Kept safe-click policy intact: planner click budgets can reduce clicks, but cannot enable clicks without the existing capability policy.

@@ -13,6 +13,23 @@ export type InteractiveCapability =
   | "destructive_action";
 export type InteractiveCapabilities = Record<InteractiveCapability, boolean>;
 export type ClickDecision = "allowed" | "skipped" | "not_applicable";
+export type InteractiveTargetCategory =
+  | "primary_cta"
+  | "secondary_cta"
+  | "navigation"
+  | "tab"
+  | "menu"
+  | "dropdown"
+  | "dialog_trigger"
+  | "tooltip_help_trigger"
+  | "card"
+  | "expandable_section"
+  | "graph_dag_node"
+  | "graph_dag_control"
+  | "form_adjacent_control"
+  | "scroll_container"
+  | "ambiguous_clickable";
+export type InteractiveRiskLevel = "low" | "medium" | "high";
 
 export interface InteractiveCapabilityPolicy {
   commandMode: InteractiveCommandMode;
@@ -234,6 +251,12 @@ export interface InteractiveActionRecord {
   clickSkippedReason?: string;
   clickDecision?: ClickDecision;
   clickDecisionReason?: string;
+  plannedReason?: string;
+  targetCategory?: InteractiveTargetCategory;
+  riskLevel?: InteractiveRiskLevel;
+  planDepth?: number;
+  planPriority?: number;
+  plannedSafeClick?: boolean;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;

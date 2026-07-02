@@ -288,7 +288,7 @@ describe("interactive exploration helpers", () => {
       });
       expect(stopped.actions).toHaveLength(1);
       expect(stopped.actions[0].urlBefore).not.toBe(stopped.actions[0].urlAfter);
-      expect(stopped.summary.notes.join(" ")).toContain("stopped remaining baseline-collected targets");
+      expect(stopped.summary.notes.join(" ")).toContain("stopped remaining planned actions");
 
       const allowed = await interactiveExplorePage({
         url: dataUrl(html),
@@ -343,6 +343,47 @@ describe("interactive exploration helpers", () => {
 
       expect(result.actions[0].clicked).toBe(true);
       expect(result.actions[0].clickDecision).toBe("allowed");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("uses agentic planning to prioritize the scenario primary CTA", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button onclick="document.body.dataset.secondary='true'">Secondary settings</button>
+          <button onclick="document.body.dataset.created='true'">Create first project</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "agentic-priority",
+          title: "Agentic priority",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Create first project"] } },
+          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, max_clicks: 1 }
+        }
+      });
+
+      expect(result.actions).toHaveLength(1);
+      expect(result.actions[0].target.visibleText).toBe("Create first project");
+      expect(result.actions[0].targetCategory).toBe("primary_cta");
+      expect(result.actions[0].plannedReason).toContain("primary_cta");
+      expect(result.actions[0].riskLevel).toBe("low");
+      expect(result.actions[0].clicked).toBe(true);
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        planner: { mode: string; maxClicks: number; plannedActionCount: number };
+        actions: Array<{ targetCategory?: string; plannedReason?: string }>;
+      };
+      expect(actionTrace.planner.mode).toBe("agentic");
+      expect(actionTrace.planner.maxClicks).toBe(1);
+      expect(actionTrace.actions[0].targetCategory).toBe("primary_cta");
+      expect(actionTrace.actions[0].plannedReason).toContain("primary_cta");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

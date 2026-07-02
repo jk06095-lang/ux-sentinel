@@ -5,6 +5,7 @@ import { collectScreenMap, safeAccessibilitySnapshot } from "./observe-page.js";
 import { defaultPreferredLabels } from "./scenario.js";
 import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files.js";
 import { resolveInteractiveCapabilities } from "./capabilities.js";
+import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
 import type {
   ClickBlockage,
   ConsoleIssue,
@@ -33,6 +34,10 @@ export interface InteractiveExploreOptions {
 
 export interface InteractiveConfig {
   maxActions: number;
+  mode: string;
+  maxDepth: number;
+  maxClicks: number;
+  maxStateChanges: number;
   hoverAllClickables: boolean;
   clickAllSafeControls: boolean;
   focusAllKeyboardTargets: boolean;
@@ -157,8 +162,12 @@ function targetLabel(target: Pick<InteractiveTarget, "visibleText" | "ariaLabel"
 
 export function resolveInteractiveConfig(scenario?: Scenario, options?: InteractiveExploreOptions): InteractiveConfig {
   const source = scenario?.interactive_exploration;
+  const mode = source?.mode ?? "linear";
   const maxActions = options?.maxActions ?? source?.max_actions ?? 40;
   const settleMs = options?.settleMs ?? source?.settle_ms ?? 350;
+  const maxDepth = source?.max_depth ?? (mode === "agentic" ? 2 : 1);
+  const maxClicks = source?.max_clicks ?? (mode === "agentic" ? 20 : 250);
+  const maxStateChanges = source?.max_state_changes ?? (mode === "agentic" ? 40 : 250);
   const notes: string[] = [];
   if (source?.screenshot_before_after_each_action === false) {
     notes.push("Interactive audit always captures before/after screenshots so the contact sheet remains evidence-backed.");
@@ -172,6 +181,10 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
 
   return {
     maxActions: Math.max(1, Math.min(250, Math.floor(maxActions))),
+    mode,
+    maxDepth: Math.max(0, Math.min(8, Math.floor(maxDepth))),
+    maxClicks: Math.max(0, Math.min(250, Math.floor(maxClicks))),
+    maxStateChanges: Math.max(0, Math.min(250, Math.floor(maxStateChanges))),
     hoverAllClickables: source?.hover_all_clickables ?? true,
     clickAllSafeControls,
     focusAllKeyboardTargets: source?.focus_all_keyboard_targets ?? true,
@@ -833,10 +846,14 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
       const clickDecision = action.clickDecision
         ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
         : "not recorded";
+      const planned = action.plannedReason
+        ? `${action.targetCategory ?? "unknown"} / ${action.riskLevel ?? "unknown"} risk: ${action.plannedReason}`
+        : "not recorded";
       return `<article>
   <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
+  <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
@@ -958,7 +975,7 @@ export async function resolveLiveTarget(page: Page, target: InteractiveTarget): 
 
 async function skippedAction(
   page: Page,
-  target: InteractiveTarget,
+  planned: PlannedInteractiveAction,
   sequence: number,
   actionsDir: string,
   reason: string,
@@ -967,6 +984,7 @@ async function skippedAction(
   networkErrors: NetworkIssue[]
 ): Promise<InteractiveActionRecord> {
   const actionId = `a${String(sequence).padStart(3, "0")}`;
+  const target = planned.target;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
@@ -988,6 +1006,12 @@ async function skippedAction(
     clickSkippedReason: reason,
     clickDecision: "skipped",
     clickDecisionReason: reason,
+    plannedReason: planned.plannedReason,
+    targetCategory: planned.targetCategory,
+    riskLevel: planned.riskLevel,
+    planDepth: planned.depth,
+    planPriority: planned.priority,
+    plannedSafeClick: planned.plannedSafeClick,
     skipped: true,
     skipReason: reason,
     urlBefore,
@@ -1001,6 +1025,7 @@ async function skippedAction(
 function resolveClickDecision(
   target: InteractiveTarget,
   capabilities: InteractiveCapabilities,
+  planned: PlannedInteractiveAction,
   blockage?: ClickBlockage
 ): { decision: "allowed" | "skipped"; reason: string } {
   if (!target.safeToClick) {
@@ -1012,12 +1037,15 @@ function resolveClickDecision(
   if (blockage) {
     return { decision: "skipped", reason: "blocked by overlay" };
   }
+  if (!planned.plannedSafeClick) {
+    return { decision: "skipped", reason: planned.plannedClickSkipReason ?? "planner did not allocate a safe click" };
+  }
   return { decision: "allowed", reason: "safe_click capability enabled and target passed safe-click filtering" };
 }
 
 async function performTargetAction(
   page: Page,
-  target: InteractiveTarget,
+  planned: PlannedInteractiveAction,
   sequence: number,
   actionsDir: string,
   config: InteractiveConfig,
@@ -1029,6 +1057,7 @@ async function performTargetAction(
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
+  const target = planned.target;
   const locator = page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first();
   const findings: Finding[] = [];
   let clicked = false;
@@ -1040,7 +1069,7 @@ async function performTargetAction(
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
     return {
-      action: await skippedAction(page, target, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
+      action: await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
       findings
     };
   }
@@ -1052,7 +1081,8 @@ async function performTargetAction(
   if (blockage) {
     findings.push(buildBlockedClickFinding(liveTarget, blockage, actionId));
   }
-  const clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, blockage);
+  const livePlanned = { ...planned, target: liveTarget };
+  const clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, livePlanned, blockage);
 
   await page.mouse.move(liveTarget.center.x, liveTarget.center.y);
   await page.waitForTimeout(config.settleMs);
@@ -1096,6 +1126,12 @@ async function performTargetAction(
     clickSkippedReason,
     clickDecision: clickDecision.decision,
     clickDecisionReason: clickDecision.reason,
+    plannedReason: planned.plannedReason,
+    targetCategory: planned.targetCategory,
+    riskLevel: planned.riskLevel,
+    planDepth: planned.depth,
+    planPriority: planned.priority,
+    plannedSafeClick: planned.plannedSafeClick,
     urlBefore,
     urlAfter: page.url(),
     consoleErrorCount: screenMap.consoleErrors.length,
@@ -1122,8 +1158,8 @@ async function collectScrollableTargets(page: Page, avoidClickText: string[]): P
           (element.scrollHeight > element.clientHeight + 24 && ["auto", "scroll"].includes(style.overflowY)) ||
           (element.scrollWidth > element.clientWidth + 24 && ["auto", "scroll"].includes(style.overflowX));
         const label = normalize(element.innerText || element.textContent || element.getAttribute("aria-label") || "");
-        const id = `s${String(index + 1).padStart(3, "0")}`;
-        if (scrollable) {
+        const id = element.getAttribute("data-ux-sentinel-target-id") ?? `s${String(index + 1).padStart(3, "0")}`;
+        if (scrollable && !element.hasAttribute("data-ux-sentinel-target-id")) {
           element.setAttribute("data-ux-sentinel-target-id", id);
         }
         return {
@@ -1169,7 +1205,7 @@ async function collectScrollableTargets(page: Page, avoidClickText: string[]): P
 
 async function performScrollAction(
   page: Page,
-  target: InteractiveTarget,
+  planned: PlannedInteractiveAction,
   sequence: number,
   actionsDir: string,
   config: InteractiveConfig,
@@ -1182,12 +1218,13 @@ async function performScrollAction(
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
   const urlBefore = page.url();
+  const target = planned.target;
 
   await page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first().scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
     return {
-      action: await skippedAction(page, target, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
+      action: await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
       findings: []
     };
   }
@@ -1218,6 +1255,12 @@ async function performScrollAction(
       clickSkippedReason: "scroll only",
       clickDecision: "not_applicable",
       clickDecisionReason: "scroll action does not perform safe clicks",
+      plannedReason: planned.plannedReason,
+      targetCategory: planned.targetCategory,
+      riskLevel: planned.riskLevel,
+      planDepth: planned.depth,
+      planPriority: planned.priority,
+      plannedSafeClick: false,
       urlBefore,
       urlAfter: page.url(),
       consoleErrorCount: screenMap.consoleErrors.length,
@@ -1277,10 +1320,26 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
     findings.push(...detectVisualAnomalies(await collectVisualAnalysis(page, options.scenario), options.scenario, "baseline"));
 
     const targets = config.hoverAllClickables ? await collectVisibleInteractiveTargets(page, config.avoidClickText) : [];
+    const scrollTargets = config.scrollContainers ? await collectScrollableTargets(page, config.avoidClickText) : [];
+    const plannedActions = planInteractiveActions({
+      targets,
+      scrollTargets,
+      scenario: options.scenario,
+      config: {
+        mode: config.mode,
+        maxActions: config.maxActions,
+        maxDepth: config.maxDepth,
+        maxClicks: config.maxClicks,
+        maxStateChanges: config.maxStateChanges,
+        safeClickEnabled: config.capabilityPolicy.capabilities.safe_click
+      }
+    });
     let sequence = 1;
-    let stoppedForNavigation = false;
-    for (const target of targets.slice(0, config.maxActions)) {
-      const result = await performTargetAction(page, target, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
+    for (const plannedAction of plannedActions) {
+      const result =
+        plannedAction.kind === "scroll"
+          ? await performScrollAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors)
+          : await performTargetAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
       actions.push(result.action);
       findings.push(...result.findings);
       sequence += 1;
@@ -1290,32 +1349,10 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         result.action.urlBefore !== result.action.urlAfter &&
         !config.allowNavigation
       ) {
-        stoppedForNavigation = true;
         notes.push(
-          `Navigation changed URL from ${result.action.urlBefore} to ${result.action.urlAfter} after ${result.action.id}; stopped remaining baseline-collected targets.`
+          `Navigation changed URL from ${result.action.urlBefore} to ${result.action.urlAfter} after ${result.action.id}; stopped remaining planned actions.`
         );
         break;
-      }
-    }
-
-    if (config.scrollContainers && !stoppedForNavigation && sequence <= config.maxActions) {
-      const scrollTargets = await collectScrollableTargets(page, config.avoidClickText);
-      for (const target of scrollTargets.slice(0, config.maxActions - sequence + 1)) {
-        const result = await performScrollAction(page, target, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
-        actions.push(result.action);
-        findings.push(...result.findings);
-        sequence += 1;
-        if (
-          result.action.urlBefore &&
-          result.action.urlAfter &&
-          result.action.urlBefore !== result.action.urlAfter &&
-          !config.allowNavigation
-        ) {
-          notes.push(
-            `Navigation changed URL from ${result.action.urlBefore} to ${result.action.urlAfter} after ${result.action.id}; stopped remaining scroll targets.`
-          );
-          break;
-        }
       }
     }
 
@@ -1345,7 +1382,19 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       summary
     };
 
-    await writeJson(actionTracePath, { summary, capabilityPolicy: config.capabilityPolicy, actions });
+    await writeJson(actionTracePath, {
+      summary,
+      capabilityPolicy: config.capabilityPolicy,
+      planner: {
+        mode: config.mode,
+        maxActions: config.maxActions,
+        maxDepth: config.maxDepth,
+        maxClicks: config.maxClicks,
+        maxStateChanges: config.maxStateChanges,
+        plannedActionCount: plannedActions.length
+      },
+      actions
+    });
     await writeJson(anomaliesPath, numberedFindings);
     await writeText(contactSheetPath, buildContactSheetHtml(result));
 

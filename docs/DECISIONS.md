@@ -26,6 +26,7 @@ This file records product and technical decisions made during implementation.
 | 2026-07-03 | Add interactive audit as a deterministic local extension. | Complex UIs can pass static screenshots while hover panels, overlays, cards, and graph/DAG geometry still fail human perception; Playwright action traces and contact sheets keep the evidence inspectable without requiring LLM or vision APIs. | Accepted |
 | 2026-07-03 | Keep interactive audit click-safe by default. | Real frontend projects may have navigation, destructive controls, forms, and metadata-only graph elements; standalone `explore` should hover/focus/scroll only unless `--click-safe` is passed, and scenario clicks require explicit opt-in. | Accepted |
 | 2026-07-03 | Introduce capability-based safety before agentic planning. | The next agentic layer needs explicit permissions for observe, hover, focus, scroll, safe_click, navigation, typing, form_submit, and destructive_action so planning cannot silently weaken click safety. | Accepted |
+| 2026-07-03 | Gate prioritized planning behind `interactive_exploration.mode: agentic`. | Existing interactive runs should remain predictable, while agentic scenarios can opt into target classification, priority ordering, and action/click budgets. | Accepted |
 
 ## Pending Decisions
 
