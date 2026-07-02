@@ -63,6 +63,7 @@ describe("report generation", () => {
           overlay: ".ux-sentinel/traces/test/screen-map.html",
           actionsDir: ".ux-sentinel/traces/test/actions",
           actionTrace: ".ux-sentinel/traces/test/action-trace.json",
+          stateGraph: ".ux-sentinel/traces/test/state-graph.json",
           anomalies: ".ux-sentinel/traces/test/anomalies.json",
           contactSheet: ".ux-sentinel/traces/test/contact-sheet.html"
         },
@@ -86,6 +87,7 @@ describe("report generation", () => {
     expect(report).toContain("# UX Sentinel Report");
     expect(report).toContain("screen-map.html");
     expect(report).toContain("## Interactive Exploration");
+    expect(report).toContain("state-graph.json");
     expect(report).toContain("contact-sheet.html");
     expect(report).toContain("## Codex Patch Brief");
     expect(report).toContain("Do not change scenarios or visual contracts");

@@ -303,3 +303,13 @@ Added the first deterministic planner layer for agentic interactive audit:
 - Added `plannedReason`, `targetCategory`, `riskLevel`, `planDepth`, `planPriority`, and `plannedSafeClick` to action records.
 - Added planner metadata to `action-trace.json` and contact-sheet rows.
 - Kept safe-click policy intact: planner click budgets can reduce clicks, but cannot enable clicks without the existing capability policy.
+
+### Checkpoint: State Graph Evidence
+
+Added reconstructable state evidence for interactive audit:
+
+- Added `state-graph.json` with state nodes and action edges.
+- Added state node hashes for visible text, DOM structure, and accessibility snapshots.
+- Added per-action `aNNN-dom-diff.json` and `aNNN-a11y-diff.json`.
+- Added `beforeStateId`, `afterStateId`, `domDiff`, and `accessibilityDiff` to action records.
+- Added state graph and diff paths to reports, Codex briefs, CLI summaries, and contact-sheet rows.

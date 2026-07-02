@@ -41,17 +41,20 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `screen-map.html`
 - `accessibility.json`
 - `action-trace.json`
+- `state-graph.json`
 - `anomalies.json`
 - `contact-sheet.html`
 - `actions/a001-before.png`
 - `actions/a001-after.png`
 - `actions/a001-screen-map.json`
+- `actions/a001-dom-diff.json`
+- `actions/a001-a11y-diff.json`
 
 The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, and finding detectors linked to that action.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
-Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, or a previous action changed the page. The action trace also records the resolved capability policy, planner budget, target category, planned reason, risk level, and each action's safe-click decision and reason.
+Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, or a previous action changed the page. The action trace also records the resolved capability policy, planner budget, target category, planned reason, risk level, and each action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, DOM diff files, accessibility diff files, and finding detectors.
 
 ## Safe Target Collection
 

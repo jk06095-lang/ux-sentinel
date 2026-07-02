@@ -6,6 +6,15 @@ import { defaultPreferredLabels } from "./scenario.js";
 import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files.js";
 import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
+import {
+  buildStateGraph,
+  collectStateSnapshot,
+  diffAccessibilitySnapshots,
+  diffStateSnapshots,
+  type StateGraphEdge,
+  type StateGraphNode,
+  type StateSnapshot
+} from "./state-graph.js";
 import type {
   ClickBlockage,
   ConsoleIssue,
@@ -19,6 +28,7 @@ import type {
   InteractiveTarget,
   NetworkIssue,
   Scenario,
+  ScreenMap,
   Severity
 } from "./types.js";
 
@@ -48,6 +58,12 @@ export interface InteractiveConfig {
   allowNavigation: boolean;
   capabilityPolicy: InteractiveCapabilityPolicy;
   notes: string[];
+}
+
+interface ActionExecutionResult {
+  action: InteractiveActionRecord;
+  findings: Finding[];
+  screenMap: ScreenMap;
 }
 
 export interface VisualBox {
@@ -855,6 +871,8 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
+  <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
+  <p><strong>Diffs:</strong> ${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / ${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
   <div class="shots">
@@ -911,6 +929,51 @@ async function captureActionScreenMap(page: Page, filePath: string, consoleError
   const screenMap = await collectScreenMap(page, page.url(), consoleErrors, networkErrors);
   await writeJson(filePath, screenMap);
   return screenMap;
+}
+
+async function recordActionStateEvidence(options: {
+  page: Page;
+  action: InteractiveActionRecord;
+  screenMap: ScreenMap;
+  beforeState: StateSnapshot;
+  stateSequence: number;
+  actionsDir: string;
+}): Promise<{ nextState: StateSnapshot; edge: StateGraphEdge }> {
+  const afterAccessibilitySnapshot = await safeAccessibilitySnapshot(options.page);
+  const afterState = await collectStateSnapshot(options.page, {
+    id: `s${String(options.stateSequence).padStart(3, "0")}`,
+    screenshot: options.action.afterScreenshot,
+    screenMap: options.screenMap,
+    screenMapPath: options.action.screenMap,
+    accessibilitySnapshot: afterAccessibilitySnapshot
+  });
+  const domDiffPath = path.join(options.actionsDir, `${options.action.id}-dom-diff.json`);
+  const accessibilityDiffPath = path.join(options.actionsDir, `${options.action.id}-a11y-diff.json`);
+  await writeJson(domDiffPath, diffStateSnapshots(options.beforeState, afterState));
+  await writeJson(accessibilityDiffPath, diffAccessibilitySnapshots(options.beforeState, afterState));
+
+  options.action.beforeStateId = options.beforeState.node.id;
+  options.action.afterStateId = afterState.node.id;
+  options.action.domDiff = domDiffPath;
+  options.action.accessibilityDiff = accessibilityDiffPath;
+
+  return {
+    nextState: afterState,
+    edge: {
+      id: `e${String(options.action.sequence).padStart(3, "0")}`,
+      actionId: options.action.id,
+      actionType: options.action.actionType,
+      targetId: options.action.target.id,
+      targetCategory: options.action.targetCategory,
+      beforeStateId: options.beforeState.node.id,
+      afterStateId: afterState.node.id,
+      beforeScreenshot: options.action.beforeScreenshot,
+      afterScreenshot: options.action.afterScreenshot,
+      domDiff: domDiffPath,
+      accessibilityDiff: accessibilityDiffPath,
+      findingDetectors: options.action.findingDetectors
+    }
+  };
 }
 
 export type LiveTargetResult =
@@ -982,7 +1045,7 @@ async function skippedAction(
   urlBefore: string,
   consoleErrors: ConsoleIssue[],
   networkErrors: NetworkIssue[]
-): Promise<InteractiveActionRecord> {
+): Promise<{ action: InteractiveActionRecord; screenMap: ScreenMap }> {
   const actionId = `a${String(sequence).padStart(3, "0")}`;
   const target = planned.target;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
@@ -994,31 +1057,34 @@ async function skippedAction(
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
 
   return {
-    id: actionId,
-    sequence,
-    actionType: "hover",
-    target,
-    beforeScreenshot,
-    afterScreenshot,
-    screenMap: screenMapPath,
-    clicked: false,
-    focused: false,
-    clickSkippedReason: reason,
-    clickDecision: "skipped",
-    clickDecisionReason: reason,
-    plannedReason: planned.plannedReason,
-    targetCategory: planned.targetCategory,
-    riskLevel: planned.riskLevel,
-    planDepth: planned.depth,
-    planPriority: planned.priority,
-    plannedSafeClick: planned.plannedSafeClick,
-    skipped: true,
-    skipReason: reason,
-    urlBefore,
-    urlAfter: page.url(),
-    consoleErrorCount: screenMap.consoleErrors.length,
-    networkErrorCount: screenMap.networkErrors.length,
-    findingDetectors: []
+    action: {
+      id: actionId,
+      sequence,
+      actionType: "hover",
+      target,
+      beforeScreenshot,
+      afterScreenshot,
+      screenMap: screenMapPath,
+      clicked: false,
+      focused: false,
+      clickSkippedReason: reason,
+      clickDecision: "skipped",
+      clickDecisionReason: reason,
+      plannedReason: planned.plannedReason,
+      targetCategory: planned.targetCategory,
+      riskLevel: planned.riskLevel,
+      planDepth: planned.depth,
+      planPriority: planned.priority,
+      plannedSafeClick: planned.plannedSafeClick,
+      skipped: true,
+      skipReason: reason,
+      urlBefore,
+      urlAfter: page.url(),
+      consoleErrorCount: screenMap.consoleErrors.length,
+      networkErrorCount: screenMap.networkErrors.length,
+      findingDetectors: []
+    },
+    screenMap
   };
 }
 
@@ -1052,7 +1118,7 @@ async function performTargetAction(
   scenario: Scenario | undefined,
   consoleErrors: ConsoleIssue[],
   networkErrors: NetworkIssue[]
-): Promise<{ action: InteractiveActionRecord; findings: Finding[] }> {
+): Promise<ActionExecutionResult> {
   const actionId = `a${String(sequence).padStart(3, "0")}`;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
@@ -1068,8 +1134,9 @@ async function performTargetAction(
   await locator.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
+    const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors);
     return {
-      action: await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
+      ...skipped,
       findings
     };
   }
@@ -1139,7 +1206,7 @@ async function performTargetAction(
     findingDetectors: findings.map((item) => item.detector)
   };
 
-  return { action, findings };
+  return { action, findings, screenMap };
 }
 
 async function collectScrollableTargets(page: Page, avoidClickText: string[]): Promise<InteractiveTarget[]> {
@@ -1212,7 +1279,7 @@ async function performScrollAction(
   scenario: Scenario | undefined,
   consoleErrors: ConsoleIssue[],
   networkErrors: NetworkIssue[]
-): Promise<{ action: InteractiveActionRecord; findings: Finding[] }> {
+): Promise<ActionExecutionResult> {
   const actionId = `a${String(sequence).padStart(3, "0")}`;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
@@ -1223,8 +1290,9 @@ async function performScrollAction(
   await page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first().scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
+    const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors);
     return {
-      action: await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
+      ...skipped,
       findings: []
     };
   }
@@ -1267,7 +1335,8 @@ async function performScrollAction(
       networkErrorCount: screenMap.networkErrors.length,
       findingDetectors: findings.map((item) => item.detector)
     },
-    findings
+    findings,
+    screenMap
   };
 }
 
@@ -1282,6 +1351,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
   const screenMapPath = path.join(traceDir, "screen-map.json");
   const overlayPath = path.join(traceDir, "screen-map.html");
   const accessibilityPath = path.join(traceDir, "accessibility.json");
+  const stateGraphPath = path.join(traceDir, "state-graph.json");
   const actionTracePath = path.join(traceDir, "action-trace.json");
   const anomaliesPath = path.join(traceDir, "anomalies.json");
   const contactSheetPath = path.join(traceDir, "contact-sheet.html");
@@ -1289,6 +1359,8 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
   const networkErrors: NetworkIssue[] = [];
   const actions: InteractiveActionRecord[] = [];
   const findings: Finding[] = [];
+  const stateNodes: StateGraphNode[] = [];
+  const stateEdges: StateGraphEdge[] = [];
   const notes = [...config.notes];
 
   const browser = await chromium.launch({ headless: true });
@@ -1316,6 +1388,15 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
     const screenMap = await collectScreenMap(page, page.url(), consoleErrors, networkErrors);
     await writeJson(screenMapPath, screenMap);
     await writeText(overlayPath, buildScreenMapOverlay(screenMap, baseline));
+    let currentState = await collectStateSnapshot(page, {
+      id: "s000",
+      screenshot: baseline,
+      screenMap,
+      screenMapPath,
+      accessibilitySnapshot,
+      accessibilityPath
+    });
+    stateNodes.push(currentState.node);
 
     findings.push(...detectVisualAnomalies(await collectVisualAnalysis(page, options.scenario), options.scenario, "baseline"));
 
@@ -1335,11 +1416,24 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       }
     });
     let sequence = 1;
+    let stateSequence = 1;
     for (const plannedAction of plannedActions) {
       const result =
         plannedAction.kind === "scroll"
           ? await performScrollAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors)
           : await performTargetAction(page, plannedAction, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
+      const evidence = await recordActionStateEvidence({
+        page,
+        action: result.action,
+        screenMap: result.screenMap,
+        beforeState: currentState,
+        stateSequence,
+        actionsDir
+      });
+      currentState = evidence.nextState;
+      stateNodes.push(evidence.nextState.node);
+      stateEdges.push(evidence.edge);
+      stateSequence += 1;
       actions.push(result.action);
       findings.push(...result.findings);
       sequence += 1;
@@ -1376,6 +1470,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         accessibility: accessibilityPath,
         actionsDir,
         actionTrace: actionTracePath,
+        stateGraph: stateGraphPath,
         anomalies: anomaliesPath,
         contactSheet: contactSheetPath
       },
@@ -1395,6 +1490,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       },
       actions
     });
+    await writeJson(stateGraphPath, buildStateGraph(stateNodes, stateEdges));
     await writeJson(anomaliesPath, numberedFindings);
     await writeText(contactSheetPath, buildContactSheetHtml(result));
 
@@ -1412,6 +1508,7 @@ export function formatInteractiveSummary(result: InteractiveExplorationResult): 
     `Anomalies: ${result.summary.anomalyCount}`,
     `Notes: ${result.summary.notes.length ? result.summary.notes.join(" | ") : "none"}`,
     `Action trace: ${displayPath(result.artifacts.actionTrace)}`,
+    `State graph: ${displayPath(result.artifacts.stateGraph)}`,
     `Anomalies: ${displayPath(result.artifacts.anomalies)}`,
     `Contact sheet: ${displayPath(result.artifacts.contactSheet)}`
   ].join("\n");

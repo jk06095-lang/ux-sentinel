@@ -210,6 +210,7 @@ describe("interactive exploration helpers", () => {
         overlay: "trace/screen-map.html",
         actionsDir: "trace/actions",
         actionTrace: "trace/action-trace.json",
+        stateGraph: "trace/state-graph.json",
         anomalies: "trace/anomalies.json",
         contactSheet: "trace/contact-sheet.html"
       }
@@ -384,6 +385,27 @@ describe("interactive exploration helpers", () => {
       expect(actionTrace.planner.maxClicks).toBe(1);
       expect(actionTrace.actions[0].targetCategory).toBe("primary_cta");
       expect(actionTrace.actions[0].plannedReason).toContain("primary_cta");
+      expect(result.actions[0].beforeStateId).toBe("s000");
+      expect(result.actions[0].afterStateId).toBe("s001");
+      expect(result.actions[0].domDiff).toContain("a001-dom-diff.json");
+      expect(result.actions[0].accessibilityDiff).toContain("a001-a11y-diff.json");
+      await stat(result.artifacts.stateGraph);
+      await stat(result.actions[0].domDiff!);
+      await stat(result.actions[0].accessibilityDiff!);
+      const stateGraph = JSON.parse(await readFile(result.artifacts.stateGraph, "utf8")) as {
+        nodes: Array<{ id: string; visibleTextHash: string; domStructureHash: string }>;
+        edges: Array<{ actionId: string; beforeStateId: string; afterStateId: string; domDiff: string; accessibilityDiff: string }>;
+      };
+      expect(stateGraph.nodes.map((node) => node.id)).toEqual(["s000", "s001"]);
+      expect(stateGraph.nodes[0].visibleTextHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(stateGraph.edges[0]).toMatchObject({ actionId: "a001", beforeStateId: "s000", afterStateId: "s001" });
+      const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
+        beforeStateId: string;
+        afterStateId: string;
+        domStructureChanged: boolean;
+      };
+      expect(domDiff.beforeStateId).toBe("s000");
+      expect(domDiff.afterStateId).toBe("s001");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

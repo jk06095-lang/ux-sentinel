@@ -257,6 +257,10 @@ export interface InteractiveActionRecord {
   planDepth?: number;
   planPriority?: number;
   plannedSafeClick?: boolean;
+  beforeStateId?: string;
+  afterStateId?: string;
+  domDiff?: string;
+  accessibilityDiff?: string;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;
@@ -274,6 +278,7 @@ export interface InteractiveArtifacts {
   accessibility?: string;
   actionsDir: string;
   actionTrace: string;
+  stateGraph: string;
   anomalies: string;
   contactSheet: string;
 }

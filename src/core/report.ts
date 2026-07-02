@@ -35,6 +35,7 @@ export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): stri
 - console errors: ${observation.screenMap.consoleErrors.length}
 - network errors: ${observation.screenMap.networkErrors.length}
 ${interactive ? `- interactive action trace: ${displayPath(interactive.artifacts.actionTrace)}
+- interactive state graph: ${displayPath(interactive.artifacts.stateGraph)}
 - interactive contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
 - interactive anomalies: ${displayPath(interactive.artifacts.anomalies)}` : ""}
 
@@ -59,6 +60,7 @@ function formatInteractiveSection(interactive: NonNullable<RunResult["observatio
 - screenshots: ${interactive.summary.screenshotCount}
 - anomalies: ${interactive.summary.anomalyCount}
 - baseline screenshot: ${displayPath(interactive.artifacts.baseline)}
+- state graph: ${displayPath(interactive.artifacts.stateGraph)}
 - contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
 ${notes}
 `;

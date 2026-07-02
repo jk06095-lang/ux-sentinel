@@ -13,6 +13,7 @@ The current implementation adds a deterministic planning layer:
 3. Sort by planning priority when `interactive_exploration.mode: agentic`.
 4. Respect action and click budgets.
 5. Record the planner decision in `action-trace.json` and `contact-sheet.html`.
+6. Write `state-graph.json` plus per-action DOM and accessibility diff files so a reviewer can reconstruct the path.
 
 The runner still uses the hardened safety policy from [SAFETY_POLICY.md](SAFETY_POLICY.md). `explore --click-safe` is the standalone opt-in for safe clicks. `run --interactive --click-safe` is intentionally not a click override; scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
@@ -71,13 +72,16 @@ Each action record includes:
 
 The action trace also includes a root `planner` object with the selected mode and action/click/depth/state-change budgets.
 
+`state-graph.json` includes:
+
+- state nodes with URL, viewport, screenshot, screen map path, accessibility hash, visible text hash, DOM structure hash, open UI state, console error count, and network error count
+- action edges with action id, action type, target id, target category, before/after state ids, before/after screenshots, DOM diff path, accessibility diff path, and finding detectors
+
 ## Current Limits
 
 This is the planner foundation, not the full professional audit surface yet. Upcoming work should add:
 
-- state graph artifacts
 - visual diffs
-- DOM and accessibility diffs
 - real pointer traces
 - UX rule registry mappings
 - expanded detector batches

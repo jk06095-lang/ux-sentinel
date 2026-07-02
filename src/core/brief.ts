@@ -16,6 +16,7 @@ export function buildCodexBriefMarkdown(report: string, sourceReport: string): s
   const url = matchLine(report, "url");
   const result = matchLine(report, "result");
   const actionTrace = matchLine(report, "interactive action trace");
+  const stateGraph = matchLine(report, "interactive state graph");
   const contactSheet = matchLine(report, "interactive contact sheet");
   const anomalies = matchLine(report, "interactive anomalies");
   const findings = extractFindings(report);
@@ -28,6 +29,7 @@ export function buildCodexBriefMarkdown(report: string, sourceReport: string): s
 - url: ${url}
 - result: ${result}
 - interactive action trace: ${actionTrace}
+- interactive state graph: ${stateGraph}
 - interactive contact sheet: ${contactSheet}
 - interactive anomalies: ${anomalies}
 
@@ -44,7 +46,7 @@ ${findings.length ? findings.join("\n\n") : "No findings were parsed from the so
 - The same ux-sentinel scenario passes after the UI patch.
 - The primary next action is visible to a human, not only present in the DOM or accessibility tree.
 - Evidence artifacts still include screenshot, screen-map.json, screen-map.html, console errors, and network errors.
-- If the source report includes interactive exploration, the contact sheet and action trace no longer show the same visual anomaly.
+- If the source report includes interactive exploration, the contact sheet, action trace, and state graph no longer show the same visual anomaly.
 
 ## Forbidden Fixes
 

@@ -393,13 +393,16 @@ Interactive exploration writes:
 
 - `baseline.png`
 - `action-trace.json`
+- `state-graph.json`
 - `anomalies.json`
 - `contact-sheet.html`
 - `actions/a001-before.png`
 - `actions/a001-after.png`
 - `actions/a001-screen-map.json`
+- `actions/a001-dom-diff.json`
+- `actions/a001-a11y-diff.json`
 
-Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason. The action trace also records the resolved capability policy and each action's safe-click decision. The contact sheet is the primary human review surface for interactive audit.
+Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason. The action trace also records the resolved capability policy and each action's safe-click decision. `state-graph.json` links before/after states, screenshots, screen maps, DOM diffs, and accessibility diffs so a reviewer can reconstruct the audit path. The contact sheet is the primary human review surface for interactive audit.
 
 Scenario reports are written under `.ux-sentinel/reports/`. Codex patch briefs are written under `.ux-sentinel/briefs/`.
 
