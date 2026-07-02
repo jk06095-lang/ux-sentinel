@@ -103,6 +103,10 @@ function inferEvidencePaths(finding: Finding): Record<string, string> | undefine
   if (animationTraceMatch) {
     paths.animationTrace = animationTraceMatch[1];
   }
+  const domDiffMatch = finding.evidence.match(/DOM diff: ([^\n]+?a\d{3}-dom-diff\.json)/);
+  if (domDiffMatch) {
+    paths.domDiff = domDiffMatch[1];
+  }
   return Object.keys(paths).length ? paths : undefined;
 }
 
@@ -116,6 +120,9 @@ function confidenceForFinding(finding: Finding, rules: UxRule[]): FindingConfide
     return "medium";
   }
   if (required.has("animation_trace") && !finding.evidencePaths?.animationTrace && !/animation trace/i.test(finding.evidence)) {
+    return "medium";
+  }
+  if (required.has("dom_diff") && !finding.evidencePaths?.domDiff && !/dom diff/i.test(finding.evidence)) {
     return "medium";
   }
   if (required.has("bbox") && !/(bbox|overlap|intersect|covered|extends|width|height|x=|y=|\d+x\d+)/i.test(finding.evidence)) {

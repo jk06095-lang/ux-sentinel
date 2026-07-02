@@ -62,4 +62,40 @@ describe("UX rule registry", () => {
     expect(rules.map((rule) => rule.id)).toContain("motion.reduced_motion_respect");
     expect(rules.some((rule) => rule.evidenceRequired.includes("animation_trace"))).toBe(true);
   });
+
+  it("infers DOM diff evidence paths for state-diff findings", () => {
+    const finding: Finding = {
+      id: "UX-002",
+      detector: "safe_click_changed_unrelated_state",
+      title: "Safe click changed an unrelated state",
+      severity: "P2",
+      type: "Perception Mismatch",
+      evidence:
+        'a001 clicked t001 "Create first project", but the state diff introduced unrelated high-risk copy "Billing settings opened". DOM diff: .ux-sentinel/traces/test/actions/a001-dom-diff.json.',
+      userImpact: "A user may unexpectedly land in a billing state.",
+      suggestedFix: "Align the click consequence with the visible label.",
+      regressionCheck: "Run the same agentic interactive scenario."
+    };
+
+    const enriched = enrichFindingWithRules(finding);
+
+    expect(enriched.evidencePaths?.domDiff).toBe(".ux-sentinel/traces/test/actions/a001-dom-diff.json");
+    expect(enriched.confidence).toBe("high");
+  });
+
+  it("lowers confidence when a DOM-diff rule lacks DOM diff evidence", () => {
+    const finding: Finding = {
+      id: "UX-003",
+      detector: "safe_click_changed_unrelated_state",
+      title: "Safe click changed an unrelated state",
+      severity: "P2",
+      type: "Perception Mismatch",
+      evidence: "The action introduced unrelated high-risk copy without a linked state diff artifact.",
+      userImpact: "A user may unexpectedly land in a billing state.",
+      suggestedFix: "Align the click consequence with the visible label.",
+      regressionCheck: "Run the same agentic interactive scenario."
+    };
+
+    expect(enrichFindingWithRules(finding).confidence).toBe("medium");
+  });
 });
