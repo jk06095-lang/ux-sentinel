@@ -89,6 +89,9 @@ describe("report generation", () => {
     expect(report).toContain("## Interactive Exploration");
     expect(report).toContain("state-graph.json");
     expect(report).toContain("contact-sheet.html");
+    expect(report).toContain("UX rules:");
+    expect(report).toContain("Why this matters:");
+    expect(report).toContain("Confidence:");
     expect(report).toContain("## Codex Patch Brief");
     expect(report).toContain("Do not change scenarios or visual contracts");
     expect(report).toContain("UX-001");

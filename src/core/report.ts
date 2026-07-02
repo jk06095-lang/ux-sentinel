@@ -1,13 +1,15 @@
 import path from "node:path";
 import type { Finding, RunResult, Scenario, Verdict } from "./types.js";
 import { displayPath, ensureDir, safeSlug, timestamp, writeText } from "./files.js";
+import { enrichFindingsWithRules } from "./rules/registry.js";
 
 function plural(value: unknown[]): string {
   return value.length === 1 ? "1" : String(value.length);
 }
 
 export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): string {
-  const { scenario, url, verdict, findings, observation } = result;
+  const { scenario, url, verdict, observation } = result;
+  const findings = enrichFindingsWithRules(result.findings);
   const functional = findings.filter((finding) => finding.type === "Functional Issue");
   const perception = findings.filter((finding) => finding.type === "Perception Mismatch");
   const interactive = observation.interactive;
@@ -67,11 +69,21 @@ ${notes}
 }
 
 function formatFinding(finding: Finding): string {
+  const ruleLines = [
+    finding.ruleIds?.length ? `- UX rules: ${finding.ruleIds.join(", ")}` : undefined,
+    finding.ruleFamily ? `- Rule family: ${finding.ruleFamily}` : undefined,
+    finding.whyThisMatters ? `- Why this matters: ${finding.whyThisMatters}` : undefined,
+    finding.confidence ? `- Confidence: ${finding.confidence}` : undefined,
+    finding.evidencePaths && Object.keys(finding.evidencePaths).length
+      ? `- Evidence paths: ${Object.entries(finding.evidencePaths).map(([key, value]) => `${key}=${value}`).join(", ")}`
+      : undefined
+  ].filter(Boolean).join("\n");
+
   return `### ${finding.id}: ${finding.title}
 - Severity: ${finding.severity}
 - Type: ${finding.type}
 - Detector: ${finding.detector}
-- Evidence: ${finding.evidence}
+${ruleLines ? `${ruleLines}\n` : ""}- Evidence: ${finding.evidence}
 - User impact: ${finding.userImpact}
 - Suggested fix: ${finding.suggestedFix}
 - Regression check: ${finding.regressionCheck}`;

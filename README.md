@@ -198,6 +198,7 @@ Interactive audit docs:
 - [docs/INTERACTIVE_AUDIT.md](docs/INTERACTIVE_AUDIT.md)
 - [docs/AGENTIC_INTERACTIVE_AUDIT.md](docs/AGENTIC_INTERACTIVE_AUDIT.md)
 - [docs/SAFETY_POLICY.md](docs/SAFETY_POLICY.md)
+- [docs/UX_RULE_REGISTRY.md](docs/UX_RULE_REGISTRY.md)
 - [docs/prompts/04-interactive-visual-audit.md](docs/prompts/04-interactive-visual-audit.md)
 
 ## Sample Scenario
@@ -295,6 +296,8 @@ Interactive traces include `actions/a001-pointer-trace.json` for hover, focus, a
 - Severity: P1
 - Type: Perception Mismatch
 - Detector: primary_cta_missing
+- UX rules: nielsen.match_real_world, interaction_law.visual_hierarchy, local.perception_mismatch
+- Why this matters: Match between system and the real world: Visible labels and empty states should use language that helps a human understand the next action.
 - Evidence: Scenario intent "create_project" expects one of: Create first project, Create project, New project.
 - User impact: A human can see the page but cannot identify the primary next action from visible copy.
 ```

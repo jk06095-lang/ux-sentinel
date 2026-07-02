@@ -14,6 +14,7 @@ Rules:
 - Do not commit `.ux-sentinel/traces`, `.ux-sentinel/reports`, or temporary tool clones.
 - Fix only findings grounded in screenshots, screen maps, action trace, contact sheet, console errors, or network evidence.
 - Treat `contact-sheet.html` as the primary human review surface.
+- Use `UX_RULE_REGISTRY.md` and each finding's `Why this matters` field to preserve the intended UX principle while patching.
 - Remember that `explore` defaults to hover, focus, and scroll only; clicking requires `--click-safe`.
 - Do not pass `--click-safe` to `run --interactive`; scenario clicks require `interactive_exploration.click_all_safe_controls: true`.
 - Review the capability policy and safe-click decisions in `action-trace.json` before treating a click path as intentional.

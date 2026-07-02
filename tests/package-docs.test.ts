@@ -155,6 +155,8 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("targetCategory");
     expect(docs).toContain("a001-pointer-trace.json");
     expect(docs).toContain("cursor target drift");
+    expect(docs).toContain("UX_RULE_REGISTRY.md");
+    expect(docs).toContain("Why this matters");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {

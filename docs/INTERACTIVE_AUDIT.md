@@ -10,6 +10,8 @@ Safety policy details live in [SAFETY_POLICY.md](SAFETY_POLICY.md). The runner r
 
 Agentic planning details live in [AGENTIC_INTERACTIVE_AUDIT.md](AGENTIC_INTERACTIVE_AUDIT.md). When a scenario sets `interactive_exploration.mode: agentic`, ux-sentinel classifies targets, prioritizes meaningful UX exploration, and records `plannedReason`, `targetCategory`, and `riskLevel` in the action trace.
 
+UX rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Reports include `Why this matters` text so detector output is tied to professional UX principles instead of only detector names.
+
 ## Commands
 
 Explore a page without a scenario:

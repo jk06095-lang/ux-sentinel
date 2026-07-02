@@ -1,5 +1,26 @@
 export type Severity = "P0" | "P1" | "P2" | "P3";
 export type Verdict = "pass" | "fail" | "ambiguous";
+export type FindingConfidence = "low" | "medium" | "high";
+export type UxRuleFamily =
+  | "nielsen"
+  | "wcag"
+  | "motion"
+  | "gestalt"
+  | "interaction_law"
+  | "graph_dag"
+  | "local_product_rule";
+export type UxEvidenceKind =
+  | "screenshot"
+  | "before_after"
+  | "visual_diff"
+  | "bbox"
+  | "screen_map"
+  | "a11y_snapshot"
+  | "hit_test"
+  | "dom_diff"
+  | "a11y_diff"
+  | "pointer_trace"
+  | "animation_trace";
 export type InteractiveCommandMode = "explore" | "run";
 export type InteractiveCapability =
   | "observe"
@@ -189,6 +210,11 @@ export interface Finding {
   userImpact: string;
   suggestedFix: string;
   regressionCheck: string;
+  ruleIds?: string[];
+  ruleFamily?: UxRuleFamily;
+  whyThisMatters?: string;
+  confidence?: FindingConfidence;
+  evidencePaths?: Record<string, string>;
 }
 
 export interface RunResult {

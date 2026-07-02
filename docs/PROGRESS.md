@@ -322,3 +322,12 @@ Added cursor movement evidence for interactive audit:
 - Recorded start/end/intermediate cursor points, movement duration, hover duration, target movement, overlay appearance, and final hit-test match state.
 - Skips otherwise allowed safe clicks when hover or target movement causes final pointer hit-test drift.
 - Added pointer trace paths to action records, state graph edges, and contact-sheet rows.
+
+### Checkpoint: UX Rule Registry
+
+Added detector-to-rule mapping for current findings:
+
+- Added rule modules for Nielsen heuristics, WCAG 2.2, motion, Gestalt, interaction laws, graph/DAG readability, and local product rules.
+- Extended findings with `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths.
+- Reports now render UX rule metadata and "Why this matters" text.
+- Added tests that fail if implemented detectors are not mapped to at least one UX rule.

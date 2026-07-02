@@ -1,4 +1,5 @@
 import type { Finding, Scenario, ScreenMap, Severity } from "./types.js";
+import { enrichFindingsWithRules } from "./rules/registry.js";
 import {
   ariaPrimaryCtas,
   elementLabel,
@@ -187,10 +188,10 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
     );
   }
 
-  return findings.map((item, index) => ({
+  return enrichFindingsWithRules(findings.map((item, index) => ({
     id: `UX-${String(index + 1).padStart(3, "0")}`,
     ...item
-  }));
+  })));
 }
 
 export function verdictForFindings(findings: Finding[], scenario: Scenario): "pass" | "fail" | "ambiguous" {
@@ -210,7 +211,7 @@ export function verdictForFindings(findings: Finding[], scenario: Scenario): "pa
 }
 
 export function renumberFindings(findings: Finding[]): Finding[] {
-  return findings.map((finding, index) => ({
+  return enrichFindingsWithRules(findings).map((finding, index) => ({
     ...finding,
     id: `UX-${String(index + 1).padStart(3, "0")}`
   }));

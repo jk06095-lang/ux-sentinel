@@ -15,6 +15,7 @@ The current implementation adds a deterministic planning layer:
 5. Record the planner decision in `action-trace.json` and `contact-sheet.html`.
 6. Write `state-graph.json` plus per-action DOM and accessibility diff files so a reviewer can reconstruct the path.
 7. Write per-action pointer traces so hover, focus, and click-capable actions show the cursor path and final hit-test result.
+8. Enrich findings with UX rule mappings so reports explain why each detector matters.
 
 The runner still uses the hardened safety policy from [SAFETY_POLICY.md](SAFETY_POLICY.md). `explore --click-safe` is the standalone opt-in for safe clicks. `run --interactive --click-safe` is intentionally not a click override; scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
@@ -81,12 +82,13 @@ The action trace also includes a root `planner` object with the selected mode an
 
 Pointer traces are written as `actions/aNNN-pointer-trace.json`. They record the start point, target center, intermediate points, movement and hover duration, whether the target moved during approach, whether an overlay appeared, and whether the final `elementFromPoint` still matched the target. If a safe click was otherwise allowed but the final hit-test drifts away from the target, the runner skips the click and records `cursor target drift`.
 
+Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, and `Confidence`.
+
 ## Current Limits
 
 This is the planner foundation, not the full professional audit surface yet. Upcoming work should add:
 
 - visual diffs
-- UX rule registry mappings
 - expanded detector batches
 - animation audit
 - contact sheet 2.0 filters and timelines

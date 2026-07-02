@@ -7,6 +7,7 @@ import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files
 import { resolveInteractiveCapabilities } from "./capabilities.js";
 import { planInteractiveActions, type PlannedInteractiveAction } from "./action-planner.js";
 import { recordPointerTrace } from "./pointer-trace.js";
+import { enrichFindingsWithRules } from "./rules/registry.js";
 import {
   buildStateGraph,
   collectStateSnapshot,
@@ -910,7 +911,7 @@ function buildPointerTraceFindings(trace: PointerTrace, tracePath: string, targe
 }
 
 function renumberInteractiveFindings(findings: Finding[]): Finding[] {
-  return findings.map((item, index) => ({
+  return enrichFindingsWithRules(findings).map((item, index) => ({
     ...item,
     id: `UX-I${String(index + 1).padStart(3, "0")}`
   }));
