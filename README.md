@@ -366,14 +366,16 @@ The demo includes two local pages:
 - `demo/broken.html`: dashboard empty state with only a tiny `+` icon button and `aria-label="Create first project"`.
 - `demo/fixed.html`: dashboard empty state with a visible `Create first project` CTA.
 
-It also includes a high-priority detector pair:
+It also includes detector demo pairs for higher-priority perception and recovery issues:
 
 - `demo/high-priority-broken.html`: intentionally triggers small click target, visible-label/accessibility-name mismatch, clickable-looking non-action, and destructive-action-without-confirmation findings.
 - `demo/high-priority-fixed.html`: fixes the same UI with a correctly named primary CTA, standard target sizes, real secondary action affordance, and visible confirmation/undo copy.
+- `demo/feedback-recovery-broken.html`: intentionally triggers missing next-step, dead-end recovery, loading announcement, status announcement, dialog naming, and dialog escape findings.
+- `demo/feedback-recovery-fixed.html`: fixes the same states with a visible next step, retry/help recovery, live status semantics, dialog naming, and close controls.
 
 The interactive demo set also includes `demo/interactive-navigation-stop.html` with `demo/scenarios/interactive-navigation-stop.yaml`, which proves scenario-driven interactive audit stops remaining planned actions after unexpected navigation when `allow_navigation: false`. The paired `demo/interactive-navigation-allow.html` and `demo/scenarios/interactive-navigation-allow.yaml` fixture proves that explicitly allowed navigation keeps the navigation capability enabled, avoids the stop note, and replans onto the destination page. `demo/interactive-hover-block.html` with `demo/scenarios/interactive-hover-block.yaml` intentionally fails when hover content blocks the trigger, proving pointer trace drift findings are attached to the report, action trace, state graph, and contact sheet. `demo/interactive-motion.html` with `demo/scenarios/interactive-motion.yaml` is an intentionally failing motion-audit fixture that proves per-action animation traces and motion findings are attached to the report, action trace, state graph, and contact sheet.
 
-Run the full demo gate. It checks exact fail/pass verdicts and confirms the high-priority broken report includes the intended detector evidence:
+Run the full demo gate. It checks exact fail/pass verdicts and confirms the broken detector reports include the intended concrete evidence:
 
 ```bash
 npm run build
@@ -395,6 +397,12 @@ Verdict: fail
 Scenario: high-priority-detectors
 Verdict: pass
 ...
+Scenario: feedback-recovery
+Verdict: fail
+...
+Scenario: feedback-recovery
+Verdict: pass
+...
 demo verification passed
 ```
 
@@ -411,6 +419,8 @@ node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/fixed
 node dist/cli.js run demo/scenarios/high-priority-detectors.yaml --url http://127.0.0.1:4173/high-priority-broken
 node dist/cli.js run demo/scenarios/high-priority-detectors.yaml --url http://127.0.0.1:4173/high-priority-fixed
+node dist/cli.js run demo/scenarios/feedback-recovery.yaml --url http://127.0.0.1:4173/feedback-recovery-broken
+node dist/cli.js run demo/scenarios/feedback-recovery.yaml --url http://127.0.0.1:4173/feedback-recovery-fixed
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250 --click-safe
 node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20

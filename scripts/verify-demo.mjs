@@ -432,6 +432,19 @@ try {
     ]
   });
   runScenario("demo/scenarios/high-priority-detectors.yaml", "/high-priority-fixed", 0, { expectedVerdict: "pass" });
+  runScenario("demo/scenarios/feedback-recovery.yaml", "/feedback-recovery-broken", 1, {
+    expectedVerdict: "fail",
+    expectedDetectors: [
+      "empty_state_without_next_step",
+      "dead_end_state_without_recovery",
+      "loading_without_progress_or_timeout",
+      "status_change_not_announced",
+      "dialog_without_accessible_name",
+      "dialog_close_unavailable",
+      "modal_trap_without_escape"
+    ]
+  });
+  runScenario("demo/scenarios/feedback-recovery.yaml", "/feedback-recovery-fixed", 0, { expectedVerdict: "pass" });
   runScenario("demo/scenarios/interactive-dag-clarity.yaml", "/fixed", 0, {
     expectedVerdict: "pass",
     args: ["--interactive", "--max-actions", "10", "--settle-ms", "100"],

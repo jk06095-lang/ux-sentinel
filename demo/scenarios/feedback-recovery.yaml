@@ -1,0 +1,30 @@
+id: feedback-recovery
+title: Feedback and recovery states are perceivable
+persona: first-time-user
+mode: visual_contract
+
+goal:
+  user_wants: "Understand system state and recover without getting stuck"
+
+visual_contract:
+  page_must_answer:
+    - "What state is the system in?"
+    - "What can I do next?"
+    - "How do I recover or leave this state?"
+  primary_cta:
+    preferred_labels:
+      - "Start review"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+  empty_state:
+    if_detected_requires_primary_cta: false
+
+fail_conditions:
+  - empty_state_without_next_step
+  - dead_end_state_without_recovery
+  - loading_without_progress_or_timeout
+  - status_change_not_announced
+  - dialog_without_accessible_name
+  - dialog_close_unavailable
+  - modal_trap_without_escape

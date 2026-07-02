@@ -522,3 +522,13 @@ Added a deterministic demo gate for pointer-path hover blockers:
 - Added `demo/scenarios/interactive-hover-block.yaml` with safe clicking enabled and fail conditions for `hover_content_blocks_trigger`, `hover_trigger_blocks_target`, `cursor_target_drift`, and `overlay_appeared_during_cursor_approach`.
 - Routed `/interactive-hover-block` through the demo server.
 - Extended `npm run demo:verify` to assert the run records pointer trace evidence with `overlayAppearedDuringApproach: true` and `finalHitTestMatchedTarget: false`, skips the safe click with `cursor target drift`, attaches the hover detector ids to the action, and exposes the pointer evidence in the report and contact sheet.
+
+### Checkpoint: Feedback Recovery Demo Gate
+
+Added a broken/fixed demo pair for feedback and recovery detectors:
+
+- Added `demo/feedback-recovery-broken.html`, which intentionally lacks a visible next step, recovery action, loading/live announcement, dialog name, and dialog escape path.
+- Added `demo/feedback-recovery-fixed.html`, which provides a visible next step, retry/help recovery, announced status, accessible dialog naming, and close controls.
+- Added `demo/scenarios/feedback-recovery.yaml` with explicit fail conditions for `empty_state_without_next_step`, `dead_end_state_without_recovery`, `loading_without_progress_or_timeout`, `status_change_not_announced`, `dialog_without_accessible_name`, `dialog_close_unavailable`, and `modal_trap_without_escape`.
+- Routed `/feedback-recovery-broken` and `/feedback-recovery-fixed` through the demo server.
+- Extended `npm run demo:verify` to assert exact fail/pass verdicts and concrete report evidence for the intended feedback and recovery detectors.

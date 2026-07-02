@@ -256,6 +256,9 @@ describe("Codex integration docs", () => {
   it("ships the high-priority detector demo pair and verifies it in demo:verify", () => {
     expect(existsSync(path.join(repoRoot, "demo/high-priority-broken.html"))).toBe(true);
     expect(existsSync(path.join(repoRoot, "demo/high-priority-fixed.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/feedback-recovery-broken.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/feedback-recovery-fixed.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/scenarios/feedback-recovery.yaml"))).toBe(true);
 
     const scenario = readText("demo/scenarios/high-priority-detectors.yaml");
     expect(scenario).toContain("click_target_too_small");
@@ -263,17 +266,28 @@ describe("Codex integration docs", () => {
     expect(scenario).toContain("looks_clickable_but_not_actionable");
     expect(scenario).toContain("destructive_action_without_confirmation");
 
+    const feedbackScenario = readText("demo/scenarios/feedback-recovery.yaml");
+    expect(feedbackScenario).toContain("empty_state_without_next_step");
+    expect(feedbackScenario).toContain("loading_without_progress_or_timeout");
+    expect(feedbackScenario).toContain("dialog_without_accessible_name");
+    expect(feedbackScenario).toContain("modal_trap_without_escape");
+
     const verifier = readText("scripts/verify-demo.mjs");
     expect(verifier).toContain("/high-priority-broken");
     expect(verifier).toContain("/high-priority-fixed");
+    expect(verifier).toContain("/feedback-recovery-broken");
+    expect(verifier).toContain("/feedback-recovery-fixed");
     expect(verifier).toContain("expectedVerdict");
     expect(verifier).toContain("expectedDetectors");
+    expect(verifier).toContain("status_change_not_announced");
     expect(verifier).toContain("without concrete evidence");
 
     const readme = readText("README.md");
     expect(readme).toContain("demo/high-priority-broken.html");
     expect(readme).toContain("demo/scenarios/high-priority-detectors.yaml");
-    expect(readme).toContain("intended detector evidence");
+    expect(readme).toContain("demo/feedback-recovery-broken.html");
+    expect(readme).toContain("demo/scenarios/feedback-recovery.yaml");
+    expect(readme).toContain("intended concrete evidence");
   });
 
   it("verifies interactive demo artifacts in demo:verify", () => {
