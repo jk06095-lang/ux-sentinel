@@ -1488,6 +1488,36 @@ function uniqueValues(values: Array<string | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
 }
 
+function actionIdFromFinding(findingItem: Finding): string | undefined {
+  const match = findingItem.evidence.match(/\bAction:\s*(a\d{3})\b/i);
+  return match?.[1];
+}
+
+function attachFindingsToStateEdges(edges: StateGraphEdge[], findingsToAttach: Finding[]): StateGraphEdge[] {
+  const findingsByAction = new Map<string, Finding[]>();
+  for (const findingItem of findingsToAttach) {
+    const actionId = actionIdFromFinding(findingItem);
+    if (!actionId) {
+      continue;
+    }
+    findingsByAction.set(actionId, [...(findingsByAction.get(actionId) ?? []), findingItem]);
+  }
+
+  return edges.map((edge) => ({
+    ...edge,
+    findings: (findingsByAction.get(edge.actionId) ?? []).map((findingItem) => ({
+      id: findingItem.id,
+      detector: findingItem.detector,
+      severity: findingItem.severity,
+      title: findingItem.title,
+      ruleIds: findingItem.ruleIds,
+      ruleFamily: findingItem.ruleFamily,
+      confidence: findingItem.confidence,
+      evidencePaths: findingItem.evidencePaths
+    }))
+  }));
+}
+
 async function pointerTraceSummary(pointerTracePath: string | undefined): Promise<StateGraphEdge["cursorMovement"] | undefined> {
   if (!pointerTracePath) {
     return undefined;
@@ -1916,7 +1946,8 @@ async function recordActionStateEvidence(options: {
       pointerTrace: options.action.pointerTrace,
       cursorMovement,
       animationTrace: options.action.animationTrace,
-      findingDetectors: options.action.findingDetectors
+      findingDetectors: options.action.findingDetectors,
+      findings: []
     }
   };
 }
@@ -2502,7 +2533,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       clickCandidates,
       actions
     });
-    await writeJson(stateGraphPath, buildStateGraph(stateNodes, stateEdges));
+    await writeJson(stateGraphPath, buildStateGraph(stateNodes, attachFindingsToStateEdges(stateEdges, numberedFindings)));
     await writeJson(anomaliesPath, numberedFindings);
     await writeText(contactSheetPath, buildContactSheetHtml(result));
 

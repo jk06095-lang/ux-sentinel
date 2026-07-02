@@ -591,6 +591,14 @@ describe("interactive exploration helpers", () => {
             hoverDurationMs: number;
             finalHitTestMatchedTarget: boolean;
           };
+          findings: Array<{
+            id: string;
+            detector: string;
+            severity: string;
+            title: string;
+            ruleIds?: string[];
+            confidence?: string;
+          }>;
         }>;
       };
       expect(stateGraph.nodes.map((node) => node.id)).toEqual(["s000", "s001"]);
@@ -604,6 +612,16 @@ describe("interactive exploration helpers", () => {
         hoverDurationMs: 0,
         finalHitTestMatchedTarget: true
       });
+      expect(stateGraph.edges[0].findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            detector: "no_feedback_after_action",
+            severity: "P2",
+            title: "Action produced no visible feedback",
+            ruleIds: expect.arrayContaining(["nielsen.visibility_of_system_status"])
+          })
+        ])
+      );
       const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
         beforeStateId: string;
         afterStateId: string;

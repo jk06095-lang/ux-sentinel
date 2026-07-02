@@ -317,6 +317,7 @@ Added reconstructable state evidence for interactive audit:
 - Added `beforeStateId`, `afterStateId`, `domDiff`, and `accessibilityDiff` to action records.
 - Added state graph and diff paths to reports, Codex briefs, CLI summaries, and contact-sheet rows.
 - Added cursor movement summaries to state graph edges so reviewers can inspect point count, duration, target movement, overlay appearance, and final hit-test status without opening the full pointer trace first.
+- Added attached finding summaries to state graph edges so each action edge carries the relevant finding id, detector, severity, title, UX rule metadata, and confidence alongside the artifact paths.
 
 ### Checkpoint: Pointer Trace Evidence
 

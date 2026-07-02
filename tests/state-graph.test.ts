@@ -143,7 +143,18 @@ describe("state graph evidence", () => {
             overlayAppearedDuringApproach: false,
             finalHitTestMatchedTarget: true
           },
-          findingDetectors: []
+          findingDetectors: ["no_feedback_after_action"],
+          findings: [
+            {
+              id: "UX-I001",
+              detector: "no_feedback_after_action",
+              severity: "P2",
+              title: "Action produced no visible feedback",
+              ruleIds: ["nielsen.visibility_of_system_status"],
+              ruleFamily: "nielsen",
+              confidence: "high"
+            }
+          ]
         }
       ]
     );
@@ -153,5 +164,10 @@ describe("state graph evidence", () => {
     expect(graph.edges[0].afterStateId).toBe("s001");
     expect(graph.edges[0].cursorMovement?.pointCount).toBe(5);
     expect(graph.edges[0].cursorMovement?.finalHitTestMatchedTarget).toBe(true);
+    expect(graph.edges[0].findings[0]).toMatchObject({
+      id: "UX-I001",
+      detector: "no_feedback_after_action",
+      severity: "P2"
+    });
   });
 });

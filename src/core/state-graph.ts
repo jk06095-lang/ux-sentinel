@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Page } from "playwright";
-import type { ElementBox, PointerPoint, ScreenMap } from "./types.js";
+import type { ElementBox, FindingConfidence, PointerPoint, ScreenMap, Severity, UxRuleFamily } from "./types.js";
 
 export interface OpenUiState {
   id: string | null;
@@ -60,6 +60,18 @@ export interface StateGraphEdge {
   };
   animationTrace?: string;
   findingDetectors: string[];
+  findings: StateGraphFindingSummary[];
+}
+
+export interface StateGraphFindingSummary {
+  id: string;
+  detector: string;
+  severity: Severity;
+  title: string;
+  ruleIds?: string[];
+  ruleFamily?: UxRuleFamily;
+  confidence?: FindingConfidence;
+  evidencePaths?: Record<string, string>;
 }
 
 export interface StateGraph {
