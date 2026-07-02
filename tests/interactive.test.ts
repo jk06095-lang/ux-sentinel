@@ -361,6 +361,21 @@ describe("interactive exploration helpers", () => {
           ruleFamily: "nielsen",
           whyThisMatters: "Visibility of system status: hover feedback should remain readable.",
           confidence: "high"
+        },
+        {
+          id: "UX-I002",
+          detector: "ambiguous_panel_overlap",
+          title: "Panel overlap needs review",
+          severity: "P3",
+          type: "Perception Mismatch",
+          evidence: "Panel overlap was inferred from weak geometry evidence.",
+          userImpact: "A reviewer should confirm whether the overlap blocks important UI.",
+          suggestedFix: "Inspect the screenshot before changing layout.",
+          regressionCheck: "Rerun the contact sheet review.",
+          ruleIds: ["gestalt.common_region"],
+          ruleFamily: "gestalt",
+          whyThisMatters: "Common region: grouped content should not be visually ambiguous.",
+          confidence: "low"
         }
       ],
       summary: { actionCount: 1, screenshotCount: 4, anomalyCount: 0, notes: [] },
@@ -387,6 +402,7 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("tooltip_partially_offscreen");
     expect(html).toContain("Severity filter");
     expect(html).toContain("Rule-family filter");
+    expect(html).toContain("Confidence filter");
     expect(html).toContain("Detector filter");
     expect(html).toContain("Action Timeline");
     expect(html).toContain("State Graph Summary");
@@ -399,8 +415,12 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("data-action-card");
     expect(html).toContain("data-severities=\"P2\"");
     expect(html).toContain("data-rule-families=\"nielsen\"");
+    expect(html).toContain("data-confidences=\"high\"");
+    expect(html).toContain("data-confidence=\"low\"");
     expect(html).toContain("bbox");
     expect(html).toContain("Visibility of system status");
+    expect(html).toContain("Evidence status: evidence-backed finding");
+    expect(html).toContain("Evidence status: ambiguous heuristic review prompt");
     expect(html).toContain("Evidence: Tooltip bbox extends beyond viewport.");
     expect(html).toContain("User impact: A user may not be able to read the hover help.");
     expect(html).toContain("Suggested fix: Keep tooltip content inside the viewport.");

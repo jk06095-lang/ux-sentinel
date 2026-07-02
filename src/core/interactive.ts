@@ -1489,6 +1489,16 @@ function uniqueValues(values: Array<string | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
 }
 
+function evidenceStatusForFinding(findingItem: Finding): string {
+  if (findingItem.confidence === "high") {
+    return "evidence-backed finding";
+  }
+  if (findingItem.confidence === "medium") {
+    return "evidence-supported review finding";
+  }
+  return "ambiguous heuristic review prompt";
+}
+
 function actionIdFromFinding(findingItem: Finding): string | undefined {
   const match = findingItem.evidence.match(/\bAction:\s*(a\d{3})\b/i);
   return match?.[1];
@@ -1624,6 +1634,7 @@ export function buildContactSheetHtml(
   }
   const severityOptions = uniqueValues(result.findings.map((findingItem) => findingItem.severity));
   const ruleFamilyOptions = uniqueValues(result.findings.map((findingItem) => findingItem.ruleFamily));
+  const confidenceOptions = uniqueValues(result.findings.map((findingItem) => findingItem.confidence));
   const detectorOptions = uniqueValues(result.findings.map((findingItem) => findingItem.detector));
   const actionTrace = relativeArtifact(result.artifacts.traceDir, result.artifacts.actionTrace);
   const stateGraph = relativeArtifact(result.artifacts.traceDir, result.artifacts.stateGraph);
@@ -1685,6 +1696,7 @@ export function buildContactSheetHtml(
       const actionFindings = uniqueValues(action.findingDetectors).flatMap((detector) => findingsByDetector.get(detector) ?? []);
       const actionSeverities = uniqueValues(actionFindings.map((findingItem) => findingItem.severity));
       const actionRuleFamilies = uniqueValues(actionFindings.map((findingItem) => findingItem.ruleFamily));
+      const actionConfidences = uniqueValues(actionFindings.map((findingItem) => findingItem.confidence));
       const findings = action.findingDetectors.length ? action.findingDetectors.join(", ") : "none";
       const status = action.skipped ? `skipped: ${action.skipReason ?? "unknown reason"}` : action.clicked ? "clicked" : "not clicked";
       const clickDecision = action.clickDecision
@@ -1716,12 +1728,12 @@ export function buildContactSheetHtml(
         ? actionFindings
             .map(
               (findingItem) =>
-                `<li><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong> ${escapeHtml(findingItem.title)}<br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span><br /><span>Evidence: ${escapeHtml(findingItem.evidence)}</span><br /><span>User impact: ${escapeHtml(findingItem.userImpact)}</span><br /><span>Suggested fix: ${escapeHtml(findingItem.suggestedFix)}</span><br /><span>Regression check: ${escapeHtml(findingItem.regressionCheck)}</span></li>`
+                `<li><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong> ${escapeHtml(findingItem.title)}<br /><span>Evidence status: ${escapeHtml(evidenceStatusForFinding(findingItem))}</span><br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span><br /><span>Evidence: ${escapeHtml(findingItem.evidence)}</span><br /><span>User impact: ${escapeHtml(findingItem.userImpact)}</span><br /><span>Suggested fix: ${escapeHtml(findingItem.suggestedFix)}</span><br /><span>Regression check: ${escapeHtml(findingItem.regressionCheck)}</span></li>`
             )
             .join("\n")
         : "<li>No findings attached to this action.</li>";
       const overlay = `<span class="bbox" style="${bboxOverlayStyle(action.target.bbox)}"></span>`;
-      return `<article id="${escapeHtml(action.id)}" data-action-card data-detectors="${escapeHtml(action.findingDetectors.join(" "))}" data-severities="${escapeHtml(actionSeverities.join(" "))}" data-rule-families="${escapeHtml(actionRuleFamilies.join(" "))}">
+      return `<article id="${escapeHtml(action.id)}" data-action-card data-detectors="${escapeHtml(action.findingDetectors.join(" "))}" data-severities="${escapeHtml(actionSeverities.join(" "))}" data-rule-families="${escapeHtml(actionRuleFamilies.join(" "))}" data-confidences="${escapeHtml(actionConfidences.join(" "))}">
   <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
@@ -1753,7 +1765,7 @@ export function buildContactSheetHtml(
     ? result.findings
         .map(
           (findingItem) =>
-            `<li data-finding-detail data-detector="${escapeHtml(findingItem.detector)}" data-severity="${escapeHtml(findingItem.severity)}" data-rule-family="${escapeHtml(findingItem.ruleFamily ?? "")}"><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}<br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span><br /><span>Evidence: ${escapeHtml(findingItem.evidence)}</span><br /><span>User impact: ${escapeHtml(findingItem.userImpact)}</span><br /><span>Suggested fix: ${escapeHtml(findingItem.suggestedFix)}</span><br /><span>Regression check: ${escapeHtml(findingItem.regressionCheck)}</span></li>`
+            `<li data-finding-detail data-detector="${escapeHtml(findingItem.detector)}" data-severity="${escapeHtml(findingItem.severity)}" data-rule-family="${escapeHtml(findingItem.ruleFamily ?? "")}" data-confidence="${escapeHtml(findingItem.confidence ?? "")}"><strong>${escapeHtml(findingItem.severity)} ${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}<br /><span>Evidence status: ${escapeHtml(evidenceStatusForFinding(findingItem))}</span><br /><span>Rule family: ${escapeHtml(findingItem.ruleFamily ?? "none")} | Confidence: ${escapeHtml(findingItem.confidence ?? "unknown")}</span><br /><span>Why this matters: ${escapeHtml(findingItem.whyThisMatters ?? "No UX rule mapping recorded.")}</span><br /><span>Evidence: ${escapeHtml(findingItem.evidence)}</span><br /><span>User impact: ${escapeHtml(findingItem.userImpact)}</span><br /><span>Suggested fix: ${escapeHtml(findingItem.suggestedFix)}</span><br /><span>Regression check: ${escapeHtml(findingItem.regressionCheck)}</span></li>`
         )
         .join("\n")
     : "<li>No interactive anomalies detected.</li>";
@@ -1780,7 +1792,7 @@ export function buildContactSheetHtml(
     label { display: grid; gap: 4px; font-size: 12px; color: #374151; }
     select, input, button { font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid #9ca3af; border-radius: 4px; background: #ffffff; }
     button { cursor: pointer; background: #111827; color: #ffffff; }
-    .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; align-items: end; }
+    .filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; align-items: end; }
     .timeline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .timeline a { text-decoration: none; color: #111827; border: 1px solid #9ca3af; border-radius: 999px; padding: 6px 9px; font-size: 12px; background: #f9fafb; }
     .timeline span { color: #6b7280; margin-left: 5px; }
@@ -1801,6 +1813,7 @@ export function buildContactSheetHtml(
     <div class="filters" aria-label="Contact sheet filters">
       <label>Severity filter<select id="severity-filter"><option value="">All severities</option>${filterOptions(severityOptions)}</select></label>
       <label>Rule-family filter<select id="rule-family-filter"><option value="">All rule families</option>${filterOptions(ruleFamilyOptions)}</select></label>
+      <label>Confidence filter<select id="confidence-filter"><option value="">All confidence levels</option>${filterOptions(confidenceOptions)}</select></label>
       <label>Detector filter<input id="detector-filter" list="detectors" placeholder="Type detector name" /></label>
       <button id="reset-filters" type="button">Reset filters</button>
       <datalist id="detectors">${filterOptions(detectorOptions)}</datalist>
@@ -1831,7 +1844,7 @@ export function buildContactSheetHtml(
     </section>
     <section>
       <h2>Finding Evidence And UX Principles</h2>
-      <p>Evidence-backed findings are shown with severity, detector, rule family, confidence, and mapped UX rationale. Lower-confidence entries should be treated as review prompts, not final judgments.</p>
+      <p>Evidence-backed findings and ambiguous heuristic review prompts are labeled separately with evidence status, severity, detector, rule family, confidence, and mapped UX rationale.</p>
       <ul>${findingList}</ul>
     </section>
     ${rows || "<p>No actions were captured.</p>"}
@@ -1839,6 +1852,7 @@ export function buildContactSheetHtml(
   <script>
     const severityFilter = document.getElementById("severity-filter");
     const ruleFamilyFilter = document.getElementById("rule-family-filter");
+    const confidenceFilter = document.getElementById("confidence-filter");
     const detectorFilter = document.getElementById("detector-filter");
     const resetFilters = document.getElementById("reset-filters");
     const actionCards = Array.from(document.querySelectorAll("[data-action-card]"));
@@ -1849,11 +1863,13 @@ export function buildContactSheetHtml(
     function applyFilters() {
       const severity = severityFilter.value;
       const ruleFamily = ruleFamilyFilter.value;
+      const confidence = confidenceFilter.value;
       const detector = detectorFilter.value.trim();
       for (const card of actionCards) {
         const visible =
           matches(severity, card.dataset.severities || "") &&
           matches(ruleFamily, card.dataset.ruleFamilies || "") &&
+          matches(confidence, card.dataset.confidences || "") &&
           matches(detector, card.dataset.detectors || "");
         card.hidden = !visible;
       }
@@ -1861,16 +1877,19 @@ export function buildContactSheetHtml(
         const visible =
           matches(severity, item.dataset.severity || "") &&
           matches(ruleFamily, item.dataset.ruleFamily || "") &&
+          matches(confidence, item.dataset.confidence || "") &&
           matches(detector, item.dataset.detector || "");
         item.hidden = !visible;
       }
     }
     severityFilter.addEventListener("change", applyFilters);
     ruleFamilyFilter.addEventListener("change", applyFilters);
+    confidenceFilter.addEventListener("change", applyFilters);
     detectorFilter.addEventListener("input", applyFilters);
     resetFilters.addEventListener("click", () => {
       severityFilter.value = "";
       ruleFamilyFilter.value = "";
+      confidenceFilter.value = "";
       detectorFilter.value = "";
       applyFilters();
     });
