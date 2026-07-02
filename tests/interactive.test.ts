@@ -1095,7 +1095,7 @@ describe("interactive exploration helpers", () => {
   });
 
   it("does not click English or Korean dangerous labels even when safe-click capability is enabled", async () => {
-    const dangerousLabels = ["Delete project", "로그아웃"];
+    const dangerousLabels = ["Delete project", "Account deletion", "Irreversible action", "로그아웃"];
 
     for (const label of dangerousLabels) {
       const traceRoot = await tempTraceRoot();
@@ -1112,11 +1112,19 @@ describe("interactive exploration helpers", () => {
         expect(result.actions[0].clicked).toBe(false);
         expect(result.actions[0].clickDecision).toBe("skipped");
         expect(result.actions[0].clickDecisionReason).toBe("dangerous label");
+
+        const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+          clickCandidates: Array<{ visibleText: string; clickDecision: string; clickDecisionReason: string }>;
+        };
+        expect(actionTrace.clickCandidates.find((candidate) => candidate.visibleText === label)).toMatchObject({
+          clickDecision: "skipped",
+          clickDecisionReason: "dangerous label"
+        });
       } finally {
         await rm(traceRoot, { recursive: true, force: true });
       }
     }
-  });
+  }, 20_000);
 
   it("always writes contact sheet screenshots even when scenario disables per-action screenshots", async () => {
     const traceRoot = await tempTraceRoot();
