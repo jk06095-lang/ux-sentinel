@@ -74,7 +74,11 @@ describe("UX rule registry", () => {
         'a001 clicked t001 "Create first project", but the state diff introduced unrelated high-risk copy "Billing settings opened". DOM diff: .ux-sentinel/traces/test/actions/a001-dom-diff.json.',
       userImpact: "A user may unexpectedly land in a billing state.",
       suggestedFix: "Align the click consequence with the visible label.",
-      regressionCheck: "Run the same agentic interactive scenario."
+      regressionCheck: "Run the same agentic interactive scenario.",
+      evidencePaths: {
+        beforeScreenshot: ".ux-sentinel/traces/test/actions/a001-before.png",
+        afterScreenshot: ".ux-sentinel/traces/test/actions/a001-after.png"
+      }
     };
 
     const enriched = enrichFindingWithRules(finding);

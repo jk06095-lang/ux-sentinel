@@ -707,6 +707,7 @@ describe("interactive exploration helpers", () => {
             regressionCheck: string;
             ruleIds?: string[];
             confidence?: string;
+            evidencePaths?: Record<string, string>;
           }>;
         }>;
       };
@@ -731,7 +732,15 @@ describe("interactive exploration helpers", () => {
             userImpact: "A user may not know whether the action worked, failed, or is still pending.",
             suggestedFix: "Show visible feedback after the action, such as changed state, confirmation copy, a loading state, or an error/recovery path.",
             regressionCheck: "Run the same agentic interactive scenario and confirm the action produces a visible state change or feedback message.",
-            ruleIds: expect.arrayContaining(["nielsen.visibility_of_system_status"])
+            ruleIds: expect.arrayContaining(["nielsen.visibility_of_system_status"]),
+            confidence: "high",
+            evidencePaths: expect.objectContaining({
+              beforeScreenshot: expect.stringContaining("a001-before.png"),
+              afterScreenshot: expect.stringContaining("a001-after.png"),
+              visualDiff: expect.stringContaining("a001-diff.png"),
+              domDiff: expect.stringContaining("a001-dom-diff.json"),
+              accessibilityDiff: expect.stringContaining("a001-a11y-diff.json")
+            })
           })
         ])
       );

@@ -1519,6 +1519,31 @@ function renumberInteractiveFindings(findings: Finding[]): Finding[] {
   }));
 }
 
+function attachActionEvidencePathsToFindings(findings: Finding[], actions: InteractiveActionRecord[]): Finding[] {
+  const actionsById = new Map(actions.map((action) => [action.id, action]));
+
+  return findings.map((findingItem) => {
+    const actionId = actionIdFromFinding(findingItem);
+    const action = actionId ? actionsById.get(actionId) : undefined;
+    if (!action) {
+      return findingItem;
+    }
+
+    return {
+      ...findingItem,
+      evidencePaths: {
+        ...(findingItem.evidencePaths ?? {}),
+        beforeScreenshot: action.beforeScreenshot,
+        afterScreenshot: action.afterScreenshot,
+        screenMap: action.screenMap,
+        ...(action.visualDiff ? { visualDiff: action.visualDiff } : {}),
+        ...(action.domDiff ? { domDiff: action.domDiff } : {}),
+        ...(action.accessibilityDiff ? { accessibilityDiff: action.accessibilityDiff } : {})
+      }
+    };
+  });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -2806,7 +2831,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       }
     }
 
-    const numberedFindings = renumberInteractiveFindings(findings);
+    const numberedFindings = renumberInteractiveFindings(attachActionEvidencePathsToFindings(findings, actions));
     const summary = {
       actionCount: actions.length,
       screenshotCount: 1 + actions.length * 3,

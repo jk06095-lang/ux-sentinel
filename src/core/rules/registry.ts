@@ -125,6 +125,19 @@ function confidenceForFinding(finding: Finding, rules: UxRule[]): FindingConfide
   if (required.has("dom_diff") && !finding.evidencePaths?.domDiff && !/dom diff/i.test(finding.evidence)) {
     return "medium";
   }
+  if (
+    required.has("before_after") &&
+    (!finding.evidencePaths?.beforeScreenshot || !finding.evidencePaths?.afterScreenshot) &&
+    !/before\/after|before and after/i.test(finding.evidence)
+  ) {
+    return "medium";
+  }
+  if (required.has("visual_diff") && !finding.evidencePaths?.visualDiff && !/visual diff/i.test(finding.evidence)) {
+    return "medium";
+  }
+  if (required.has("a11y_diff") && !finding.evidencePaths?.accessibilityDiff && !/a11y diff|accessibility diff/i.test(finding.evidence)) {
+    return "medium";
+  }
   if (required.has("bbox") && !/(bbox|overlap|intersect|covered|extends|width|height|x=|y=|\d+x\d+)/i.test(finding.evidence)) {
     return "medium";
   }
