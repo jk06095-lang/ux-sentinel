@@ -596,6 +596,10 @@ describe("interactive exploration helpers", () => {
             detector: string;
             severity: string;
             title: string;
+            evidence: string;
+            userImpact: string;
+            suggestedFix: string;
+            regressionCheck: string;
             ruleIds?: string[];
             confidence?: string;
           }>;
@@ -618,6 +622,10 @@ describe("interactive exploration helpers", () => {
             detector: "no_feedback_after_action",
             severity: "P2",
             title: "Action produced no visible feedback",
+            evidence: expect.stringContaining("a001 clicked"),
+            userImpact: "A user may not know whether the action worked, failed, or is still pending.",
+            suggestedFix: "Show visible feedback after the action, such as changed state, confirmation copy, a loading state, or an error/recovery path.",
+            regressionCheck: "Run the same agentic interactive scenario and confirm the action produces a visible state change or feedback message.",
             ruleIds: expect.arrayContaining(["nielsen.visibility_of_system_status"])
           })
         ])

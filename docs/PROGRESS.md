@@ -318,6 +318,7 @@ Added reconstructable state evidence for interactive audit:
 - Added state graph and diff paths to reports, Codex briefs, CLI summaries, and contact-sheet rows.
 - Added cursor movement summaries to state graph edges so reviewers can inspect point count, duration, target movement, overlay appearance, and final hit-test status without opening the full pointer trace first.
 - Added attached finding summaries to state graph edges so each action edge carries the relevant finding id, detector, severity, title, UX rule metadata, and confidence alongside the artifact paths.
+- Extended attached state-graph finding summaries with evidence, user impact, suggested fix, and regression check so each action edge is repair-ready without cross-referencing the Markdown report first.
 
 ### Checkpoint: Pointer Trace Evidence
 

@@ -150,6 +150,10 @@ describe("state graph evidence", () => {
               detector: "no_feedback_after_action",
               severity: "P2",
               title: "Action produced no visible feedback",
+              evidence: "a001 clicked t001, but no visible state changed.",
+              userImpact: "A user may not know whether the action worked.",
+              suggestedFix: "Show visible feedback after the action.",
+              regressionCheck: "Rerun the same interactive scenario.",
               ruleIds: ["nielsen.visibility_of_system_status"],
               ruleFamily: "nielsen",
               confidence: "high"
@@ -167,7 +171,9 @@ describe("state graph evidence", () => {
     expect(graph.edges[0].findings[0]).toMatchObject({
       id: "UX-I001",
       detector: "no_feedback_after_action",
-      severity: "P2"
+      severity: "P2",
+      evidence: "a001 clicked t001, but no visible state changed.",
+      suggestedFix: "Show visible feedback after the action."
     });
   });
 });

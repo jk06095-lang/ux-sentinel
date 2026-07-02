@@ -68,6 +68,10 @@ export interface StateGraphFindingSummary {
   detector: string;
   severity: Severity;
   title: string;
+  evidence: string;
+  userImpact: string;
+  suggestedFix: string;
+  regressionCheck: string;
   ruleIds?: string[];
   ruleFamily?: UxRuleFamily;
   confidence?: FindingConfidence;
