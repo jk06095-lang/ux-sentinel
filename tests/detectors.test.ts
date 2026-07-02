@@ -181,5 +181,14 @@ describe("detectors", () => {
         persona: "tester"
       })
     ).toBe("ambiguous");
+    expect(
+      verdictForFindings([finding], {
+        id: "dag",
+        title: "DAG",
+        persona: "tester",
+        fail_conditions: [],
+        fail_conditions_explicit: false
+      })
+    ).toBe("ambiguous");
   });
 });

@@ -74,10 +74,12 @@ describe("interactive exploration helpers", () => {
 
   it("detects dangerous click labels", () => {
     expect(isDangerousClickLabel("Delete this project")).toBe(true);
-    expect(isDangerousClickLabel("??젣")).toBe(true);
-    expect(isDangerousClickLabel("寃곗젣")).toBe(true);
+    expect(isDangerousClickLabel("삭제")).toBe(true);
+    expect(isDangerousClickLabel("제거")).toBe(true);
+    expect(isDangerousClickLabel("결제")).toBe(true);
+    expect(isDangerousClickLabel("로그아웃")).toBe(true);
     expect(isDangerousClickLabel("Create first project")).toBe(false);
-    expect(isDangerousClickLabel("?꾨줈?앺듃 留뚮뱾湲?")).toBe(false);
+    expect(isDangerousClickLabel("프로젝트 만들기")).toBe(false);
   });
 
   it("defaults explore and scenario interactive runs to no safe clicks", () => {
@@ -95,6 +97,12 @@ describe("interactive exploration helpers", () => {
       ).clickAllSafeControls
     ).toBe(true);
     expect(resolveInteractiveConfig(undefined, { commandMode: "explore", clickSafeOverride: true }).clickAllSafeControls).toBe(true);
+    expect(
+      resolveInteractiveConfig(
+        { id: "s", title: "S", persona: "p", interactive_exploration: { enabled: true } },
+        { commandMode: "run", clickSafeOverride: true }
+      ).clickAllSafeControls
+    ).toBe(false);
   });
 
   it("calculates bbox overlap ratio", () => {

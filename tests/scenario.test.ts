@@ -26,6 +26,43 @@ fail_conditions:
     expect(scenario.fail_conditions_explicit).toBe(true);
   });
 
+  it("uses default fail conditions without explicit detector failure when absent", () => {
+    const scenario = parseScenarioText(`
+id: default-fail-conditions
+title: Default fail conditions
+persona: first-time-user
+`);
+
+    expect(scenario.fail_conditions).toContain("primary_cta_missing");
+    expect(scenario.fail_conditions).toContain("network_5xx");
+    expect(scenario.fail_conditions_explicit).toBe(false);
+  });
+
+  it("keeps explicit non-empty fail conditions authoritative", () => {
+    const scenario = parseScenarioText(`
+id: explicit-fail-conditions
+title: Explicit fail conditions
+persona: first-time-user
+fail_conditions:
+  - edge_label_crosses_node
+`);
+
+    expect(scenario.fail_conditions).toEqual(["edge_label_crosses_node"]);
+    expect(scenario.fail_conditions_explicit).toBe(true);
+  });
+
+  it("keeps empty fail conditions empty and uses severity-based failure", () => {
+    const scenario = parseScenarioText(`
+id: empty-fail-conditions
+title: Empty fail conditions
+persona: first-time-user
+fail_conditions: []
+`);
+
+    expect(scenario.fail_conditions).toEqual([]);
+    expect(scenario.fail_conditions_explicit).toBe(false);
+  });
+
   it("applies start_path only to base HTTP URLs", () => {
     const scenario = parseScenarioText(`
 id: dashboard

@@ -101,10 +101,10 @@ const defaultAvoidClickText = [
   "purchase",
   "logout",
   "sign out",
-  "??젣",
-  "?쒓굅",
-  "寃곗젣",
-  "濡쒓렇?꾩썐"
+  "삭제",
+  "제거",
+  "결제",
+  "로그아웃"
 ];
 
 const targetSelector = [
@@ -160,8 +160,9 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
   }
   const commandMode = options?.commandMode ?? (scenario ? "run" : "explore");
   const clickAllSafeControls =
-    options?.clickSafeOverride ??
-    (commandMode === "explore" ? false : source?.click_all_safe_controls === true);
+    commandMode === "explore" && options?.clickSafeOverride === true
+      ? true
+      : commandMode === "run" && source?.click_all_safe_controls === true;
 
   return {
     maxActions: Math.max(1, Math.min(250, Math.floor(maxActions))),

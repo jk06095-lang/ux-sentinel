@@ -29,7 +29,8 @@ export function parseScenarioText(source: string): Scenario {
     throw new Error("Scenario is missing required string field: persona.");
   }
 
-  const hasExplicitFailConditions = Array.isArray(parsed.fail_conditions);
+  const explicitFailConditions = Array.isArray(parsed.fail_conditions) ? parsed.fail_conditions : undefined;
+  const hasNonEmptyExplicitFailConditions = Boolean(explicitFailConditions?.length);
 
   return {
     ...parsed,
@@ -89,8 +90,8 @@ export function parseScenarioText(source: string): Scenario {
         }
       : undefined,
     fail_conditions:
-      parsed.fail_conditions?.length
-        ? parsed.fail_conditions
+      explicitFailConditions
+        ? explicitFailConditions
         : [
             "primary_cta_missing",
             "primary_cta_icon_only",
@@ -99,7 +100,7 @@ export function parseScenarioText(source: string): Scenario {
             "console_error",
             "network_5xx"
           ],
-    fail_conditions_explicit: hasExplicitFailConditions
+    fail_conditions_explicit: hasNonEmptyExplicitFailConditions
   } as Scenario;
 }
 

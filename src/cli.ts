@@ -141,8 +141,7 @@ async function runCommand(args: ParsedArgs): Promise<void> {
       scenario,
       maxActions: numberOption(args, "max-actions"),
       settleMs: numberOption(args, "settle-ms"),
-      commandMode: "run",
-      clickSafeOverride: args.options.has("click-safe") ? true : undefined
+      commandMode: "run"
     });
     observation = {
       screenMap: exploration.screenMap,

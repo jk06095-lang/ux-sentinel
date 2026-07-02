@@ -26,7 +26,7 @@ Run a scenario with interactive exploration:
 ux-sentinel run demo/scenarios/interactive-dag-clarity.yaml --url http://localhost:3000 --interactive
 ```
 
-`--max-actions <n>` limits the number of hover/focus/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll. For scenario-driven `run --interactive`, clicking requires `interactive_exploration.click_all_safe_controls: true`.
+`--max-actions <n>` limits the number of hover/focus/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll. `--click-safe` is standalone `explore` only; for scenario-driven `run --interactive`, clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
 ## Artifacts
 
@@ -123,6 +123,6 @@ These are geometry and DOM/layout heuristics. They are meant to produce inspecta
 - This is not a full autonomous browser agent.
 - It does not type into forms or perform destructive actions.
 - Standalone `explore` does not click by default; clicking requires `--click-safe`.
-- Scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
+- Scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`; `run --interactive` does not accept `--click-safe` as a one-off click override.
 - It does not use visual AI by default.
 - Graph and DAG checks are bbox heuristics; humans should review `contact-sheet.html` before treating a finding as final.

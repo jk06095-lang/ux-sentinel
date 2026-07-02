@@ -266,7 +266,7 @@ visual_anomaly_contract:
     max_unused_canvas_ratio: 0.65
 ```
 
-For standalone `explore`, clicking requires `--click-safe`. For scenario-driven `run --interactive`, clicking requires `interactive_exploration.click_all_safe_controls: true`. Elements with `data-ux-role` are collected as analysis metadata by default; add `data-ux-clickable="true"` or `data-ux-action="..."` to opt a non-native element into safe-click filtering.
+For standalone `explore`, clicking requires `--click-safe`. For scenario-driven `run --interactive`, `--click-safe` is intentionally not a run override; clicking requires `interactive_exploration.click_all_safe_controls: true`. Elements with `data-ux-role` are collected as analysis metadata by default; add `data-ux-clickable="true"` or `data-ux-action="..."` to opt a non-native element into safe-click filtering.
 
 ## Sample Report Output
 
@@ -434,7 +434,7 @@ Interactive visual anomaly detectors:
 - This MVP uses deterministic DOM, layout, accessibility, console, and network evidence. It does not use a visual AI model.
 - It does not call external LLM APIs.
 - It is not a SaaS dashboard, cloud runner, account system, database, Chrome extension, or enterprise QA platform.
-- Interactive audit moves the mouse, focuses targets, and scrolls containers. Clicking is disabled by default and requires `--click-safe` or explicit scenario opt-in with `click_all_safe_controls: true`.
+- Interactive audit moves the mouse, focuses targets, and scrolls containers. Clicking is disabled by default. Standalone `explore` requires `--click-safe`; scenario-driven `run --interactive` requires explicit scenario opt-in with `click_all_safe_controls: true`.
 - `data-ux-role` is analysis metadata by default, not permission to click. Use `data-ux-clickable="true"` or `data-ux-action` to opt non-native elements into safe-click filtering.
 - Graph and DAG anomaly checks are bbox heuristics. Review `contact-sheet.html` before treating them as final UX truth.
 - It is not a replacement for human UX research; it is a local evidence harness for catching obvious perception mismatches before review.
