@@ -38,7 +38,11 @@ describe("UX rule registry", () => {
       evidence: "Visible page text looks like an empty state.",
       userImpact: "A user cannot identify the next step.",
       suggestedFix: "Add a visible CTA.",
-      regressionCheck: "Run the empty-state scenario again."
+      regressionCheck: "Run the empty-state scenario again.",
+      evidencePaths: {
+        screenshot: ".ux-sentinel/traces/test/screenshot.png",
+        screenMap: ".ux-sentinel/traces/test/screen-map.json"
+      }
     };
 
     const enriched = enrichFindingWithRules(finding);
@@ -47,6 +51,52 @@ describe("UX rule registry", () => {
     expect(enriched.ruleFamily).toBe("nielsen");
     expect(enriched.whyThisMatters).toContain("Match between system and the real world");
     expect(enriched.confidence).toBe("high");
+  });
+
+  it("lowers confidence when screenshot or screen-map evidence is missing", () => {
+    const finding: Finding = {
+      id: "UX-004",
+      detector: "empty_state_without_cta",
+      title: "Empty state has no visible primary CTA",
+      severity: "P1",
+      type: "Perception Mismatch",
+      evidence: "Visible page text looks like an empty state.",
+      userImpact: "A user cannot identify the next step.",
+      suggestedFix: "Add a visible CTA.",
+      regressionCheck: "Run the empty-state scenario again."
+    };
+
+    expect(enrichFindingWithRules(finding).confidence).toBe("medium");
+  });
+
+  it("requires accessibility snapshot evidence for name/role/value findings", () => {
+    const finding: Finding = {
+      id: "UX-005",
+      detector: "primary_cta_icon_only",
+      title: "Primary CTA is icon-only",
+      severity: "P1",
+      type: "Perception Mismatch",
+      evidence: "The create control is visible only as + while its accessible name is Create first project.",
+      userImpact: "A sighted user may not understand the primary action.",
+      suggestedFix: "Add visible text to the primary CTA.",
+      regressionCheck: "Run the empty-state scenario again.",
+      evidencePaths: {
+        screenshot: ".ux-sentinel/traces/test/screenshot.png",
+        screenMap: ".ux-sentinel/traces/test/screen-map.json"
+      }
+    };
+
+    expect(enrichFindingWithRules(finding).confidence).toBe("medium");
+
+    expect(
+      enrichFindingWithRules({
+        ...finding,
+        evidencePaths: {
+          ...finding.evidencePaths,
+          accessibilitySnapshot: ".ux-sentinel/traces/test/accessibility.json"
+        }
+      }).confidence
+    ).toBe("high");
   });
 
   it("links pointer trace detectors to pointer-trace evidence requirements", () => {

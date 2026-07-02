@@ -21,9 +21,24 @@ function formatUxRuleProfile(scenario: Scenario): string {
   ].join("\n");
 }
 
+function attachObservationEvidencePaths(result: Omit<RunResult, "reportPath">): Finding[] {
+  const { observation } = result;
+  return result.findings.map((finding) => ({
+    ...finding,
+    evidencePaths: {
+      screenshot: displayPath(observation.artifacts.screenshot),
+      screenMap: displayPath(observation.artifacts.screenMap),
+      ...(observation.artifacts.accessibility
+        ? { accessibilitySnapshot: displayPath(observation.artifacts.accessibility) }
+        : {}),
+      ...(finding.evidencePaths ?? {})
+    }
+  }));
+}
+
 export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): string {
   const { scenario, url, verdict, observation } = result;
-  const findings = enrichFindingsWithRules(result.findings);
+  const findings = enrichFindingsWithRules(attachObservationEvidencePaths(result));
   const functional = findings.filter((finding) => finding.type === "Functional Issue");
   const perception = findings.filter((finding) => finding.type === "Perception Mismatch");
   const interactive = observation.interactive;

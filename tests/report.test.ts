@@ -100,7 +100,10 @@ describe("report generation", () => {
     expect(report).toContain("contact-sheet.html");
     expect(report).toContain("UX rules:");
     expect(report).toContain("Why this matters:");
-    expect(report).toContain("Confidence:");
+    expect(report).toContain("- Confidence: high");
+    expect(report).toContain("screenshot=.ux-sentinel/traces/test/screenshot.png");
+    expect(report).toContain("screenMap=.ux-sentinel/traces/test/screen-map.json");
+    expect(report).toContain("accessibilitySnapshot=.ux-sentinel/traces/test/accessibility.json");
     expect(report).toContain("## Codex Patch Brief");
     expect(report).toContain("Do not change scenarios or visual contracts");
     expect(report).toContain("UX-001");

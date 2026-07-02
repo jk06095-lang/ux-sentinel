@@ -23,6 +23,7 @@ Each enriched finding can include:
 - `evidencePaths`
 
 Reports render this metadata as `UX rules`, `Rule family`, `Why this matters`, `Confidence`, and optional evidence paths.
+Report generation attaches the global screenshot, screen map, and accessibility snapshot artifact paths to findings before rule enrichment, so confidence checks can distinguish evidence-backed static findings from lower-confidence text-only summaries.
 
 Scenarios can declare the intended review lens with `ux_rule_profile`:
 

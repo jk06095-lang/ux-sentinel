@@ -116,6 +116,22 @@ function confidenceForFinding(finding: Finding, rules: UxRule[]): FindingConfide
   }
 
   const required = new Set(rules.flatMap((rule) => rule.evidenceRequired));
+  const hasScreenshotEvidence =
+    Boolean(finding.evidencePaths?.screenshot || finding.evidencePaths?.beforeScreenshot || finding.evidencePaths?.afterScreenshot) ||
+    /screenshot/i.test(finding.evidence);
+  if (required.has("screenshot") && !hasScreenshotEvidence) {
+    return "medium";
+  }
+  if (required.has("screen_map") && !finding.evidencePaths?.screenMap && !/screen[- ]map/i.test(finding.evidence)) {
+    return "medium";
+  }
+  if (
+    required.has("a11y_snapshot") &&
+    !finding.evidencePaths?.accessibilitySnapshot &&
+    !/accessibility snapshot|a11y snapshot/i.test(finding.evidence)
+  ) {
+    return "medium";
+  }
   if (required.has("pointer_trace") && !finding.evidencePaths?.pointerTrace && !/pointer trace/i.test(finding.evidence)) {
     return "medium";
   }
