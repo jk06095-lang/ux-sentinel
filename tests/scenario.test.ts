@@ -178,4 +178,27 @@ animation_audit:
     expect(scenario.animation_audit?.detect_risky_properties).toBe(true);
     expect(scenario.animation_audit?.max_animation_ms).toBe(900);
   });
+
+  it("parses UX rule profile options", () => {
+    const scenario = parseScenarioText(`
+id: professional-agentic-ui-audit
+title: Professional Agentic UI Audit
+persona: first-time-user
+ux_rule_profile:
+  enabled: true
+  rule_sets:
+    - nielsen_10_heuristics
+    - wcag_2_2_interaction
+    - graph_dag_readability
+  require_rule_mapping: true
+`);
+
+    expect(scenario.ux_rule_profile?.enabled).toBe(true);
+    expect(scenario.ux_rule_profile?.rule_sets).toEqual([
+      "nielsen_10_heuristics",
+      "wcag_2_2_interaction",
+      "graph_dag_readability"
+    ]);
+    expect(scenario.ux_rule_profile?.require_rule_mapping).toBe(true);
+  });
 });

@@ -111,6 +111,13 @@ export function parseScenarioText(source: string): Scenario {
           max_animation_ms: parsed.animation_audit.max_animation_ms ?? 1200
         }
       : undefined,
+    ux_rule_profile: parsed.ux_rule_profile
+      ? {
+          enabled: parsed.ux_rule_profile.enabled ?? false,
+          rule_sets: parsed.ux_rule_profile.rule_sets ?? [],
+          require_rule_mapping: parsed.ux_rule_profile.require_rule_mapping ?? false
+        }
+      : undefined,
     // Absent fail_conditions gets the default detector list. An explicit empty
     // array means "no explicit detector list"; severity-based verdicts still apply.
     fail_conditions: hasFailConditionsField ? parsedFailConditions : defaultFailConditions,

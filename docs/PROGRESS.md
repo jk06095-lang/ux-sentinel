@@ -440,3 +440,11 @@ Added a second broken/fixed demo pair for the first high-priority static detecto
 - `demo/high-priority-fixed.html` fixes the same UI by using standard target sizes, aligned visible/accessibility labels, real actionable affordances, and confirmation/undo copy for the destructive control.
 - `demo/scenarios/high-priority-detectors.yaml` lists those detector ids as explicit fail conditions.
 - `npm run demo:verify` now checks exact fail/pass verdicts for the original empty-state pair and the high-priority detector pair, then reads the broken high-priority report to confirm the intended detector findings include concrete evidence.
+
+### Checkpoint: UX Rule Profile Scenario Contract
+
+Added `ux_rule_profile` as first-class scenario metadata:
+
+- `parseScenarioText` now preserves `enabled`, `rule_sets`, and `require_rule_mapping`.
+- `demo/scenarios/professional-agentic-ui-audit.yaml` declares the professional rule sets: Nielsen, WCAG 2.2 interaction, motion accessibility, Gestalt grouping, interaction laws, and graph/DAG readability.
+- Markdown reports render the enabled rule profile so reviewers can confirm the intended UX review lens alongside enriched detector rule metadata.

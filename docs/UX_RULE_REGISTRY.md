@@ -24,6 +24,23 @@ Each enriched finding can include:
 
 Reports render this metadata as `UX rules`, `Rule family`, `Why this matters`, `Confidence`, and optional evidence paths.
 
+Scenarios can declare the intended review lens with `ux_rule_profile`:
+
+```yaml
+ux_rule_profile:
+  enabled: true
+  rule_sets:
+    - nielsen_10_heuristics
+    - wcag_2_2_interaction
+    - motion_accessibility
+    - gestalt_visual_grouping
+    - interaction_laws
+    - graph_dag_readability
+  require_rule_mapping: true
+```
+
+The profile is rendered in reports so reviewers can confirm which rule sets the scenario expected. Detector-to-rule mapping remains deterministic through the registry files listed above.
+
 ## Rule Shape
 
 ```ts

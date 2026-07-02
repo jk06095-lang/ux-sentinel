@@ -120,6 +120,11 @@ export interface Scenario {
     detect_risky_properties?: boolean;
     max_animation_ms?: number;
   };
+  ux_rule_profile?: {
+    enabled?: boolean;
+    rule_sets?: string[];
+    require_rule_mapping?: boolean;
+  };
   fail_conditions?: string[];
   fail_conditions_explicit?: boolean;
 }

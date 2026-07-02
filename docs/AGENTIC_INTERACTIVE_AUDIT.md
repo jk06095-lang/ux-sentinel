@@ -36,9 +36,20 @@ interactive_exploration:
   click_all_safe_controls: true
   allow_navigation: false
   settle_ms: 350
+
+ux_rule_profile:
+  enabled: true
+  rule_sets:
+    - nielsen_10_heuristics
+    - wcag_2_2_interaction
+    - motion_accessibility
+    - gestalt_visual_grouping
+    - interaction_laws
+    - graph_dag_readability
+  require_rule_mapping: true
 ```
 
-The fuller professional-audit template lives at `demo/scenarios/professional-agentic-ui-audit.yaml`. It combines agentic planning, clean English/Korean dangerous-label avoids, visual anomaly contracts, and opt-in motion audit.
+The fuller professional-audit template lives at `demo/scenarios/professional-agentic-ui-audit.yaml`. It combines agentic planning, clean English/Korean dangerous-label avoids, visual anomaly contracts, an explicit `ux_rule_profile`, and opt-in motion audit.
 
 ## Target Categories
 
@@ -92,6 +103,8 @@ Pointer traces are written as `actions/aNNN-pointer-trace.json`. They record the
 Animation traces are written as `actions/aNNN-animation-trace.json` only when motion audit is enabled. They record CSS transition/animation evidence, Web Animations API entries, risky properties, optional reduced-motion comparison, and target bbox movement. See [MOTION_AUDIT.md](MOTION_AUDIT.md).
 
 Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, and `Confidence`.
+
+When a scenario sets `ux_rule_profile.enabled: true`, reports also show the selected rule sets and whether the scenario requires rule mapping. This profile is declarative: it documents the intended professional review lens while the deterministic enrichment layer continues to attach the concrete rule evidence.
 
 The expanded detector batches add target-size, target-spacing, visible affordance, visible/accessibility label mismatch, unnamed dialog checks, dialog/modal escape checks, popover-over-primary checks, graph/DAG control and traceability checks, unannounced status checks, empty/loading/dead-end recovery checks, focus-ring, focus-obscuring, destructive-action cue, click-feedback, primary-action visual hierarchy, and label/action consistency checks. These rely on screen-map bbox/style evidence, `aria-live`, `aria-labelledby`, `aria-modal`, `visualWeight`, `data-ux-action`, `data-ux-role`, focus evidence, pointer hit-tests, or state diffs.
 

@@ -172,7 +172,11 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("inconsistent_motion_tokens");
     expect(docs).toContain("UX_RULE_REGISTRY.md");
     expect(docs).toContain("MOTION_AUDIT.md");
+    expect(docs).toContain("ux_rule_profile");
+    expect(docs).toContain("require_rule_mapping");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("animation_audit:");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("ux_rule_profile:");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("graph_dag_readability");
     expect(docs).toContain("Why this matters");
     expect(docs).toContain("focus_ring_missing");
     expect(docs).toContain("focus_order_unexpected_jump");

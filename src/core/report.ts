@@ -7,6 +7,20 @@ function plural(value: unknown[]): string {
   return value.length === 1 ? "1" : String(value.length);
 }
 
+function formatUxRuleProfile(scenario: Scenario): string {
+  const profile = scenario.ux_rule_profile;
+  if (!profile?.enabled) {
+    return "";
+  }
+
+  const ruleSets = profile.rule_sets?.length ? profile.rule_sets.join(", ") : "none declared";
+  return [
+    "- UX rule profile: enabled",
+    `- UX rule sets: ${ruleSets}`,
+    `- require rule mapping: ${profile.require_rule_mapping === true ? "true" : "false"}`
+  ].join("\n");
+}
+
 export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): string {
   const { scenario, url, verdict, observation } = result;
   const findings = enrichFindingsWithRules(result.findings);
@@ -23,6 +37,7 @@ export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): stri
 - persona: ${scenario.persona}
 - viewport: ${observation.screenMap.viewport.width}x${observation.screenMap.viewport.height}
 - timestamp: ${observation.screenMap.timestamp}
+${formatUxRuleProfile(scenario)}
 
 ## Verdict
 - result: ${verdict}

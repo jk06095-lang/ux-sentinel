@@ -46,6 +46,17 @@ interactive_exploration:
     - "결제"
     - "로그아웃"
 
+ux_rule_profile:
+  enabled: true
+  rule_sets:
+    - nielsen_10_heuristics
+    - wcag_2_2_interaction
+    - motion_accessibility
+    - gestalt_visual_grouping
+    - interaction_laws
+    - graph_dag_readability
+  require_rule_mapping: true
+
 animation_audit:
   enabled: true
   compare_reduced_motion: true

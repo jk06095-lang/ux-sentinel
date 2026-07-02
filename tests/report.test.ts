@@ -8,7 +8,12 @@ describe("report generation", () => {
       id: "onboarding-empty-state",
       title: "First-time user sees clear next action",
       persona: "first-time-user",
-      goal: { user_wants: "Create the first project", primary_intent: "create_project" }
+      goal: { user_wants: "Create the first project", primary_intent: "create_project" },
+      ux_rule_profile: {
+        enabled: true,
+        rule_sets: ["nielsen_10_heuristics", "wcag_2_2_interaction"],
+        require_rule_mapping: true
+      }
     };
     const finding: Finding = {
       id: "UX-001",
@@ -88,6 +93,9 @@ describe("report generation", () => {
     expect(report).toContain("# UX Sentinel Report");
     expect(report).toContain("screen-map.html");
     expect(report).toContain("## Interactive Exploration");
+    expect(report).toContain("UX rule profile: enabled");
+    expect(report).toContain("UX rule sets: nielsen_10_heuristics, wcag_2_2_interaction");
+    expect(report).toContain("require rule mapping: true");
     expect(report).toContain("state-graph.json");
     expect(report).toContain("contact-sheet.html");
     expect(report).toContain("UX rules:");
