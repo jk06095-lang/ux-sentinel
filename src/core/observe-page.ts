@@ -74,6 +74,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
         const dataUxRole = element.getAttribute("data-ux-role");
         const dataUxAction = element.getAttribute("data-ux-action");
         const dataUxClickable = element.getAttribute("data-ux-clickable") === "true";
+        const tabIndexAttr = element.getAttribute("tabindex");
         const visibleText = normalize(element.innerText || element.textContent || "");
         const visible =
           rect.width > 0 &&
@@ -138,6 +139,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           },
           clickable,
           disabled,
+          tabIndex: tabIndexAttr === null ? null : Number.parseInt(tabIndexAttr, 10),
           aboveFold,
           visible,
           looksClickable,

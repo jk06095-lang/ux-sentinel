@@ -129,6 +129,47 @@ function intersectionRatio(a: ScreenElement["bbox"], b: ScreenElement["bbox"]): 
   return intersectionArea(a, b) / smallestArea;
 }
 
+function focusOrderCandidates(screenMap: ScreenMap): Array<{ element: ScreenElement; sourceIndex: number }> {
+  return screenMap.elements
+    .map((element, sourceIndex) => ({ element, sourceIndex }))
+    .filter(({ element }) => element.visible && !element.disabled && element.clickable);
+}
+
+function visualOrderIndex(element: ScreenElement, screenMap: ScreenMap): number {
+  const row = Math.max(0, Math.round(element.bbox.y / 24));
+  const column = Math.max(0, Math.round(element.bbox.x / 24));
+  return row * Math.max(1, Math.ceil(screenMap.viewport.width / 24)) + column;
+}
+
+function focusOrderJump(screenMap: ScreenMap): { from: ScreenElement; to: ScreenElement } | undefined {
+  const candidates = focusOrderCandidates(screenMap);
+  const positiveTabIndex = candidates.filter(({ element }) => typeof element.tabIndex === "number" && element.tabIndex > 0);
+  if (positiveTabIndex.length < 2) {
+    return undefined;
+  }
+
+  const tabOrder = [...positiveTabIndex].sort((first, second) => {
+    const tabIndexDelta = (first.element.tabIndex ?? 0) - (second.element.tabIndex ?? 0);
+    return tabIndexDelta || first.sourceIndex - second.sourceIndex;
+  });
+  const visualOrder = new Map(candidates.map(({ element }) => [element.id, visualOrderIndex(element, screenMap)]));
+
+  for (let index = 0; index < tabOrder.length - 1; index += 1) {
+    const from = tabOrder[index].element;
+    const to = tabOrder[index + 1].element;
+    const fromOrder = visualOrder.get(from.id) ?? 0;
+    const toOrder = visualOrder.get(to.id) ?? 0;
+    const jumpsUp = to.bbox.y + Math.max(16, to.bbox.height * 0.4) < from.bbox.y;
+    const reversesVisualOrder = toOrder + 2 < fromOrder;
+
+    if (jumpsUp && reversesVisualOrder) {
+      return { from, to };
+    }
+  }
+
+  return undefined;
+}
+
 function hasAccessibleDialogName(element: ScreenElement): boolean {
   return Boolean(meaningfulText(element.ariaLabel) || meaningfulText(element.ariaLabelledBy) || meaningfulText(element.title));
 }
@@ -407,6 +448,22 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         )
       );
     }
+  }
+
+  const unexpectedFocusJump = focusOrderJump(screenMap);
+  if (unexpectedFocusJump) {
+    findings.push(
+      finding(
+        "focus_order_unexpected_jump",
+        "Keyboard focus order jumps against the visual order",
+        "P2",
+        "Perception Mismatch",
+        `${unexpectedFocusJump.from.id} "${elementActionLabel(unexpectedFocusJump.from)}" tabindex=${unexpectedFocusJump.from.tabIndex} at x=${unexpectedFocusJump.from.bbox.x}, y=${unexpectedFocusJump.from.bbox.y} is followed by ${unexpectedFocusJump.to.id} "${elementActionLabel(unexpectedFocusJump.to)}" tabindex=${unexpectedFocusJump.to.tabIndex} at x=${unexpectedFocusJump.to.bbox.x}, y=${unexpectedFocusJump.to.bbox.y}, which moves keyboard focus upward against the visual reading order.`,
+        "Keyboard users can lose their place when focus jumps backward through the visible layout.",
+        "Use DOM order for the intended reading path and avoid positive tabindex values that reorder focus unexpectedly.",
+        "Run observe or interactive audit and confirm positive tabindex controls follow the visual top-to-bottom order."
+      )
+    );
   }
 
   const hiddenImportantText =

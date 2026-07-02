@@ -148,6 +148,7 @@ export interface ScreenElement {
   bbox: ElementBox;
   clickable: boolean;
   disabled: boolean;
+  tabIndex?: number | null;
   aboveFold: boolean;
   visible: boolean;
   looksClickable: boolean;

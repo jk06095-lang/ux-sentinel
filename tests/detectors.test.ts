@@ -450,6 +450,76 @@ describe("detectors", () => {
     expect(finding?.ruleIds).toContain("interaction_law.visual_hierarchy");
   });
 
+  it("detects positive tabindex focus order jumps against visual order", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["First card", "Second card"],
+      elements: [
+        baseElement({
+          id: "top-action",
+          tag: "button",
+          role: "button",
+          visibleText: "First card",
+          bbox: { x: 40, y: 80, width: 160, height: 40 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true,
+          tabIndex: 2
+        }),
+        baseElement({
+          id: "bottom-action",
+          tag: "button",
+          role: "button",
+          visibleText: "Second card",
+          bbox: { x: 40, y: 420, width: 160, height: 40 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true,
+          tabIndex: 1
+        })
+      ]
+    });
+
+    const finding = runDetectors(screenMap, scenario).find((item) => item.detector === "focus_order_unexpected_jump");
+
+    expect(finding?.evidence).toContain("bottom-action");
+    expect(finding?.evidence).toContain("top-action");
+    expect(finding?.ruleIds).toContain("wcag22.focus_visible");
+  });
+
+  it("does not flag positive tabindex values that follow visual order", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["First card", "Second card"],
+      elements: [
+        baseElement({
+          id: "top-action",
+          tag: "button",
+          role: "button",
+          visibleText: "First card",
+          bbox: { x: 40, y: 80, width: 160, height: 40 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true,
+          tabIndex: 1
+        }),
+        baseElement({
+          id: "bottom-action",
+          tag: "button",
+          role: "button",
+          visibleText: "Second card",
+          bbox: { x: 40, y: 420, width: 160, height: 40 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true,
+          tabIndex: 2
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).not.toContain("focus_order_unexpected_jump");
+  });
+
   it("does not flag below-fold important text when an above-fold cue exists", () => {
     const screenMap = baseScreenMap({
       document: { width: 1280, height: 1200, hasHorizontalScroll: false },

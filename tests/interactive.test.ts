@@ -14,6 +14,7 @@ import {
   isDangerousClickLabel,
   resolveInteractiveConfig
 } from "../src/core/interactive.js";
+import { collectScreenMap } from "../src/core/observe-page.js";
 import type { ClickBlockage, InteractiveExplorationResult, Scenario } from "../src/core/types.js";
 
 function emptyAnalysis() {
@@ -76,6 +77,28 @@ describe("interactive exploration helpers", () => {
       expect(targets.find((target) => target.visibleText === "Save profile")?.skipClickReason).toBe("inside form");
       expect(targets.find((target) => target.visibleText === "Submit profile")?.skipClickReason).toBe("inside form");
       expect(targets.find((target) => target.visibleText === "Delete from input")?.skipClickReason).toBe("dangerous label");
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it("preserves explicit tabindex values in the screen map", async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.setContent(`
+        <main>
+          <button tabindex="2">Top action</button>
+          <button tabindex="1">Bottom action</button>
+          <button>Native action</button>
+        </main>
+      `);
+
+      const screenMap = await collectScreenMap(page, page.url(), [], []);
+
+      expect(screenMap.elements.find((element) => element.visibleText === "Top action")?.tabIndex).toBe(2);
+      expect(screenMap.elements.find((element) => element.visibleText === "Bottom action")?.tabIndex).toBe(1);
+      expect(screenMap.elements.find((element) => element.visibleText === "Native action")?.tabIndex).toBeNull();
     } finally {
       await browser.close();
     }

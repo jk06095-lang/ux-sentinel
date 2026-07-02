@@ -175,6 +175,7 @@ describe("Codex integration docs", () => {
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("animation_audit:");
     expect(docs).toContain("Why this matters");
     expect(docs).toContain("focus_ring_missing");
+    expect(docs).toContain("focus_order_unexpected_jump");
     expect(docs).toContain("focus_caused_context_change");
     expect(docs).toContain("click_target_too_small");
     expect(docs).toContain("no_feedback_after_action");

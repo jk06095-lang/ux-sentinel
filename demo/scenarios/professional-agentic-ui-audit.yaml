@@ -71,6 +71,7 @@ fail_conditions:
   - click_target_blocked_by_overlay
   - focus_ring_missing
   - focus_obscured_by_author_content
+  - focus_order_unexpected_jump
   - focus_caused_context_change
   - visible_label_not_in_accessible_name
   - icon_button_without_visible_label

@@ -470,6 +470,7 @@ Interactive focus and state detectors:
 
 - `focus_ring_missing`
 - `focus_obscured_by_author_content`
+- `focus_order_unexpected_jump`
 - `focus_caused_context_change`
 - `keyboard_target_not_reachable`
 - `no_feedback_after_action`
