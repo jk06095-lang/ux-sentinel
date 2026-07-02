@@ -91,6 +91,7 @@ fail_conditions:
   - animation_jank_detected
   - floating_panel_overlaps_primary_action
   - important_text_truncated
+  - important_text_below_fold_without_cue
   - edge_label_crosses_node
   - selected_path_not_traceable
   - edge_crosses_critical_label

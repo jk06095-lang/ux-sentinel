@@ -19,6 +19,53 @@ const escapeActionHints = ["close", "dismiss", "cancel", "back", "done", "x"];
 const deadEndHints = ["error", "failed", "failure", "unavailable", "not found", "forbidden", "permission", "access denied", "can't continue"];
 const loadingHints = ["loading", "please wait", "processing", "saving", "syncing", "submitting"];
 const statusHints = ["saved", "updated", "complete", "completed", "success", "failed", "error", "loading", "processing"];
+const importantBelowFoldHints = [
+  "important",
+  "required",
+  "warning",
+  "error",
+  "failed",
+  "next step",
+  "continue",
+  "start",
+  "setup",
+  "create",
+  "retry",
+  "recover",
+  "restore",
+  "help",
+  "support",
+  "permission",
+  "billing",
+  "payment",
+  "security",
+  "privacy",
+  "중요",
+  "필수",
+  "경고",
+  "오류",
+  "다음",
+  "계속",
+  "시작",
+  "만들",
+  "복구",
+  "도움"
+];
+const belowFoldCueHints = [
+  "scroll",
+  "more below",
+  "continue below",
+  "see more",
+  "view more",
+  "read more",
+  "next below",
+  "down",
+  "below",
+  "아래",
+  "스크롤",
+  "더 보기",
+  "계속 보기"
+];
 const graphControlHints = ["zoom", "fit", "reset", "pan", "center", "layout", "minimap", "expand", "collapse", "filter"];
 const selectedPathHints = ["selected path", "active path", "highlighted path", "current path", "path selected"];
 const statusRoles = new Set(["status", "alert", "log", "progressbar"]);
@@ -234,6 +281,49 @@ function recoveryAction(screenMap: ScreenMap): ScreenElement | undefined {
   });
 }
 
+function isMeaningfulBelowFoldText(element: ScreenElement, screenMap: ScreenMap): boolean {
+  const text = meaningfulText(element.visibleText);
+  if (!element.visible || element.clickable || element.aboveFold || element.bbox.y < screenMap.viewport.height || text.length < 12) {
+    return false;
+  }
+
+  const roleOrUx = roleText(element);
+  const lowerText = text.toLowerCase();
+  const structuralImportance =
+    /^h[1-6]$/.test(element.tag) ||
+    roleOrUx.includes("heading") ||
+    roleOrUx.includes("alert") ||
+    roleOrUx.includes("status") ||
+    roleOrUx.includes("banner") ||
+    roleOrUx.includes("recovery") ||
+    roleOrUx.includes("empty-state");
+  const hintedImportance = importantBelowFoldHints.some((hint) => lowerText.includes(hint.toLowerCase()));
+
+  return structuralImportance || hintedImportance;
+}
+
+function hasBelowFoldCue(screenMap: ScreenMap): boolean {
+  const viewportBottom = screenMap.viewport.height;
+  return screenMap.elements.some((element) => {
+    if (!element.visible || !element.aboveFold) {
+      return false;
+    }
+
+    const label = elementActionLabel(element).toLowerCase();
+    const roleOrUx = roleText(element);
+    const explicitCue =
+      roleOrUx.includes("scroll-cue") ||
+      roleOrUx.includes("more-indicator") ||
+      belowFoldCueHints.some((hint) => label.includes(hint.toLowerCase()));
+    const partialContentCue =
+      meaningfulText(element.visibleText).length > 8 &&
+      element.bbox.y < viewportBottom &&
+      element.bbox.y + element.bbox.height > viewportBottom + 12;
+
+    return explicitCue || partialContentCue;
+  });
+}
+
 export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[] {
   const findings: Array<Omit<Finding, "id">> = [];
   const labels = preferredLabels(scenario);
@@ -317,6 +407,25 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         )
       );
     }
+  }
+
+  const hiddenImportantText =
+    screenMap.document.height > screenMap.viewport.height + 24
+      ? screenMap.elements.find((element) => isMeaningfulBelowFoldText(element, screenMap))
+      : undefined;
+  if (hiddenImportantText && !hasBelowFoldCue(screenMap)) {
+    findings.push(
+      finding(
+        "important_text_below_fold_without_cue",
+        "Important text is below the fold without a visible cue",
+        "P2",
+        "Perception Mismatch",
+        `${hiddenImportantText.id} "${meaningfulText(hiddenImportantText.visibleText).slice(0, 160)}" starts at y=${hiddenImportantText.bbox.y}, below viewport height ${screenMap.viewport.height}; no above-fold scroll, more, down, or partial-content cue was detected.`,
+        "A user may miss important state, consequence, setup, or recovery copy because the initial screen gives no reason to scroll.",
+        "Move the important text above the fold, add a visible cue that more content follows, or keep a partial next section visible at the viewport edge.",
+        "Run the scenario at the target viewport and confirm important below-fold copy is either above the fold or paired with an explicit scroll cue."
+      )
+    );
   }
 
   const iconOnlyPrimary = ariaCtas.find((element) => element.isIconOnly || !element.hasVisibleLabel);

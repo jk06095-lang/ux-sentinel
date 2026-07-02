@@ -443,6 +443,7 @@ Static visual-contract detectors:
 - `console_error`
 - `network_5xx`
 - `important_text_truncated`
+- `important_text_below_fold_without_cue`
 - `primary_cta_low_visual_weight`
 - `multiple_primary_ctas_conflict`
 - `secondary_action_overpowers_primary`

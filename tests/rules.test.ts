@@ -12,6 +12,7 @@ const knownDetectors = [
   "console_error",
   "network_5xx",
   "important_text_truncated",
+  "important_text_below_fold_without_cue",
   "clickable_without_visible_affordance",
   "looks_clickable_but_not_actionable",
   "click_target_too_small",

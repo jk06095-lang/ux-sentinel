@@ -152,6 +152,7 @@ Interactive anomaly detectors include:
 - `dialog_close_unavailable`
 - `modal_trap_without_escape`
 - `destructive_action_without_confirmation`
+- `important_text_below_fold_without_cue`
 - `primary_cta_low_visual_weight`
 - `multiple_primary_ctas_conflict`
 - `secondary_action_overpowers_primary`

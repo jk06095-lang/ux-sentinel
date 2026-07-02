@@ -377,6 +377,7 @@ Added the next deterministic detector slice for agentic UX review:
 - `primary_cta_low_visual_weight` flags above-fold primary CTAs that exist but are too visually weak to read as primary.
 - `multiple_primary_ctas_conflict` flags competing above-fold controls that all match the primary intent.
 - `secondary_action_overpowers_primary` flags a non-primary command whose `visualWeight` overwhelms the intended CTA.
+- `important_text_below_fold_without_cue` flags important setup, state, consequence, or recovery copy below the initial viewport when no above-fold scroll/more cue is visible.
 - `same_label_different_actions` flags repeated visible labels backed by different `data-ux-action` semantics.
 - `same_action_different_labels` flags one `data-ux-action` exposed through inconsistent visible labels.
 

@@ -423,6 +423,66 @@ describe("detectors", () => {
     );
   });
 
+  it("detects important below-fold text when no visible scroll cue exists", () => {
+    const screenMap = baseScreenMap({
+      document: { width: 1280, height: 1200, hasHorizontalScroll: false },
+      visibleText: ["Welcome", "Important setup step: connect billing before launch"],
+      elements: [
+        baseElement({
+          id: "intro",
+          tag: "h1",
+          visibleText: "Welcome",
+          bbox: { x: 40, y: 80, width: 320, height: 56 }
+        }),
+        baseElement({
+          id: "important-below",
+          tag: "p",
+          visibleText: "Important setup step: connect billing before launch",
+          bbox: { x: 40, y: 860, width: 520, height: 48 },
+          aboveFold: false
+        })
+      ]
+    });
+
+    const finding = runDetectors(screenMap, scenario).find((item) => item.detector === "important_text_below_fold_without_cue");
+
+    expect(finding?.evidence).toContain("below viewport height 720");
+    expect(finding?.ruleIds).toContain("interaction_law.visual_hierarchy");
+  });
+
+  it("does not flag below-fold important text when an above-fold cue exists", () => {
+    const screenMap = baseScreenMap({
+      document: { width: 1280, height: 1200, hasHorizontalScroll: false },
+      visibleText: ["Welcome", "Scroll for setup details", "Important setup step: connect billing before launch"],
+      elements: [
+        baseElement({
+          id: "intro",
+          tag: "h1",
+          visibleText: "Welcome",
+          bbox: { x: 40, y: 80, width: 320, height: 56 }
+        }),
+        baseElement({
+          id: "cue",
+          tag: "p",
+          visibleText: "Scroll for setup details",
+          dataUxRole: "scroll-cue",
+          bbox: { x: 40, y: 620, width: 240, height: 32 }
+        }),
+        baseElement({
+          id: "important-below",
+          tag: "p",
+          visibleText: "Important setup step: connect billing before launch",
+          bbox: { x: 40, y: 860, width: 520, height: 48 },
+          aboveFold: false
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).not.toContain("important_text_below_fold_without_cue");
+  });
+
   it("detects evidence-backed accessibility and recovery-state issues", () => {
     const screenMap = baseScreenMap({
       visibleText: ["No projects yet", "Loading projects", "Error loading dashboard", "+"],
