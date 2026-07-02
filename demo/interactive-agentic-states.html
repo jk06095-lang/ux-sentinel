@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agentic benign state fixture</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f8fafc; color: #111827; }
+    main { min-height: 100vh; display: grid; place-items: center; padding: 28px; }
+    .surface { width: min(860px, 100%); border: 1px solid #cbd5e1; background: #ffffff; padding: 28px; }
+    h1 { margin: 0 0 10px; font-size: 28px; }
+    p { margin: 0; color: #475569; }
+    .toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; align-items: center; }
+    button {
+      min-height: 44px;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #111827;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0 16px;
+    }
+    button:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+    .primary { border-color: #111827; background: #111827; color: #ffffff; min-width: 148px; }
+    .panel {
+      margin-top: 22px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #f9fafb;
+      padding: 18px;
+      min-height: 118px;
+    }
+    .status { min-height: 24px; margin-top: 18px; color: #047857; font-weight: 800; }
+    .menu, .tooltip, .details { display: none; margin-top: 14px; border: 1px solid #cbd5e1; background: #ffffff; padding: 12px; }
+    .menu[data-state="open"], .tooltip[data-state="open"], .details[data-state="open"] { display: block; }
+    [role="tab"][aria-selected="true"] { border-color: #2563eb; box-shadow: inset 0 -3px 0 #2563eb; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="surface" aria-label="Agentic benign state demo">
+      <h1>Review workspace</h1>
+      <p>The page exposes safe controls that open benign UI states without navigation, typing, or destructive effects.</p>
+
+      <div class="toolbar" aria-label="Review actions">
+        <button class="primary" data-ux-action="start-review" onclick="setStatus('Review started');">Start review</button>
+        <button role="tab" aria-selected="false" data-ux-action="open-timeline-tab" onclick="selectTimeline(this);">Timeline tab</button>
+        <button data-ux-action="open-menu" aria-expanded="false" aria-controls="actions-menu" onclick="toggleOpen(this, 'actions-menu', 'Actions menu open');">Open actions menu</button>
+        <button data-ux-action="help-tooltip" aria-expanded="false" aria-controls="review-hint" onclick="toggleOpen(this, 'review-hint', 'Hint visible');">Show hint</button>
+        <button data-ux-action="expand-details" aria-expanded="false" aria-controls="review-details" onclick="toggleOpen(this, 'review-details', 'Details expanded');">Show details</button>
+      </div>
+
+      <div class="status" id="status" role="status" aria-live="polite">Ready for review.</div>
+
+      <section class="panel" aria-label="Review panel">
+        <h2 id="panel-title">Overview panel</h2>
+        <p id="panel-copy">Use the controls above to inspect timeline, menu, hint, and detail states.</p>
+        <div id="actions-menu" class="menu" role="menu" data-state="closed" aria-label="Actions menu">
+          <strong>Actions menu open</strong>
+          <p>Review summary and export options are visible.</p>
+        </div>
+        <div id="review-hint" class="tooltip" role="tooltip" data-state="closed">
+          Hint visible: each state change should leave a visible breadcrumb.
+        </div>
+        <div id="review-details" class="details" data-state="closed" aria-label="Review details">
+          <strong>Details expanded</strong>
+          <p>Evidence rows and reviewer notes are now available.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script>
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+
+    function selectTimeline(button) {
+      button.setAttribute("aria-selected", "true");
+      document.getElementById("panel-title").textContent = "Timeline panel selected";
+      document.getElementById("panel-copy").textContent = "Timeline panel selected: the review path remains visible after the tab state changes.";
+      setStatus("Timeline panel selected");
+    }
+
+    function toggleOpen(button, id, status) {
+      const panel = document.getElementById(id);
+      const open = panel.getAttribute("data-state") !== "open";
+      panel.setAttribute("data-state", open ? "open" : "closed");
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      setStatus(open ? status : `${status} closed`);
+    }
+  </script>
+</body>
+</html>

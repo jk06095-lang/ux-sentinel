@@ -1,0 +1,64 @@
+id: interactive-agentic-states
+title: Agentic planner continues through benign state changes
+persona: first-time-user
+mode: visual_contract
+start_path: /
+
+goal:
+  user_wants: "Inspect safe workspace states without losing context"
+  primary_intent: "start_review"
+
+visual_contract:
+  page_must_answer:
+    - "What is the current review state?"
+    - "Which safe controls can I inspect?"
+    - "What changed after each action?"
+  primary_cta:
+    preferred_labels:
+      - "Start review"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+  empty_state:
+    if_detected_requires_primary_cta: true
+
+interactive_exploration:
+  enabled: true
+  mode: agentic
+  max_actions: 5
+  max_depth: 2
+  max_clicks: 5
+  max_state_changes: 5
+  hover_all_clickables: true
+  click_all_safe_controls: true
+  focus_all_keyboard_targets: true
+  scroll_containers: true
+  screenshot_before_after_each_action: true
+  settle_ms: 350
+  allow_navigation: false
+  avoid_click_text:
+    - "Delete"
+    - "Remove"
+    - "Pay"
+    - "Purchase"
+    - "Logout"
+    - "Sign out"
+    - "삭제"
+    - "제거"
+    - "결제"
+    - "로그아웃"
+
+visual_anomaly_contract:
+  no_click_target_blocking: true
+  no_card_overlap: true
+  no_important_text_truncation: true
+
+fail_conditions:
+  - primary_cta_icon_only
+  - horizontal_scroll
+  - console_error
+  - network_5xx
+  - click_target_blocked_by_overlay
+  - focus_caused_context_change
+  - no_feedback_after_action
+  - safe_click_changed_unrelated_state

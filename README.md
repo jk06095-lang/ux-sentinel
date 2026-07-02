@@ -139,7 +139,7 @@ Verdict: pass
 demo verification passed
 ```
 
-`demo:verify` also runs the interactive DAG and skipped-action scenarios and checks that the local evidence bundle is reconstructable: `action-trace.json`, `state-graph.json`, `contact-sheet.html`, per-action screenshots, visual diffs, DOM/a11y diffs, pointer traces, click decisions, skip reasons, and planner metadata must all be present.
+`demo:verify` also runs the interactive DAG, agentic benign-state, and skipped-action scenarios and checks that the local evidence bundle is reconstructable: `action-trace.json`, `state-graph.json`, `contact-sheet.html`, per-action screenshots, visual diffs, DOM/a11y diffs, pointer traces, click decisions, skip reasons, and planner metadata must all be present.
 
 Initialize UX Sentinel config in a project:
 
@@ -412,6 +412,7 @@ node dist/cli.js run demo/scenarios/high-priority-detectors.yaml --url http://12
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250 --click-safe
 node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20
+node dist/cli.js run demo/scenarios/interactive-agentic-states.yaml --url http://127.0.0.1:4173/interactive-agentic-states --interactive --max-actions 5
 node dist/cli.js run demo/scenarios/interactive-skip.yaml --url http://127.0.0.1:4173/interactive-skip --interactive --max-actions 2
 ```
 
@@ -438,7 +439,7 @@ Interactive exploration writes:
 - `actions/a001-dom-diff.json`
 - `actions/a001-a11y-diff.json`
 
-Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason; `demo/scenarios/interactive-skip.yaml` exercises this by removing a baseline target before the runner reaches it. The action trace also records the resolved capability policy, every baseline click candidate's allow/skip decision, and each performed action's safe-click decision. `state-graph.json` links before/after states, screenshots, visual diffs, screen maps, DOM diffs, and accessibility diffs so a reviewer can reconstruct the audit path. The contact sheet is the primary human review surface for interactive audit.
+Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason; `demo/scenarios/interactive-skip.yaml` exercises this by removing a baseline target before the runner reaches it. `demo/scenarios/interactive-agentic-states.yaml` exercises agentic continuation through benign state changes by clicking a primary CTA, tab, menu trigger, help trigger, and accordion while the verifier checks planner mode, target categories, clicked-action count, state-graph edges, and DOM diff text. The action trace also records the resolved capability policy, every baseline click candidate's allow/skip decision, and each performed action's safe-click decision. `state-graph.json` links before/after states, screenshots, visual diffs, screen maps, DOM diffs, and accessibility diffs so a reviewer can reconstruct the audit path. The contact sheet is the primary human review surface for interactive audit.
 
 Each interactive action writes `actions/a001-diff.png` alongside `a001-before.png` and `a001-after.png`, giving reviewers a local static visual diff without an external image service.
 

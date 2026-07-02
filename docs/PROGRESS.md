@@ -460,3 +460,12 @@ Extended demo verification so interactive evidence is part of the automated loca
 - It asserts planner metadata, safe-click decisions, click-candidate decisions, before/after screenshots, visual diffs, DOM diffs, accessibility diffs, and pointer traces for recorded actions.
 - It separately asserts skipped actions include a skip reason, before/after screenshots, visual diff, screen map, DOM/a11y diffs, state graph edges, and contact-sheet skip evidence.
 - It checks state graph nodes/edges and contact-sheet review surface text so the demo gate proves the local artifacts are reconstructable by a human reviewer.
+
+### Checkpoint: Agentic Benign State Demo Gate
+
+Added a deterministic demo gate for planner continuation across benign UI state changes:
+
+- Added `demo/interactive-agentic-states.html` with safe controls for a primary CTA, tab, menu trigger, help trigger, and accordion.
+- Added `demo/scenarios/interactive-agentic-states.yaml` with `interactive_exploration.mode: agentic`, safe scenario click opt-in, and explicit fail conditions for missing feedback or unrelated state changes.
+- Routed `/interactive-agentic-states` through the demo server.
+- Extended `npm run demo:verify` to assert agentic planner mode, at least five actions, at least five clicked actions, expected target categories, state-graph edges, and DOM diff text for each benign state change.

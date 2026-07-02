@@ -32,6 +32,7 @@ Run a scenario with interactive exploration:
 
 ```bash
 ux-sentinel run demo/scenarios/interactive-dag-clarity.yaml --url http://localhost:3000 --interactive
+ux-sentinel run demo/scenarios/interactive-agentic-states.yaml --url http://localhost:3000/interactive-agentic-states --interactive --max-actions 5
 ```
 
 `--max-actions <n>` limits the number of hover/focus/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll. `--click-safe` is standalone `explore` only; passing `--click-safe` to `run --interactive` is rejected. Scenario-driven `run --interactive` has no CLI click override and requires `interactive_exploration.click_all_safe_controls: true`.
@@ -61,7 +62,7 @@ The contact sheet is the fastest human review surface: each action shows the tar
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
-Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, when pointer approach reveals an overlay, or when the final hit-test drifts away from the intended target. The action trace also records the resolved capability policy, planner budget, every baseline click candidate's allow/skip decision, target category, planned reason, risk level, pointer trace path, and each performed action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, visual diff screenshots, DOM diff files, accessibility diff files, pointer trace files, cursor movement summaries, open dialog/menu/popover state evidence, finding detectors, and attached finding summaries with evidence, user impact, suggested fix, regression check, and UX rule metadata.
+Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, when pointer approach reveals an overlay, or when the final hit-test drifts away from the intended target. The action trace also records the resolved capability policy, planner budget, every baseline click candidate's allow/skip decision, target category, planned reason, risk level, pointer trace path, and each performed action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, visual diff screenshots, DOM diff files, accessibility diff files, pointer trace files, cursor movement summaries, open dialog/menu/popover state evidence, finding detectors, and attached finding summaries with evidence, user impact, suggested fix, regression check, and UX rule metadata. The `interactive-agentic-states` demo keeps a local regression gate for benign state continuation: the verifier expects agentic mode to click a primary CTA, tab, menu trigger, help trigger, and accordion, then prove each state change through DOM diff text and state-graph edges.
 
 ## Safe Target Collection
 

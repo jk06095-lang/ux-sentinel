@@ -51,6 +51,8 @@ ux_rule_profile:
 
 The fuller professional-audit template lives at `demo/scenarios/professional-agentic-ui-audit.yaml`. It combines agentic planning, clean English/Korean dangerous-label avoids, visual anomaly contracts, an explicit `ux_rule_profile`, and opt-in motion audit.
 
+The concrete local regression fixture for benign state continuation is `demo/scenarios/interactive-agentic-states.yaml` against `/interactive-agentic-states`. It proves the planner can keep working after safe UI state changes by requiring clicked actions for a primary CTA, tab, menu trigger, help trigger, and accordion, with DOM diff text and state-graph edges asserted by `npm run demo:verify`.
+
 ## Target Categories
 
 The target classifier currently recognizes:
@@ -116,3 +118,4 @@ This is the planner foundation, not the full professional audit surface yet. Upc
 
 - expanded detector batches
 - richer graph visualization for branching or repeated-state runs
+- deeper replanning from newly revealed controls after a state change

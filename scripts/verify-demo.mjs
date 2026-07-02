@@ -85,7 +85,17 @@ function outputPath(stdout, label) {
   return stdout.match(new RegExp(`^${label}: (.+)$`, "m"))?.[1]?.trim();
 }
 
-function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath, expectedSkippedAction = false }) {
+function assertInteractiveArtifacts({
+  reportPath,
+  tracePath,
+  contactSheetPath,
+  expectedSkippedAction = false,
+  expectedPlannerMode,
+  expectedMinActions,
+  expectedMinClickedActions,
+  expectedTargetCategories = [],
+  expectedDomDiffTextAdded = []
+}) {
   mustExist(tracePath, "interactive trace directory");
   mustExist(contactSheetPath, "interactive contact sheet");
   if (path.basename(contactSheetPath) !== "contact-sheet.html") {
@@ -116,9 +126,23 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath, e
   if (!Array.isArray(actionTrace.actions) || actionTrace.actions.length === 0) {
     throw new Error(`${actionTracePath} did not record interactive actions`);
   }
+  if (expectedPlannerMode && actionTrace.planner?.mode !== expectedPlannerMode) {
+    throw new Error(`${actionTracePath} expected planner mode ${expectedPlannerMode}, got ${actionTrace.planner?.mode ?? "unknown"}`);
+  }
+  if (expectedMinActions !== undefined && actionTrace.actions.length < expectedMinActions) {
+    throw new Error(`${actionTracePath} expected at least ${expectedMinActions} actions, got ${actionTrace.actions.length}`);
+  }
 
   const actionsById = new Map(actionTrace.actions.map((action) => [action.id, action]));
+  const targetCategories = new Set(actionTrace.actions.map((action) => action.targetCategory));
+  for (const category of expectedTargetCategories) {
+    if (!targetCategories.has(category)) {
+      throw new Error(`${actionTracePath} did not include expected target category ${category}`);
+    }
+  }
   let skippedActionCount = 0;
+  let clickedActionCount = 0;
+  const domDiffTextAdded = [];
   for (const [index, action] of actionTrace.actions.entries()) {
     const actionLabel = `interactive action ${action.id ?? index + 1}`;
     if (!action.plannedReason || !action.targetCategory || !action.riskLevel) {
@@ -141,9 +165,22 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath, e
     } else {
       artifactPath(action.pointerTrace, `${actionLabel} pointer trace`);
     }
+    if (action.clicked) {
+      clickedActionCount += 1;
+    }
+    const domDiff = readJson(action.domDiff, `${actionLabel} DOM diff`);
+    domDiffTextAdded.push(...(Array.isArray(domDiff.visibleTextAdded) ? domDiff.visibleTextAdded : []));
+  }
+  if (expectedMinClickedActions !== undefined && clickedActionCount < expectedMinClickedActions) {
+    throw new Error(`${actionTracePath} expected at least ${expectedMinClickedActions} clicked actions, got ${clickedActionCount}`);
   }
   if (expectedSkippedAction && skippedActionCount === 0) {
     throw new Error(`${actionTracePath} did not record the expected skipped action`);
+  }
+  for (const expectedText of expectedDomDiffTextAdded) {
+    if (!domDiffTextAdded.some((text) => String(text).includes(expectedText))) {
+      throw new Error(`${actionTracePath} DOM diffs did not record expected visible text: ${expectedText}`);
+    }
   }
 
   if (!Array.isArray(stateGraph.nodes) || stateGraph.nodes.length === 0) {
@@ -151,6 +188,9 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath, e
   }
   if (!Array.isArray(stateGraph.edges) || stateGraph.edges.length === 0) {
     throw new Error(`${stateGraphPath} did not record action edges`);
+  }
+  if (expectedMinActions !== undefined && stateGraph.edges.length < expectedMinActions) {
+    throw new Error(`${stateGraphPath} expected at least ${expectedMinActions} edges, got ${stateGraph.edges.length}`);
   }
   for (const [index, edge] of stateGraph.edges.entries()) {
     const edgeLabel = `state graph edge ${edge.id ?? index + 1}`;
@@ -226,7 +266,12 @@ function runScenario(scenarioPath, path, expectedStatus, options = {}) {
       reportPath,
       tracePath: outputPath(result.stdout, "Trace"),
       contactSheetPath: outputPath(result.stdout, "Contact sheet"),
-      expectedSkippedAction: options.expectedSkippedAction === true
+      expectedSkippedAction: options.expectedSkippedAction === true,
+      expectedPlannerMode: options.expectedPlannerMode,
+      expectedMinActions: options.expectedMinActions,
+      expectedMinClickedActions: options.expectedMinClickedActions,
+      expectedTargetCategories: options.expectedTargetCategories,
+      expectedDomDiffTextAdded: options.expectedDomDiffTextAdded
     });
   }
 }
@@ -249,6 +294,22 @@ try {
     expectedVerdict: "pass",
     args: ["--interactive", "--max-actions", "10", "--settle-ms", "100"],
     expectedInteractiveArtifacts: true
+  });
+  runScenario("demo/scenarios/interactive-agentic-states.yaml", "/interactive-agentic-states", 0, {
+    expectedVerdict: "pass",
+    args: ["--interactive", "--max-actions", "5", "--settle-ms", "100"],
+    expectedInteractiveArtifacts: true,
+    expectedPlannerMode: "agentic",
+    expectedMinActions: 5,
+    expectedMinClickedActions: 5,
+    expectedTargetCategories: ["primary_cta", "tab", "menu", "tooltip_help_trigger", "expandable_section"],
+    expectedDomDiffTextAdded: [
+      "Review started",
+      "Timeline panel selected",
+      "Actions menu open",
+      "Hint visible",
+      "Details expanded"
+    ]
   });
   runScenario("demo/scenarios/interactive-skip.yaml", "/interactive-skip", 0, {
     expectedVerdict: "pass",
