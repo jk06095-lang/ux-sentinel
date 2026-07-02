@@ -515,7 +515,7 @@ describe("interactive exploration helpers", () => {
           title: "Agentic priority",
           persona: "tester",
           visual_contract: { primary_cta: { preferred_labels: ["Create first project"] } },
-          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, max_clicks: 1 }
+          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, max_clicks: 1, max_state_changes: 1 }
         }
       });
 
@@ -527,11 +527,12 @@ describe("interactive exploration helpers", () => {
       expect(result.actions[0].clicked).toBe(true);
 
       const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
-        planner: { mode: string; maxClicks: number; plannedActionCount: number };
+        planner: { mode: string; maxClicks: number; maxStateChanges: number; plannedActionCount: number };
         actions: Array<{ targetCategory?: string; plannedReason?: string }>;
       };
       expect(actionTrace.planner.mode).toBe("agentic");
       expect(actionTrace.planner.maxClicks).toBe(1);
+      expect(actionTrace.planner.maxStateChanges).toBe(1);
       expect(actionTrace.actions[0].targetCategory).toBe("primary_cta");
       expect(actionTrace.actions[0].plannedReason).toContain("primary_cta");
       expect(result.actions[0].beforeStateId).toBe("s000");

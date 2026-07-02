@@ -92,7 +92,8 @@ export function planInteractiveActions(input: PlanInteractiveActionsInput): Plan
   const maxDepth = Math.max(0, input.config.maxDepth);
   const maxClicks = Math.max(0, input.config.maxClicks);
   const maxStateChanges = Math.max(0, input.config.maxStateChanges);
-  let clickSlots = input.config.safeClickEnabled ? Math.min(maxClicks, maxStateChanges) : 0;
+  let clickSlots = input.config.safeClickEnabled ? maxClicks : 0;
+  let stateChangeSlots = input.config.safeClickEnabled ? maxStateChanges : 0;
 
   return planned.slice(0, maxActions).map((candidate) => {
     const depth = 0;
@@ -101,9 +102,11 @@ export function planInteractiveActions(input: PlanInteractiveActionsInput): Plan
       depth <= maxDepth &&
       candidate.target.safeToClick &&
       input.config.safeClickEnabled &&
-      clickSlots > 0;
+      clickSlots > 0 &&
+      stateChangeSlots > 0;
     if (eligibleForPlannedClick) {
       clickSlots -= 1;
+      stateChangeSlots -= 1;
     }
 
     const plannedClickSkipReason =
@@ -115,8 +118,8 @@ export function planInteractiveActions(input: PlanInteractiveActionsInput): Plan
             ? candidate.target.skipClickReason ?? "target is not safe to click"
             : depth > maxDepth
               ? "max_depth limit reached by planner"
-              : clickSlots <= 0 && !eligibleForPlannedClick
-                ? maxStateChanges <= 0
+              : !eligibleForPlannedClick && (clickSlots <= 0 || stateChangeSlots <= 0)
+                ? stateChangeSlots <= 0
                   ? "max_state_changes limit reached by planner"
                   : "max_clicks limit reached by planner"
                 : undefined;

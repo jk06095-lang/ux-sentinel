@@ -82,7 +82,7 @@ describe("target classifier and action planner", () => {
         maxActions: 3,
         maxDepth: 2,
         maxClicks: 1,
-        maxStateChanges: 1,
+        maxStateChanges: 3,
         safeClickEnabled: true
       }
     });
@@ -91,5 +91,29 @@ describe("target classifier and action planner", () => {
     expect(planned[0].plannedSafeClick).toBe(true);
     expect(planned[1].plannedSafeClick).toBe(false);
     expect(planned[1].plannedClickSkipReason).toBe("max_clicks limit reached by planner");
+  });
+
+  it("reports max_state_changes when state-change budget blocks otherwise safe clicks", () => {
+    const planned = planInteractiveActions({
+      targets: [
+        target({ id: "t1", visibleText: "Create first project" }),
+        target({ id: "t2", visibleText: "Review settings" })
+      ],
+      scrollTargets: [],
+      scenario,
+      config: {
+        mode: "agentic",
+        maxActions: 2,
+        maxDepth: 2,
+        maxClicks: 4,
+        maxStateChanges: 1,
+        safeClickEnabled: true
+      }
+    });
+
+    expect(planned).toHaveLength(2);
+    expect(planned[0].plannedSafeClick).toBe(true);
+    expect(planned[1].plannedSafeClick).toBe(false);
+    expect(planned[1].plannedClickSkipReason).toBe("max_state_changes limit reached by planner");
   });
 });

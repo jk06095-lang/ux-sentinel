@@ -302,6 +302,7 @@ Added the first deterministic planner layer for agentic interactive audit:
 - Added an action planner that preserves linear order by default and prioritizes meaningful UX exploration when `interactive_exploration.mode: agentic`.
 - Added `plannedReason`, `targetCategory`, `riskLevel`, `planDepth`, `planPriority`, and `plannedSafeClick` to action records.
 - Added planner metadata to `action-trace.json` and contact-sheet rows.
+- Split planner click and state-change budget accounting so skipped safe clicks explain whether `max_clicks` or `max_state_changes` blocked the action.
 - Kept safe-click policy intact: planner click budgets can reduce clicks, but cannot enable clicks without the existing capability policy.
 
 ### Checkpoint: State Graph Evidence
