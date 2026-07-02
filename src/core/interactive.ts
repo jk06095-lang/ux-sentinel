@@ -1669,6 +1669,45 @@ export function buildContactSheetHtml(
         })
         .join("\n")
     : "<li>No state transitions were captured.</li>";
+  const stateGraphMap = stateIds.length
+    ? (() => {
+        const padding = 72;
+        const gap = 150;
+        const nodeY = 78;
+        const width = Math.max(360, padding * 2 + Math.max(0, stateIds.length - 1) * gap);
+        const height = 160;
+        const statePositions = new Map(stateIds.map((stateId, index) => [stateId, padding + index * gap]));
+        const edges = result.actions
+          .map((action, index) => {
+            const beforeState = action.beforeStateId ?? "";
+            const afterState = action.afterStateId ?? "";
+            const fromX = statePositions.get(beforeState);
+            const toX = statePositions.get(afterState);
+            if (fromX === undefined || toX === undefined) {
+              return "";
+            }
+            const status = action.skipped ? "skipped" : action.clicked ? "clicked" : action.focused ? "focused" : "observed";
+            const y = nodeY - 26 - (index % 3) * 14;
+            const startX = fromX === toX ? fromX : fromX < toX ? fromX + 18 : fromX - 18;
+            const endX = fromX === toX ? toX : fromX < toX ? toX - 18 : toX + 18;
+            const pathData =
+              fromX === toX
+                ? `M ${fromX} ${nodeY - 18} C ${fromX - 44} ${nodeY - 74}, ${fromX + 44} ${nodeY - 74}, ${fromX} ${nodeY - 18}`
+                : `M ${startX} ${y} L ${endX} ${y}`;
+            const labelX = fromX === toX ? fromX : (startX + endX) / 2;
+            const labelY = fromX === toX ? nodeY - 76 : y - 7;
+            return `<a href="#${escapeHtml(action.id)}" data-state-edge="${escapeHtml(action.id)}"><title>${escapeHtml(action.id)} ${beforeState} -> ${afterState} ${status}</title><path class="edge edge-${escapeHtml(status)}" d="${escapeHtml(pathData)}" marker-end="url(#state-arrow)"></path><text x="${labelX}" y="${labelY}" text-anchor="middle">${escapeHtml(action.id)} ${escapeHtml(status)}</text></a>`;
+          })
+          .join("\n");
+        const nodes = stateIds
+          .map((stateId) => {
+            const x = statePositions.get(stateId) ?? padding;
+            return `<g data-state-node="${escapeHtml(stateId)}"><circle class="node" cx="${x}" cy="${nodeY}" r="20"></circle><text x="${x}" y="${nodeY + 4}" text-anchor="middle">${escapeHtml(stateId)}</text></g>`;
+          })
+          .join("\n");
+        return `<div class="state-graph-scroll"><svg class="state-graph-map" role="img" aria-label="State graph overview" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><marker id="state-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs>${edges}${nodes}</svg></div>`;
+      })()
+    : "<p>No state graph map was captured.</p>";
   const safetyLog = result.actions.length
     ? result.actions
         .map((action) => {
@@ -1816,6 +1855,16 @@ export function buildContactSheetHtml(
     .timeline span { color: #6b7280; margin-left: 5px; }
     .state-path { display: grid; gap: 6px; font-size: 13px; color: #374151; }
     .state-path span { color: #6b7280; }
+    .state-graph-scroll { overflow-x: auto; padding: 8px 0 2px; }
+    .state-graph-map { min-width: 100%; max-width: none; }
+    .state-graph-map .node { fill: #ffffff; stroke: #111827; stroke-width: 2; }
+    .state-graph-map .edge { fill: none; stroke: #4b5563; stroke-width: 2; }
+    .state-graph-map .edge-skipped { stroke: #b45309; stroke-dasharray: 5 4; }
+    .state-graph-map .edge-clicked { stroke: #047857; }
+    .state-graph-map .edge-focused { stroke: #1d4ed8; }
+    .state-graph-map text { fill: #374151; font-size: 12px; }
+    .state-graph-map a { text-decoration: none; }
+    .state-graph-map a:hover .edge { stroke-width: 3; }
     .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     figure { margin: 0; }
     img { width: 100%; display: block; border: 1px solid #d1d5db; background: #111827; }
@@ -1846,6 +1895,8 @@ export function buildContactSheetHtml(
       <div class="timeline">${timeline}</div>
       <h3>State Graph Summary</h3>
       <p>States observed: ${stateIds.length || "unknown"} - edges: ${result.actions.length} - artifact: ${artifactLink(result.artifacts.traceDir, result.artifacts.stateGraph, stateGraph)}</p>
+      <h3>State Graph Map</h3>
+      ${stateGraphMap}
       <h3>State Transition Path</h3>
       <ol class="state-path">${stateTransitionPath}</ol>
     </section>

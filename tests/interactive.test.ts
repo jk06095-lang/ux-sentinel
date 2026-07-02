@@ -410,6 +410,11 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Detector filter");
     expect(html).toContain("Action Timeline");
     expect(html).toContain("State Graph Summary");
+    expect(html).toContain("State Graph Map");
+    expect(html).toContain('<svg class="state-graph-map"');
+    expect(html).toContain('data-state-node="s000"');
+    expect(html).toContain('data-state-node="s001"');
+    expect(html).toContain('data-state-edge="a001"');
     expect(html).toContain("State Transition Path");
     expect(html).toContain('<a href="#a001">a001</a> <strong>s000 -> s001</strong> observed hover on Create first project');
     expect(html).toContain("tooltip_help_trigger / low risk");
