@@ -306,6 +306,17 @@ describe("interactive exploration helpers", () => {
           visualDiff: "trace/actions/a001-diff.png",
           screenMap: "trace/actions/a001-screen-map.json",
           pointerTrace: "trace/actions/a001-pointer-trace.json",
+          pointerTraceSummary: {
+            from: { x: 40, y: 40 },
+            to: { x: 120, y: 80 },
+            targetCenter: { x: 120, y: 80 },
+            pointCount: 5,
+            movementDurationMs: 240,
+            hoverDurationMs: 100,
+            targetMovedDuringApproach: false,
+            overlayAppearedDuringApproach: false,
+            finalHitTestMatchedTarget: true
+          },
           animationTrace: "trace/actions/a001-animation-trace.json",
           clicked: false,
           focused: false,
@@ -392,6 +403,8 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Visibility of system status");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
+    expect(html).toContain("Pointer metadata:");
+    expect(html).toContain("points=5, move=240ms, hover=100ms, targetMoved=false, overlayAppeared=false, finalHit=true");
     expect(html).toContain("Animation trace:");
     expect(html).toContain("visual diff");
     expect(html).toContain("Focus evidence:");
@@ -555,7 +568,16 @@ describe("interactive exploration helpers", () => {
 
       const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
         planner: { mode: string; maxClicks: number; maxStateChanges: number; plannedActionCount: number };
-        actions: Array<{ targetCategory?: string; plannedReason?: string }>;
+        actions: Array<{
+          targetCategory?: string;
+          plannedReason?: string;
+          pointerTraceSummary?: {
+            pointCount: number;
+            movementDurationMs: number;
+            hoverDurationMs: number;
+            finalHitTestMatchedTarget: boolean;
+          };
+        }>;
       };
       expect(actionTrace.planner.mode).toBe("agentic");
       expect(actionTrace.planner.maxClicks).toBe(1);
@@ -579,6 +601,12 @@ describe("interactive exploration helpers", () => {
       };
       expect(pointerTrace.points.length).toBeGreaterThan(2);
       expect(pointerTrace.finalHitTestMatchedTarget).toBe(true);
+      expect(actionTrace.actions[0].pointerTraceSummary).toMatchObject({
+        pointCount: pointerTrace.points.length,
+        movementDurationMs: 0,
+        hoverDurationMs: 0,
+        finalHitTestMatchedTarget: true
+      });
       const stateGraph = JSON.parse(await readFile(result.artifacts.stateGraph, "utf8")) as {
         nodes: Array<{ id: string; visibleTextHash: string; domStructureHash: string }>;
         edges: Array<{

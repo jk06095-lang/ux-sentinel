@@ -48,6 +48,7 @@ import type {
   NetworkIssue,
   PointerPoint,
   PointerTrace,
+  PointerTraceSummary,
   Scenario,
   ScreenMap,
   Severity
@@ -1522,24 +1523,28 @@ function attachFindingsToStateEdges(edges: StateGraphEdge[], findingsToAttach: F
   }));
 }
 
-async function pointerTraceSummary(pointerTracePath: string | undefined): Promise<StateGraphEdge["cursorMovement"] | undefined> {
+function summarizePointerTrace(trace: PointerTrace): PointerTraceSummary {
+  return {
+    from: trace.from,
+    to: trace.to,
+    targetCenter: trace.targetCenter,
+    pointCount: trace.points.length,
+    movementDurationMs: trace.movementDurationMs,
+    hoverDurationMs: trace.hoverDurationMs,
+    targetMovedDuringApproach: trace.targetMovedDuringApproach,
+    overlayAppearedDuringApproach: trace.overlayAppearedDuringApproach,
+    finalHitTestMatchedTarget: trace.finalHitTestMatchedTarget
+  };
+}
+
+async function pointerTraceSummary(pointerTracePath: string | undefined): Promise<PointerTraceSummary | undefined> {
   if (!pointerTracePath) {
     return undefined;
   }
 
   try {
     const trace = JSON.parse(await readFile(pointerTracePath, "utf8")) as PointerTrace;
-    return {
-      from: trace.from,
-      to: trace.to,
-      targetCenter: trace.targetCenter,
-      pointCount: trace.points.length,
-      movementDurationMs: trace.movementDurationMs,
-      hoverDurationMs: trace.hoverDurationMs,
-      targetMovedDuringApproach: trace.targetMovedDuringApproach,
-      overlayAppearedDuringApproach: trace.overlayAppearedDuringApproach,
-      finalHitTestMatchedTarget: trace.finalHitTestMatchedTarget
-    };
+    return summarizePointerTrace(trace);
   } catch {
     return undefined;
   }
@@ -1691,6 +1696,16 @@ export function buildContactSheetHtml(
       const pointerTrace = action.pointerTrace
         ? path.relative(result.artifacts.traceDir, action.pointerTrace).replace(/\\/g, "/")
         : "none";
+      const pointerTraceSummary = action.pointerTraceSummary
+        ? [
+            `points=${action.pointerTraceSummary.pointCount}`,
+            `move=${action.pointerTraceSummary.movementDurationMs}ms`,
+            `hover=${action.pointerTraceSummary.hoverDurationMs}ms`,
+            `targetMoved=${action.pointerTraceSummary.targetMovedDuringApproach}`,
+            `overlayAppeared=${action.pointerTraceSummary.overlayAppearedDuringApproach}`,
+            `finalHit=${action.pointerTraceSummary.finalHitTestMatchedTarget}`
+          ].join(", ")
+        : "none";
       const animationTrace = action.animationTrace
         ? relativeArtifact(result.artifacts.traceDir, action.animationTrace)
         : "none";
@@ -1713,6 +1728,7 @@ export function buildContactSheetHtml(
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
   <p><strong>Pointer trace:</strong> ${escapeHtml(pointerTrace)}</p>
+  <p><strong>Pointer metadata:</strong> ${escapeHtml(pointerTraceSummary)}</p>
   <p><strong>Animation trace:</strong> ${escapeHtml(animationTrace)}</p>
   <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
@@ -1922,7 +1938,7 @@ async function recordActionStateEvidence(options: {
   const domDiff = diffStateSnapshots(options.beforeState, afterState);
   await writeJson(domDiffPath, domDiff);
   await writeJson(accessibilityDiffPath, diffAccessibilitySnapshots(options.beforeState, afterState));
-  const cursorMovement = await pointerTraceSummary(options.action.pointerTrace);
+  const cursorMovement = options.action.pointerTraceSummary ?? (await pointerTraceSummary(options.action.pointerTrace));
 
   options.action.beforeStateId = options.beforeState.node.id;
   options.action.afterStateId = afterState.node.id;
@@ -2121,6 +2137,7 @@ async function performTargetAction(
   let focused = false;
   let clickSkippedReason = target.skipClickReason;
   let pointerTracePath: string | undefined;
+  let pointerTraceSummaryValue: PointerTraceSummary | undefined;
   let animationTracePath: string | undefined;
   let pointerEnd: PointerPoint | undefined;
   let focusEvidence: FocusEvidence | undefined;
@@ -2152,6 +2169,7 @@ async function performTargetAction(
     hoverDurationMs: config.settleMs
   });
   pointerTracePath = pointerTrace.path;
+  pointerTraceSummaryValue = summarizePointerTrace(pointerTrace.trace);
   pointerEnd = pointerTrace.trace.to;
   findings.push(...buildPointerTraceFindings(pointerTrace.trace, pointerTrace.path, liveTarget, actionId));
 
@@ -2210,6 +2228,7 @@ async function performTargetAction(
     visualDiff,
     screenMap: screenMapPath,
     pointerTrace: pointerTracePath,
+    pointerTraceSummary: pointerTraceSummaryValue,
     animationTrace: animationTracePath,
     focusEvidence,
     clicked,

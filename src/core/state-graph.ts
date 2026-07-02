@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Page } from "playwright";
-import type { ElementBox, FindingConfidence, PointerPoint, ScreenMap, Severity, UxRuleFamily } from "./types.js";
+import type { ElementBox, FindingConfidence, PointerTraceSummary, ScreenMap, Severity, UxRuleFamily } from "./types.js";
 
 export interface OpenUiState {
   id: string | null;
@@ -47,17 +47,7 @@ export interface StateGraphEdge {
   domDiff: string;
   accessibilityDiff: string;
   pointerTrace?: string;
-  cursorMovement?: {
-    from: PointerPoint;
-    to: PointerPoint;
-    targetCenter: PointerPoint;
-    pointCount: number;
-    movementDurationMs: number;
-    hoverDurationMs: number;
-    targetMovedDuringApproach: boolean;
-    overlayAppearedDuringApproach: boolean;
-    finalHitTestMatchedTarget: boolean;
-  };
+  cursorMovement?: PointerTraceSummary;
   animationTrace?: string;
   findingDetectors: string[];
   findings: StateGraphFindingSummary[];

@@ -328,6 +328,7 @@ Added cursor movement evidence for interactive audit:
 - Recorded start/end/intermediate cursor points, movement duration, hover duration, target movement, overlay appearance, and final hit-test match state.
 - Skips otherwise allowed safe clicks when hover or target movement causes final pointer hit-test drift.
 - Added pointer trace paths to action records, state graph edges, and contact-sheet rows.
+- Added compact pointer summaries to action records and contact-sheet rows so point count, movement timing, target movement, overlay appearance, and final hit-test status are visible without opening the full pointer trace first.
 
 ### Checkpoint: UX Rule Registry
 

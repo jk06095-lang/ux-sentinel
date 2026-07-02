@@ -333,6 +333,18 @@ export interface PointerTrace {
   finalHitTestMatchedTarget: boolean;
 }
 
+export interface PointerTraceSummary {
+  from: PointerPoint;
+  to: PointerPoint;
+  targetCenter: PointerPoint;
+  pointCount: number;
+  movementDurationMs: number;
+  hoverDurationMs: number;
+  targetMovedDuringApproach: boolean;
+  overlayAppearedDuringApproach: boolean;
+  finalHitTestMatchedTarget: boolean;
+}
+
 export interface FocusEvidence {
   activeElementMatchesTarget: boolean;
   hasVisibleFocusIndicator: boolean;
@@ -415,6 +427,7 @@ export interface InteractiveActionRecord {
   domDiff?: string;
   accessibilityDiff?: string;
   pointerTrace?: string;
+  pointerTraceSummary?: PointerTraceSummary;
   focusEvidence?: FocusEvidence;
   animationTrace?: string;
   skipped?: boolean;
