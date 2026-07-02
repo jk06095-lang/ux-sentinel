@@ -185,7 +185,11 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("loading_without_progress_or_timeout");
     expect(docs).toContain("dead_end_state_without_recovery");
     expect(docs).toContain("empty_state_without_next_step");
+    expect(docs).toContain("dialog_close_unavailable");
+    expect(docs).toContain("modal_trap_without_escape");
+    expect(docs).toContain("popover_blocks_primary_action");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("dialog_without_accessible_name");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("modal_trap_without_escape");
     expect(readText("docs/examples/agentic-audit-report.md")).toContain("contact-sheet.html");
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
   });

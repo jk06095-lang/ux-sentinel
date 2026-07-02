@@ -69,6 +69,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
         const ariaLabel = element.getAttribute("aria-label");
         const ariaLabelledBy = element.getAttribute("aria-labelledby");
         const ariaLive = element.getAttribute("aria-live");
+        const ariaModal = element.getAttribute("aria-modal");
         const title = element.getAttribute("title");
         const dataUxRole = element.getAttribute("data-ux-role");
         const dataUxAction = element.getAttribute("data-ux-action");
@@ -127,6 +128,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           ariaLabel,
           ariaLabelledBy,
           ariaLive,
+          ariaModal,
           title,
           bbox: {
             x: Math.round(rect.x),

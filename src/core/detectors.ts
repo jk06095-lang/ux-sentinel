@@ -15,6 +15,7 @@ const destructiveHints = ["delete", "remove", "pay", "purchase", "logout", "sign
 const confirmationHints = ["confirm", "confirmation", "are you sure", "undo", "복구", "확인"];
 
 const recoveryHints = ["retry", "try again", "back", "go back", "refresh", "recover", "restore", "contact support", "help"];
+const escapeActionHints = ["close", "dismiss", "cancel", "back", "done", "x"];
 const deadEndHints = ["error", "failed", "failure", "unavailable", "not found", "forbidden", "permission", "access denied", "can't continue"];
 const loadingHints = ["loading", "please wait", "processing", "saving", "syncing", "submitting"];
 const statusHints = ["saved", "updated", "complete", "completed", "success", "failed", "error", "loading", "processing"];
@@ -66,8 +67,52 @@ function actionSignature(element: ScreenElement): string {
   return normalizedKey(element.dataUxAction);
 }
 
+function intersectionArea(a: ScreenElement["bbox"], b: ScreenElement["bbox"]): number {
+  const left = Math.max(a.x, b.x);
+  const top = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+  return Math.max(0, right - left) * Math.max(0, bottom - top);
+}
+
+function intersectionRatio(a: ScreenElement["bbox"], b: ScreenElement["bbox"]): number {
+  const smallestArea = Math.max(1, Math.min(a.width * a.height, b.width * b.height));
+  return intersectionArea(a, b) / smallestArea;
+}
+
 function hasAccessibleDialogName(element: ScreenElement): boolean {
   return Boolean(meaningfulText(element.ariaLabel) || meaningfulText(element.ariaLabelledBy) || meaningfulText(element.title));
+}
+
+function isDialogLikeElement(element: ScreenElement): boolean {
+  const roleOrUx = `${element.role ?? ""} ${element.dataUxRole ?? ""}`.toLowerCase();
+  return element.visible && (element.tag === "dialog" || roleOrUx.includes("dialog") || roleOrUx.includes("modal"));
+}
+
+function isModalElement(element: ScreenElement): boolean {
+  const roleOrUx = `${element.role ?? ""} ${element.dataUxRole ?? ""}`.toLowerCase();
+  return isDialogLikeElement(element) && (element.ariaModal === "true" || roleOrUx.includes("modal") || element.tag === "dialog");
+}
+
+function isPopoverLikeElement(element: ScreenElement): boolean {
+  const roleOrUx = `${element.role ?? ""} ${element.dataUxRole ?? ""}`.toLowerCase();
+  return (
+    element.visible &&
+    (roleOrUx.includes("popover") ||
+      roleOrUx.includes("tooltip") ||
+      roleOrUx.includes("menu") ||
+      roleOrUx.includes("listbox") ||
+      roleOrUx.includes("dialog") ||
+      roleOrUx.includes("floating"))
+  );
+}
+
+function visibleEscapeAction(screenMap: ScreenMap): ScreenElement | undefined {
+  return clickableElements(screenMap).find((element) => {
+    const label = elementActionLabel(element).toLowerCase();
+    const action = actionSignature(element);
+    return escapeActionHints.some((hint) => label === hint || label.includes(hint) || action.includes(hint));
+  });
 }
 
 function hasLiveAnnouncement(element: ScreenElement): boolean {
@@ -270,6 +315,62 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         "Run the scenario and confirm loading text is announced or paired with visible recovery."
       )
     );
+  }
+
+  const closeAction = visibleEscapeAction(screenMap);
+  const dialogWithoutClose = screenMap.elements.find((element) => isDialogLikeElement(element) && !closeAction);
+  if (dialogWithoutClose) {
+    findings.push(
+      finding(
+        "dialog_close_unavailable",
+        "Dialog has no visible close or dismiss action",
+        "P2",
+        "Perception Mismatch",
+        `${dialogWithoutClose.id} is a visible ${dialogWithoutClose.tag}${dialogWithoutClose.role ? ` role=${dialogWithoutClose.role}` : ""}, but no enabled close, dismiss, cancel, done, or back action appears in the screen map.`,
+        "Users can enter a dialog or overlay state but may not perceive how to leave it.",
+        "Add a visible close, cancel, done, back, or dismiss control with a clear label and keyboard path.",
+        "Run observe or interactive audit and confirm visible dialogs expose an enabled escape control."
+      )
+    );
+  }
+
+  const modalWithoutEscape = screenMap.elements.find((element) => isModalElement(element) && !closeAction);
+  if (modalWithoutEscape) {
+    findings.push(
+      finding(
+        "modal_trap_without_escape",
+        "Modal has no visible escape path",
+        "P2",
+        "Perception Mismatch",
+        `${modalWithoutEscape.id} is modal-like with aria-modal="${modalWithoutEscape.ariaModal ?? ""}" and no enabled close, dismiss, cancel, done, or back action in the screen map.`,
+        "A modal without an obvious escape path can trap users in a state they did not mean to enter.",
+        "Provide a visible close or cancel control and ensure keyboard users can leave the modal predictably.",
+        "Run interactive audit and confirm modal states include a visible escape action and no modal-trap finding."
+      )
+    );
+  }
+
+  if (visibleAboveFoldPrimary) {
+    const blockingPopover = screenMap.elements.find(
+      (element) =>
+        element.id !== visibleAboveFoldPrimary.id &&
+        isPopoverLikeElement(element) &&
+        intersectionRatio(element.bbox, visibleAboveFoldPrimary.bbox) >= 0.2
+    );
+    if (blockingPopover) {
+      findings.push(
+        finding(
+          "popover_blocks_primary_action",
+          "Popover overlaps the primary action",
+          "P2",
+          "Perception Mismatch",
+          `${blockingPopover.id} "${elementActionLabel(blockingPopover)}" overlaps ${visibleAboveFoldPrimary.id} "${elementActionLabel(visibleAboveFoldPrimary)}" by ratio ${intersectionRatio(blockingPopover.bbox, visibleAboveFoldPrimary.bbox).toFixed(2)}.`,
+          "A user may see the intended primary action but be unable to confidently perceive or use it because a foreground layer covers it.",
+          "Reposition the popover, reduce its footprint, or move the primary CTA outside the covered region.",
+          "Run interactive audit and confirm no popover-like foreground layer intersects the primary CTA bbox."
+        )
+      );
+    }
   }
 
   for (const element of screenMap.elements) {

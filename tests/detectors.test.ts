@@ -507,6 +507,83 @@ describe("detectors", () => {
     expect(detectors).not.toContain("dead_end_state_without_recovery");
   });
 
+  it("detects dialog escape and popover-over-primary issues with bbox evidence", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Create first project", "Settings", "Helpful details"],
+      elements: [
+        baseElement({
+          id: "primary",
+          tag: "button",
+          role: "button",
+          visibleText: "Create first project",
+          bbox: { x: 120, y: 120, width: 220, height: 48 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true,
+          visualWeight: 0.0115
+        }),
+        baseElement({
+          id: "modal",
+          tag: "div",
+          role: "dialog",
+          visibleText: "Settings",
+          ariaModal: "true",
+          ariaLabel: "Settings",
+          bbox: { x: 420, y: 80, width: 360, height: 260 },
+          visualWeight: 0.1016
+        }),
+        baseElement({
+          id: "popover",
+          tag: "div",
+          role: null,
+          dataUxRole: "popover",
+          visibleText: "Helpful details",
+          bbox: { x: 100, y: 100, width: 260, height: 110 },
+          visualWeight: 0.0311
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).toEqual(
+      expect.arrayContaining(["dialog_close_unavailable", "modal_trap_without_escape", "popover_blocks_primary_action"])
+    );
+  });
+
+  it("does not flag modal escape issues when a visible close action exists", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Settings", "Close"],
+      elements: [
+        baseElement({
+          id: "modal",
+          tag: "dialog",
+          role: "dialog",
+          visibleText: "Settings",
+          ariaModal: "true",
+          ariaLabel: "Settings",
+          bbox: { x: 420, y: 80, width: 360, height: 260 },
+          visualWeight: 0.1016
+        }),
+        baseElement({
+          id: "close",
+          tag: "button",
+          role: "button",
+          visibleText: "Close",
+          bbox: { x: 720, y: 96, width: 80, height: 36 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).not.toContain("dialog_close_unavailable");
+    expect(detectors).not.toContain("modal_trap_without_escape");
+  });
+
   it("fails when the primary CTA is only below the fold", () => {
     const screenMap = baseScreenMap({
       visibleText: ["Projects", "No projects yet", "Create first project"],

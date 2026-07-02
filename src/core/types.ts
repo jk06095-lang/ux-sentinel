@@ -143,6 +143,7 @@ export interface ScreenElement {
   ariaLabel: string | null;
   ariaLabelledBy?: string | null;
   ariaLive?: string | null;
+  ariaModal?: string | null;
   title: string | null;
   bbox: ElementBox;
   clickable: boolean;

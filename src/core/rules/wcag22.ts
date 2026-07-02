@@ -23,7 +23,14 @@ export const wcag22Rules: UxRule[] = [
     title: "Focus visible",
     principle: "Keyboard users need a visible, unobscured focus indicator that follows a predictable path.",
     appliesTo: ["focus"],
-    detectors: ["focus_ring_missing", "focus_obscured_by_author_content", "focus_order_unexpected_jump", "keyboard_target_not_reachable"],
+    detectors: [
+      "focus_ring_missing",
+      "focus_obscured_by_author_content",
+      "focus_order_unexpected_jump",
+      "keyboard_target_not_reachable",
+      "modal_trap_without_escape",
+      "dialog_close_unavailable"
+    ],
     severityDefault: "P1",
     evidenceRequired: ["before_after", "screenshot"]
   },

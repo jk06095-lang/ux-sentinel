@@ -41,6 +41,8 @@ export const nielsenRules: UxRule[] = [
       "click_target_blocked_by_overlay",
       "cursor_target_drift",
       "hover_trigger_blocks_target",
+      "dialog_close_unavailable",
+      "modal_trap_without_escape",
       "destructive_action_without_confirmation"
     ],
     severityDefault: "P1",

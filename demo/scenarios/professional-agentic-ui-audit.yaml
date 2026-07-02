@@ -79,6 +79,9 @@ fail_conditions:
   - loading_without_progress_or_timeout
   - dead_end_state_without_recovery
   - empty_state_without_next_step
+  - dialog_close_unavailable
+  - modal_trap_without_escape
+  - popover_blocks_primary_action
   - destructive_action_without_confirmation
   - animation_ignores_reduced_motion
   - floating_panel_overlaps_primary_action

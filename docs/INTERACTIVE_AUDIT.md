@@ -148,6 +148,8 @@ Interactive anomaly detectors include:
 - `loading_without_progress_or_timeout`
 - `dead_end_state_without_recovery`
 - `empty_state_without_next_step`
+- `dialog_close_unavailable`
+- `modal_trap_without_escape`
 - `destructive_action_without_confirmation`
 - `primary_cta_low_visual_weight`
 - `multiple_primary_ctas_conflict`
@@ -155,6 +157,7 @@ Interactive anomaly detectors include:
 - `same_label_different_actions`
 - `same_action_different_labels`
 - `floating_panel_overlaps_primary_action`
+- `popover_blocks_primary_action`
 - `tooltip_partially_offscreen`
 - `text_occluded_by_graph_edge`
 - `edge_label_crosses_node`
