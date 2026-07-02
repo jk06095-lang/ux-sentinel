@@ -418,6 +418,15 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Rule-family filter");
     expect(html).toContain("Confidence filter");
     expect(html).toContain("Detector filter");
+    expect(html).toContain("Reviewer Answer Matrix");
+    expect(html).toContain("What did the agent do?");
+    expect(html).toContain("What did it click or avoid?");
+    expect(html).toContain("What changed visually?");
+    expect(html).toContain("What evidence supports it?");
+    expect(html).toContain("Which UX rule or principle?");
+    expect(html).toContain("hover on Create first project (tooltip_help_trigger, low risk)");
+    expect(html).toContain("Observed without clicking");
+    expect(html).toContain("s000 -&gt; s001");
     expect(html).toContain("Action Timeline");
     expect(html).toContain("State Graph Summary");
     expect(html).toContain("State Graph Map");

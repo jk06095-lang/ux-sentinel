@@ -1809,6 +1809,57 @@ export function buildContactSheetHtml(
         .map((action) => `<li><strong>${escapeHtml(action.id)}</strong> ${artifactLink(result.artifacts.traceDir, action.animationTrace)}</li>`)
         .join("\n")
     : "<li>No animation trace was captured for this run.</li>";
+  const reviewerMatrix = result.actions.length
+    ? result.actions
+        .map((action) => {
+          const actionFindings = uniqueValues(action.findingDetectors).flatMap((detector) => findingsByDetector.get(detector) ?? []);
+          const target = targetLabel(action.target) || action.target.role || action.target.tag;
+          const category = action.targetCategory ?? "unclassified";
+          const risk = action.riskLevel ?? "unknown";
+          const actionSummary = `${action.actionType} on ${target} (${category}, ${risk} risk)`;
+          const clickSummary = action.skipped
+            ? `Skipped: ${action.skipReason ?? "unknown reason"}`
+            : action.clicked
+              ? `Clicked: ${action.clickDecisionReason ?? "safe click decision recorded"}`
+              : action.clickDecision === "skipped"
+                ? `Avoided click: ${action.clickDecisionReason ?? "no click reason recorded"}`
+                : action.focused
+                  ? "Focused without clicking"
+                  : "Observed without clicking";
+          const changedSummary =
+            action.beforeStateId && action.afterStateId
+              ? `${action.beforeStateId} -> ${action.afterStateId}${action.beforeStateId === action.afterStateId ? " (no new state)" : ""}`
+              : "state evidence not recorded";
+          const evidenceLinks = [
+            `before ${artifactLink(result.artifacts.traceDir, action.beforeScreenshot)}`,
+            `after ${artifactLink(result.artifacts.traceDir, action.afterScreenshot)}`,
+            `diff ${artifactLink(result.artifacts.traceDir, action.visualDiff)}`,
+            `dom ${artifactLink(result.artifacts.traceDir, action.domDiff)}`,
+            `a11y ${artifactLink(result.artifacts.traceDir, action.accessibilityDiff)}`,
+            `pointer ${artifactLink(result.artifacts.traceDir, action.pointerTrace)}`,
+            action.animationTrace ? `animation ${artifactLink(result.artifacts.traceDir, action.animationTrace)}` : ""
+          ]
+            .filter(Boolean)
+            .join("<br />");
+          const ruleSummary = actionFindings.length
+            ? actionFindings
+                .map((findingItem) => {
+                  const rule = findingItem.ruleFamily ? `${findingItem.ruleFamily}: ${findingItem.whyThisMatters ?? findingItem.detector}` : findingItem.detector;
+                  return `${findingItem.severity} ${findingItem.detector} - ${rule} - Fix: ${findingItem.suggestedFix} - Regression: ${findingItem.regressionCheck}`;
+                })
+                .join(" | ")
+            : "No findings attached; review linked evidence for regressions.";
+          return `<tr>
+  <td><a href="#${escapeHtml(action.id)}">${escapeHtml(action.id)}</a></td>
+  <td>${escapeHtml(actionSummary)}</td>
+  <td>${escapeHtml(clickSummary)}</td>
+  <td>${escapeHtml(changedSummary)}</td>
+  <td>${evidenceLinks}</td>
+  <td>${escapeHtml(ruleSummary)}</td>
+</tr>`;
+        })
+        .join("\n")
+    : `<tr><td colspan="6">No action evidence was captured.</td></tr>`;
   const rows = result.actions
     .map((action) => {
       const before = relativeArtifact(result.artifacts.traceDir, action.beforeScreenshot);
@@ -1926,6 +1977,9 @@ export function buildContactSheetHtml(
     .state-graph-map text { fill: #374151; font-size: 12px; }
     .state-graph-map a { text-decoration: none; }
     .state-graph-map a:hover .edge { stroke-width: 3; }
+    .review-matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .review-matrix th, .review-matrix td { border: 1px solid #d1d5db; padding: 8px; text-align: left; vertical-align: top; }
+    .review-matrix th { background: #f3f4f6; color: #111827; }
     .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     figure { margin: 0; }
     img { width: 100%; display: block; border: 1px solid #d1d5db; background: #111827; }
@@ -1951,6 +2005,23 @@ export function buildContactSheetHtml(
     ${notes}
   </header>
   <main>
+    <section>
+      <h2>Reviewer Answer Matrix</h2>
+      <p>This table answers the professional review questions directly: what the agent did, what it clicked or avoided, what changed, which evidence supports the finding, and which UX rule or fix should guide review.</p>
+      <table class="review-matrix">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>What did the agent do?</th>
+            <th>What did it click or avoid?</th>
+            <th>What changed visually?</th>
+            <th>What evidence supports it?</th>
+            <th>Which UX rule or principle?</th>
+          </tr>
+        </thead>
+        <tbody>${reviewerMatrix}</tbody>
+      </table>
+    </section>
     <section>
       <h2>Action Timeline</h2>
       <div class="timeline">${timeline}</div>

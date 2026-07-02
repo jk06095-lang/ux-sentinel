@@ -59,7 +59,7 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `actions/a001-pointer-trace.json`
 - `actions/a001-animation-trace.json` when `animation_audit.enabled: true`
 
-The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace link, pointer movement metadata, optional animation trace link, and finding detectors linked to that action. It also includes severity, detector, rule-family, and confidence filters; an action timeline; state graph summary; static state graph map; state transition path; a safety log that links before/after/diff/screen-map evidence artifacts for each action; accessibility cross-check; animation audit section; bbox overlays; and UX principle mapping for evidence-backed findings. Per-action and global finding rows include evidence status, concrete evidence, user impact, suggested fix, and regression check so the sheet separates evidence-backed findings from ambiguous heuristic review prompts without opening the Markdown report first.
+The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace link, pointer movement metadata, optional animation trace link, and finding detectors linked to that action. It also includes a reviewer answer matrix; severity, detector, rule-family, and confidence filters; an action timeline; state graph summary; static state graph map; state transition path; a safety log that links before/after/diff/screen-map evidence artifacts for each action; accessibility cross-check; animation audit section; bbox overlays; and UX principle mapping for evidence-backed findings. The matrix directly answers what the agent did, what it clicked or avoided, what changed, which evidence supports the result, and which UX rule or fix should guide review. Per-action and global finding rows include evidence status, concrete evidence, user impact, suggested fix, and regression check so the sheet separates evidence-backed findings from ambiguous heuristic review prompts without opening the Markdown report first.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
@@ -193,11 +193,12 @@ These are geometry, DOM/layout, label/action consistency, visual-hierarchy, grap
 
 Use `contact-sheet.html` as a local static review surface:
 
-1. Start with the action timeline, state graph map, and state transition path to see the route through the UI.
-2. Check the safety log to see what was clicked, skipped, or refused.
-3. Use the severity, detector, and rule-family filters to focus the review.
-4. Compare before, after, and visual diff panels for each action.
-5. Open the linked screenshots, screen maps, pointer traces, animation traces, DOM diffs, and accessibility diffs before treating a finding as final.
+1. Start with the reviewer answer matrix to see what the agent did, what it clicked or avoided, what changed, what evidence supports the result, and which UX principle or fix applies.
+2. Use the action timeline, state graph map, and state transition path to reconstruct the route through the UI.
+3. Check the safety log to see every click candidate, skipped action, or refused action.
+4. Use the severity, detector, and rule-family filters to focus the review.
+5. Compare before, after, and visual diff panels for each action.
+6. Open the linked screenshots, screen maps, pointer traces, animation traces, DOM diffs, and accessibility diffs before treating a finding as final.
 6. Read `Evidence status`, `Why this matters`, and confidence metadata to separate evidence-backed findings from lower-confidence review prompts.
 
 ## Limits

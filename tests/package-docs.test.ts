@@ -184,6 +184,8 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("data-ux-role");
     expect(docs).toContain("data-ux-clickable");
     expect(docs).toContain("contact-sheet.html");
+    expect(docs).toContain("reviewer answer matrix");
+    expect(docs).toContain("what it clicked or avoided");
     expect(docs).toContain("state-graph.json");
     expect(docs).toContain("a001-diff.png");
     expect(docs).toContain("severity, detector, and rule-family filters");
@@ -296,6 +298,8 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("action-trace.json");
     expect(verifier).toContain("state-graph.json");
     expect(verifier).toContain("contact-sheet.html");
+    expect(verifier).toContain("Reviewer Answer Matrix");
+    expect(verifier).toContain("What did it click or avoid?");
     expect(verifier).toContain("visualDiff");
     expect(verifier).toContain("pointerTrace");
     expect(verifier).toContain("clickDecision");

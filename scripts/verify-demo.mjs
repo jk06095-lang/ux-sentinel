@@ -253,7 +253,19 @@ function assertInteractiveArtifacts({
   }
 
   const contactSheet = readFileSync(contactSheetPath, "utf8");
-  for (const needle of ["Safety Log", "State Graph", "Pointer trace", "Safe click decision", "Accessibility"]) {
+  for (const needle of [
+    "Reviewer Answer Matrix",
+    "What did the agent do?",
+    "What did it click or avoid?",
+    "What changed visually?",
+    "What evidence supports it?",
+    "Which UX rule or principle?",
+    "Safety Log",
+    "State Graph",
+    "Pointer trace",
+    "Safe click decision",
+    "Accessibility"
+  ]) {
     if (!contactSheet.includes(needle)) {
       throw new Error(`${contactSheetPath} is missing review surface text: ${needle}`);
     }

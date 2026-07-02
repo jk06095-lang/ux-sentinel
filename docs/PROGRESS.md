@@ -487,3 +487,11 @@ Added a deterministic demo gate for opt-in motion audit evidence:
 - Added `demo/scenarios/interactive-motion.yaml` with `animation_audit.enabled: true`, scenario-approved safe clicking, reduced-motion comparison, and explicit motion fail conditions.
 - Routed `/interactive-motion` through the demo server.
 - Extended `npm run demo:verify` to assert the failing motion report includes the expected motion detectors, `actions/a001-animation-trace.json` exists, action trace finding detectors are attached to the action, `state-graph.json` links the animation trace, contact sheet animation evidence is visible, and DOM diff text proves the safe click produced feedback.
+
+### Checkpoint: Contact Sheet Reviewer Answer Matrix
+
+Upgraded the static contact sheet review surface:
+
+- Added a reviewer answer matrix that summarizes each action in terms of what the agent did, what it clicked or avoided, what changed, which artifacts support the result, and which UX rule/fix/regression check applies.
+- Kept the matrix fully local and linked to existing before/after/diff, DOM diff, accessibility diff, pointer trace, and animation trace artifacts.
+- Extended `npm run demo:verify` so interactive demo runs require the matrix headings in `contact-sheet.html`.
