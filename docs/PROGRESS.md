@@ -504,3 +504,12 @@ Added a deterministic demo gate for the default scenario-driven navigation safet
 - Added `demo/scenarios/interactive-navigation-stop.yaml` with scenario-approved safe clicking but `allow_navigation: false`.
 - Routed `/interactive-navigation-stop` through the demo server.
 - Extended `npm run demo:verify` to assert the run performs exactly one clicked action, records a URL-changing action, keeps the navigation capability disabled, stops remaining planned actions, and exposes the navigation stop note in the report, action trace, and contact sheet.
+
+### Checkpoint: Navigation Allow Demo Gate
+
+Added the explicit opt-in counterpart for scenario-driven navigation:
+
+- Added `demo/interactive-navigation-allow.html` and `demo/interactive-navigation-allow-next.html`, where the first safe CTA changes the URL and the destination page exposes a new safe CTA.
+- Added `demo/scenarios/interactive-navigation-allow.yaml` with `mode: agentic`, safe clicking enabled, and `allow_navigation: true`.
+- Routed `/interactive-navigation-allow` and `/interactive-navigation-allow-next` through the demo server.
+- Extended `npm run demo:verify` to assert the run keeps `navigation: true`, records a URL-changing action, performs two clicked actions, replans onto the destination page, and avoids the navigation stop note.

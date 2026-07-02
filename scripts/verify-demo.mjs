@@ -98,7 +98,8 @@ function assertInteractiveArtifacts({
   expectedDomDiffTextAdded = [],
   expectedActionFindingDetectors = [],
   expectedAnimationTrace = false,
-  expectedNavigationStop = false
+  expectedNavigationStop = false,
+  expectedNavigationAllowed = false
 }) {
   mustExist(tracePath, "interactive trace directory");
   mustExist(contactSheetPath, "interactive contact sheet");
@@ -141,6 +142,9 @@ function assertInteractiveArtifacts({
   }
   if (expectedNavigationStop && actionTrace.capabilityPolicy.capabilities.navigation !== false) {
     throw new Error(`${actionTracePath} should keep navigation disabled for the navigation-stop scenario`);
+  }
+  if (expectedNavigationAllowed && actionTrace.capabilityPolicy.capabilities.navigation !== true) {
+    throw new Error(`${actionTracePath} should enable navigation for the navigation-allow scenario`);
   }
 
   const actionsById = new Map(actionTrace.actions.map((action) => [action.id, action]));
@@ -226,6 +230,15 @@ function assertInteractiveArtifacts({
       throw new Error(`${actionTracePath} did not record an action URL change`);
     }
   }
+  if (expectedNavigationAllowed) {
+    const noteText = (actionTrace.summary?.notes ?? []).join(" ");
+    if (noteText.includes("stopped remaining planned actions")) {
+      throw new Error(`${actionTracePath} recorded a navigation stop note even though navigation was allowed`);
+    }
+    if (!actionTrace.actions.some((action) => action.urlBefore && action.urlAfter && action.urlBefore !== action.urlAfter)) {
+      throw new Error(`${actionTracePath} did not record an allowed action URL change`);
+    }
+  }
 
   if (!Array.isArray(stateGraph.nodes) || stateGraph.nodes.length === 0) {
     throw new Error(`${stateGraphPath} did not record state nodes`);
@@ -278,6 +291,9 @@ function assertInteractiveArtifacts({
       }
     }
   }
+  if (expectedNavigationAllowed && report.includes("stopped remaining planned actions")) {
+    throw new Error(`${reportPath} should not include a navigation stop note when navigation is allowed`);
+  }
 
   const contactSheet = readFileSync(contactSheetPath, "utf8");
   for (const needle of [
@@ -316,6 +332,16 @@ function assertInteractiveArtifacts({
       if (!contactSheet.includes(needle)) {
         throw new Error(`${contactSheetPath} is missing navigation stop evidence text: ${needle}`);
       }
+    }
+  }
+  if (expectedNavigationAllowed) {
+    for (const needle of ["Confirm navigated audit", "Clicked: safe_click capability enabled", "a002 clicked"]) {
+      if (!contactSheet.includes(needle)) {
+        throw new Error(`${contactSheetPath} is missing navigation allow evidence text: ${needle}`);
+      }
+    }
+    if (contactSheet.includes("stopped remaining planned actions")) {
+      throw new Error(`${contactSheetPath} should not include a navigation stop note when navigation is allowed`);
     }
   }
 }
@@ -363,7 +389,8 @@ function runScenario(scenarioPath, path, expectedStatus, options = {}) {
       expectedDomDiffTextAdded: options.expectedDomDiffTextAdded,
       expectedActionFindingDetectors: options.expectedActionFindingDetectors,
       expectedAnimationTrace: options.expectedAnimationTrace === true,
-      expectedNavigationStop: options.expectedNavigationStop === true
+      expectedNavigationStop: options.expectedNavigationStop === true,
+      expectedNavigationAllowed: options.expectedNavigationAllowed === true
     });
   }
 }
@@ -420,6 +447,18 @@ try {
     expectedTargetCategories: ["primary_cta"],
     expectedDomDiffTextAdded: ["Projects"],
     expectedNavigationStop: true
+  });
+  runScenario("demo/scenarios/interactive-navigation-allow.yaml", "/interactive-navigation-allow", 0, {
+    expectedVerdict: "pass",
+    args: ["--interactive", "--max-actions", "2", "--settle-ms", "100"],
+    expectedInteractiveArtifacts: true,
+    expectedPlannerMode: "agentic",
+    expectedMinActions: 2,
+    expectedMaxActions: 2,
+    expectedMinClickedActions: 2,
+    expectedTargetCategories: ["primary_cta"],
+    expectedDomDiffTextAdded: ["Navigation destination ready", "Allowed navigation confirmed"],
+    expectedNavigationAllowed: true
   });
   runScenario("demo/scenarios/interactive-motion.yaml", "/interactive-motion", 1, {
     expectedVerdict: "fail",

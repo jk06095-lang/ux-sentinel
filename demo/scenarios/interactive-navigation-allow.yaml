@@ -1,0 +1,52 @@
+id: interactive-navigation-allow
+title: Interactive audit continues after explicitly allowed navigation
+persona: first-time-user
+mode: visual_contract
+start_path: /
+
+goal:
+  user_wants: "Inspect safe controls after an explicitly allowed navigation"
+  primary_intent: "confirm_navigation_allowed"
+
+visual_contract:
+  page_must_answer:
+    - "What action is available?"
+    - "Can the audit continue after allowed navigation?"
+  primary_cta:
+    preferred_labels:
+      - "Open navigation detail"
+      - "Confirm navigated audit"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+  empty_state:
+    if_detected_requires_primary_cta: false
+
+interactive_exploration:
+  enabled: true
+  mode: agentic
+  max_actions: 2
+  max_depth: 1
+  max_clicks: 2
+  max_state_changes: 2
+  hover_all_clickables: true
+  click_all_safe_controls: true
+  focus_all_keyboard_targets: true
+  scroll_containers: false
+  screenshot_before_after_each_action: true
+  settle_ms: 100
+  allow_navigation: true
+  avoid_click_text:
+    - "Delete"
+    - "Remove"
+    - "Pay"
+    - "Purchase"
+    - "Logout"
+    - "Sign out"
+
+fail_conditions:
+  - primary_cta_missing
+  - primary_cta_icon_only
+  - horizontal_scroll
+  - console_error
+  - network_5xx

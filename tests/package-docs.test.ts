@@ -285,6 +285,9 @@ describe("Codex integration docs", () => {
     expect(existsSync(path.join(repoRoot, "demo/scenarios/interactive-skip.yaml"))).toBe(true);
     expect(existsSync(path.join(repoRoot, "demo/interactive-navigation-stop.html"))).toBe(true);
     expect(existsSync(path.join(repoRoot, "demo/scenarios/interactive-navigation-stop.yaml"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/interactive-navigation-allow.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/interactive-navigation-allow-next.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/scenarios/interactive-navigation-allow.yaml"))).toBe(true);
     expect(existsSync(path.join(repoRoot, "demo/interactive-agentic-states.html"))).toBe(true);
     expect(existsSync(path.join(repoRoot, "demo/scenarios/interactive-agentic-states.yaml"))).toBe(true);
     expect(verifier).toContain("expectedInteractiveArtifacts");
@@ -292,10 +295,13 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("demo/scenarios/interactive-agentic-states.yaml");
     expect(verifier).toContain("demo/scenarios/interactive-skip.yaml");
     expect(verifier).toContain("demo/scenarios/interactive-navigation-stop.yaml");
+    expect(verifier).toContain("demo/scenarios/interactive-navigation-allow.yaml");
     expect(verifier).toContain("expectedPlannerMode");
     expect(verifier).toContain("expectedMinClickedActions");
     expect(verifier).toContain("expectedNavigationStop");
+    expect(verifier).toContain("expectedNavigationAllowed");
     expect(verifier).toContain("stopped remaining planned actions");
+    expect(verifier).toContain("Allowed navigation confirmed");
     expect(verifier).toContain("expectedTargetCategories");
     expect(verifier).toContain("expectedDomDiffTextAdded");
     expect(verifier).toContain("Discovered insight open");
@@ -310,14 +316,16 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("clickDecision");
     expect(verifier).toContain("skipReason");
     expect(verifier).toContain("plannedReason");
-    expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, navigation-stop, and motion-audit scenarios");
+    expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, navigation-stop, navigation-allow, and motion-audit scenarios");
     expect(readme).toContain("demo/scenarios/interactive-agentic-states.yaml");
     expect(readme).toContain("depth-1 replanning");
     expect(readme).toContain("demo/scenarios/interactive-skip.yaml");
     expect(readme).toContain("demo/scenarios/interactive-navigation-stop.yaml");
+    expect(readme).toContain("demo/scenarios/interactive-navigation-allow.yaml");
     expect(progress).toContain("Interactive Demo Artifact Gate");
     expect(progress).toContain("Agentic Benign State Demo Gate");
     expect(progress).toContain("stale-target skipped action");
+    expect(progress).toContain("Navigation Allow Demo Gate");
   });
 
   it("verifies the interactive motion demo gate and animation evidence docs", () => {
@@ -346,9 +354,10 @@ describe("Codex integration docs", () => {
 
     expect(readme).toContain("demo/scenarios/interactive-motion.yaml");
     expect(readme).toContain("animation traces");
-    expect(readme).toContain("navigation stop notes");
+    expect(readme).toContain("navigation stop/allow evidence");
     expect(interactiveDocs).toContain("interactive-motion");
     expect(interactiveDocs).toContain("interactive-navigation-stop");
+    expect(interactiveDocs).toContain("interactive-navigation-allow");
     expect(interactiveDocs).toContain("attach motion detector ids to the action");
     expect(motionDocs).toContain("Demo Gate");
     expect(motionDocs).toContain("state-graph.json");
