@@ -60,9 +60,14 @@ describe("interactive exploration helpers", () => {
         <form><button>Save profile</button><input type="submit" value="Submit profile" /></form>
         <input type="button" value="Delete from input" />
         <button>Delete project</button>
+        <button>삭제</button>
+        <button>제거</button>
+        <button>결제</button>
+        <button>로그아웃</button>
       `);
 
-      const targets = await collectVisibleInteractiveTargets(page, ["Delete"]);
+      const targets = await collectVisibleInteractiveTargets(page);
+      const dangerousKoreanLabels = ["삭제", "제거", "결제", "로그아웃"];
 
       expect(targets.map((target) => target.tag)).toContain("button");
       expect(targets.some((target) => target.role === "button" && target.dataUxRole === "primary")).toBe(true);
@@ -77,6 +82,10 @@ describe("interactive exploration helpers", () => {
       expect(targets.find((target) => target.visibleText === "Save profile")?.skipClickReason).toBe("inside form");
       expect(targets.find((target) => target.visibleText === "Submit profile")?.skipClickReason).toBe("inside form");
       expect(targets.find((target) => target.visibleText === "Delete from input")?.skipClickReason).toBe("dangerous label");
+      for (const label of dangerousKoreanLabels) {
+        expect(targets.find((target) => target.visibleText === label)?.safeToClick).toBe(false);
+        expect(targets.find((target) => target.visibleText === label)?.skipClickReason).toBe("dangerous label");
+      }
     } finally {
       await browser.close();
     }
@@ -1042,23 +1051,27 @@ describe("interactive exploration helpers", () => {
     }
   });
 
-  it("does not click dangerous labels even when safe-click capability is enabled", async () => {
-    const traceRoot = await tempTraceRoot();
-    try {
-      const result = await interactiveExplorePage({
-        url: dataUrl(`<button onclick="document.body.dataset.deleted='true'">Delete project</button>`),
-        traceRoot,
-        commandMode: "explore",
-        clickSafeOverride: true,
-        maxActions: 1,
-        settleMs: 0
-      });
+  it("does not click English or Korean dangerous labels even when safe-click capability is enabled", async () => {
+    const dangerousLabels = ["Delete project", "로그아웃"];
 
-      expect(result.actions[0].clicked).toBe(false);
-      expect(result.actions[0].clickDecision).toBe("skipped");
-      expect(result.actions[0].clickDecisionReason).toBe("dangerous label");
-    } finally {
-      await rm(traceRoot, { recursive: true, force: true });
+    for (const label of dangerousLabels) {
+      const traceRoot = await tempTraceRoot();
+      try {
+        const result = await interactiveExplorePage({
+          url: dataUrl(`<button onclick="document.body.dataset.deleted='true'">${label}</button>`),
+          traceRoot,
+          commandMode: "explore",
+          clickSafeOverride: true,
+          maxActions: 1,
+          settleMs: 0
+        });
+
+        expect(result.actions[0].clicked).toBe(false);
+        expect(result.actions[0].clickDecision).toBe("skipped");
+        expect(result.actions[0].clickDecisionReason).toBe("dangerous label");
+      } finally {
+        await rm(traceRoot, { recursive: true, force: true });
+      }
     }
   });
 
