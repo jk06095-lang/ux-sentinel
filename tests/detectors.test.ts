@@ -901,6 +901,27 @@ describe("detectors", () => {
     expect(findings.map((finding) => finding.detector)).toContain("primary_cta_below_fold");
   });
 
+  it("detects generic truncated visible text with bbox evidence", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Revenue expansion forecast is clipped"],
+      elements: [
+        baseElement({
+          id: "truncated-copy",
+          tag: "p",
+          visibleText: "Revenue expansion forecast is clipped",
+          bbox: { x: 40, y: 160, width: 96, height: 18 },
+          textTruncated: true
+        })
+      ]
+    });
+
+    const finding = runDetectors(screenMap, scenario).find((item) => item.detector === "text_truncated");
+
+    expect(finding?.evidence).toContain("textTruncated=true");
+    expect(finding?.evidence).toContain("96x18px");
+    expect(finding?.ruleIds).toContain("wcag22.reflow_and_readability");
+  });
+
   it("fails P2 findings when the detector is explicitly listed in fail_conditions", () => {
     const finding: Finding = {
       id: "UX-001",

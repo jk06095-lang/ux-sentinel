@@ -220,6 +220,7 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("multiple_primary_ctas_conflict");
     expect(docs).toContain("secondary_action_overpowers_primary");
     expect(docs).toContain("responsive_layout_breakpoint_overlap");
+    expect(docs).toContain("text_truncated");
     expect(docs).toContain("same_label_different_actions");
     expect(docs).toContain("same_action_different_labels");
     expect(docs).toContain("icon_button_without_visible_label");

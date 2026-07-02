@@ -1103,6 +1103,18 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
         "Confirm important labels are readable at the scenario viewport."
       )
     );
+    findings.push(
+      finding(
+        "text_truncated",
+        "Visible text is truncated",
+        "P2",
+        "Perception Mismatch",
+        `${truncated.id} "${truncated.visibleText}" reports textTruncated=true with bbox ${truncated.bbox.width}x${truncated.bbox.height}px.`,
+        "Users may miss a label, status, consequence, or recovery hint when visible text is clipped.",
+        "Allow the text to wrap, shorten the copy, widen the container, or expose the full value in visible UI.",
+        "Run observe or the same scenario and confirm the element no longer reports textTruncated=true."
+      )
+    );
   }
 
   return enrichFindingsWithRules(findings.map((item, index) => ({
