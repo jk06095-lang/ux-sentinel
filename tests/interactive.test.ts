@@ -382,6 +382,7 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Safety Log");
     expect(html).toContain("Click Candidate Decisions");
     expect(html).toContain("safe_click capability enabled and target passed planner budget checks");
+    expect(html).toContain("Evidence: before=actions/a001-before.png / after=actions/a001-after.png / diff=actions/a001-diff.png / screen-map=actions/a001-screen-map.json");
     expect(html).toContain("Accessibility Cross-Check");
     expect(html).toContain("Finding Evidence And UX Principles");
     expect(html).toContain("data-action-card");
@@ -431,6 +432,9 @@ describe("interactive exploration helpers", () => {
       expect(actionTrace.actions[1].clickDecisionReason).toContain("no longer exists");
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("skipped:");
+      expect(contactSheet).toContain(
+        "Evidence: before=actions/a002-before.png / after=actions/a002-after.png / diff=actions/a002-diff.png / screen-map=actions/a002-screen-map.json"
+      );
       expect(contactSheet).toContain("no longer exists");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });

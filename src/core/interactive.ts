@@ -1637,7 +1637,13 @@ export function buildContactSheetHtml(
         .map((action) => {
           const decision = action.clickDecision ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}` : "not recorded";
           const skipped = action.skipped ? `; skipped: ${action.skipReason ?? "unknown reason"}` : "";
-          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}</li>`;
+          const evidence = [
+            `before=${relativeArtifact(result.artifacts.traceDir, action.beforeScreenshot)}`,
+            `after=${relativeArtifact(result.artifacts.traceDir, action.afterScreenshot)}`,
+            `diff=${relativeArtifact(result.artifacts.traceDir, action.visualDiff)}`,
+            `screen-map=${relativeArtifact(result.artifacts.traceDir, action.screenMap)}`
+          ].join(" / ");
+          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}<br /><span>Evidence: ${escapeHtml(evidence)}</span></li>`;
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
