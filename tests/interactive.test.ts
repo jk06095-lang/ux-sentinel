@@ -1051,6 +1051,52 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("focuses form fields without typing or submitting even when safe clicks are enabled", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <form onsubmit="event.preventDefault(); document.getElementById('submitted').hidden = false">
+            <label>Name <input name="name" value="unchanged" oninput="document.getElementById('typed').hidden = false" onchange="document.getElementById('changed').hidden = false" /></label>
+            <label>Notes <textarea name="notes" oninput="document.getElementById('typed').hidden = false" onchange="document.getElementById('changed').hidden = false">notes stay</textarea></label>
+            <button type="submit">Submit profile</button>
+          </form>
+          <p id="typed" hidden>Typing event fired</p>
+          <p id="changed" hidden>Change event fired</p>
+          <p id="submitted" hidden>Submit event fired</p>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 3,
+        settleMs: 0,
+        scenario: {
+          id: "no-form-typing",
+          title: "No form typing",
+          persona: "tester",
+          interactive_exploration: { enabled: true, mode: "agentic", click_all_safe_controls: true, focus_all_keyboard_targets: true }
+        }
+      });
+
+      expect(result.actions).toHaveLength(3);
+      expect(result.actions.every((action) => action.focused)).toBe(true);
+      expect(result.actions.every((action) => !action.clicked)).toBe(true);
+      expect(result.actions.map((action) => action.clickDecisionReason)).toEqual(
+        expect.arrayContaining(["inside form", "inside form", "inside form"])
+      );
+
+      for (const action of result.actions) {
+        const domDiff = JSON.parse(await readFile(action.domDiff!, "utf8")) as {
+          visibleTextAdded: string[];
+        };
+        expect(domDiff.visibleTextAdded).not.toEqual(
+          expect.arrayContaining(["Typing event fired", "Change event fired", "Submit event fired"])
+        );
+      }
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("skips safe clicks when hover changes the final pointer hit-test", async () => {
     const traceRoot = await tempTraceRoot();
     try {
