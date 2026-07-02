@@ -41,10 +41,10 @@ interactive_exploration:
     - "Purchase"
     - "Logout"
     - "Sign out"
-    - "??젣"
-    - "?쒓굅"
-    - "寃곗젣"
-    - "濡쒓렇?꾩썐"
+    - "삭제"
+    - "제거"
+    - "결제"
+    - "로그아웃"
 
 animation_audit:
   enabled: true

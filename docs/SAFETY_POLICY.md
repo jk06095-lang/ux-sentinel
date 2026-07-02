@@ -34,6 +34,8 @@ interactive_exploration:
   click_all_safe_controls: true
 ```
 
+Navigation remains disabled unless the scenario sets `interactive_exploration.allow_navigation: true`. `demo/scenarios/interactive-navigation-stop.yaml` verifies the default policy by clicking a safe-looking control that changes the URL, then asserting the runner stops remaining planned actions and records the stop note in the report, action trace, and contact sheet.
+
 ## Target Policy
 
 `data-ux-role` is analysis metadata by default. A `data-ux-role` element can be clicked only when it is also natively interactive, has an interactive ARIA role, has `data-ux-clickable="true"`, or has `data-ux-action`.

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive navigation stop fixture</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f8fafc; color: #111827; }
+    main { min-height: 100vh; display: grid; place-items: center; padding: 32px; }
+    .panel { width: min(680px, 100%); border: 1px solid #cbd5e1; background: #ffffff; padding: 28px; }
+    h1 { margin: 0 0 10px; font-size: 26px; }
+    p { color: #475569; }
+    .actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 22px; }
+    button {
+      min-width: 180px;
+      min-height: 44px;
+      border: 0;
+      border-radius: 6px;
+      background: #111827;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary { background: #475569; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel" aria-label="Interactive navigation safety demo">
+      <h1>Navigation safety fixture</h1>
+      <p>The first safe-looking control changes the URL. Scenario-driven interactive audit should stop remaining planned actions when navigation is not allowed.</p>
+      <div class="actions">
+        <button id="first" onclick="window.location.href = '/fixed';">Open navigation detail</button>
+        <button id="second" class="secondary" onclick="document.body.dataset.secondClicked = 'true';">Second safe action</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -14,6 +14,7 @@ const routes = new Map([
   ["/high-priority-fixed", "high-priority-fixed.html"],
   ["/interactive-agentic-states", "interactive-agentic-states.html"],
   ["/interactive-motion", "interactive-motion.html"],
+  ["/interactive-navigation-stop", "interactive-navigation-stop.html"],
   ["/interactive-skip", "interactive-skip.html"],
   ["/dashboard", "broken.html"]
 ]);

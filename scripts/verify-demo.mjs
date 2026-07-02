@@ -92,11 +92,13 @@ function assertInteractiveArtifacts({
   expectedSkippedAction = false,
   expectedPlannerMode,
   expectedMinActions,
+  expectedMaxActions,
   expectedMinClickedActions,
   expectedTargetCategories = [],
   expectedDomDiffTextAdded = [],
   expectedActionFindingDetectors = [],
-  expectedAnimationTrace = false
+  expectedAnimationTrace = false,
+  expectedNavigationStop = false
 }) {
   mustExist(tracePath, "interactive trace directory");
   mustExist(contactSheetPath, "interactive contact sheet");
@@ -133,6 +135,12 @@ function assertInteractiveArtifacts({
   }
   if (expectedMinActions !== undefined && actionTrace.actions.length < expectedMinActions) {
     throw new Error(`${actionTracePath} expected at least ${expectedMinActions} actions, got ${actionTrace.actions.length}`);
+  }
+  if (expectedMaxActions !== undefined && actionTrace.actions.length > expectedMaxActions) {
+    throw new Error(`${actionTracePath} expected at most ${expectedMaxActions} actions, got ${actionTrace.actions.length}`);
+  }
+  if (expectedNavigationStop && actionTrace.capabilityPolicy.capabilities.navigation !== false) {
+    throw new Error(`${actionTracePath} should keep navigation disabled for the navigation-stop scenario`);
   }
 
   const actionsById = new Map(actionTrace.actions.map((action) => [action.id, action]));
@@ -209,6 +217,15 @@ function assertInteractiveArtifacts({
   if (expectedAnimationTrace && animationTracePaths.length === 0) {
     throw new Error(`${actionTracePath} did not record an expected animation trace`);
   }
+  if (expectedNavigationStop) {
+    const noteText = (actionTrace.summary?.notes ?? []).join(" ");
+    if (!noteText.includes("Navigation changed URL") || !noteText.includes("stopped remaining planned actions")) {
+      throw new Error(`${actionTracePath} did not record the expected navigation stop note`);
+    }
+    if (!actionTrace.actions.some((action) => action.urlBefore && action.urlAfter && action.urlBefore !== action.urlAfter)) {
+      throw new Error(`${actionTracePath} did not record an action URL change`);
+    }
+  }
 
   if (!Array.isArray(stateGraph.nodes) || stateGraph.nodes.length === 0) {
     throw new Error(`${stateGraphPath} did not record state nodes`);
@@ -218,6 +235,9 @@ function assertInteractiveArtifacts({
   }
   if (expectedMinActions !== undefined && stateGraph.edges.length < expectedMinActions) {
     throw new Error(`${stateGraphPath} expected at least ${expectedMinActions} edges, got ${stateGraph.edges.length}`);
+  }
+  if (expectedMaxActions !== undefined && stateGraph.edges.length > expectedMaxActions) {
+    throw new Error(`${stateGraphPath} expected at most ${expectedMaxActions} edges, got ${stateGraph.edges.length}`);
   }
   let stateGraphAnimationTraceCount = 0;
   for (const [index, edge] of stateGraph.edges.entries()) {
@@ -251,6 +271,13 @@ function assertInteractiveArtifacts({
       throw new Error(`${reportPath} is missing interactive report section text: ${needle}`);
     }
   }
+  if (expectedNavigationStop) {
+    for (const needle of ["Navigation changed URL", "stopped remaining planned actions"]) {
+      if (!report.includes(needle)) {
+        throw new Error(`${reportPath} is missing navigation stop note text: ${needle}`);
+      }
+    }
+  }
 
   const contactSheet = readFileSync(contactSheetPath, "utf8");
   for (const needle of [
@@ -281,6 +308,13 @@ function assertInteractiveArtifacts({
     for (const needle of ["Animation Audit", "Animation trace:", "a001-animation-trace.json"]) {
       if (!contactSheet.includes(needle)) {
         throw new Error(`${contactSheetPath} is missing animation evidence text: ${needle}`);
+      }
+    }
+  }
+  if (expectedNavigationStop) {
+    for (const needle of ["Navigation changed URL", "stopped remaining planned actions", "Clicked: safe_click capability enabled"]) {
+      if (!contactSheet.includes(needle)) {
+        throw new Error(`${contactSheetPath} is missing navigation stop evidence text: ${needle}`);
       }
     }
   }
@@ -323,11 +357,13 @@ function runScenario(scenarioPath, path, expectedStatus, options = {}) {
       expectedSkippedAction: options.expectedSkippedAction === true,
       expectedPlannerMode: options.expectedPlannerMode,
       expectedMinActions: options.expectedMinActions,
+      expectedMaxActions: options.expectedMaxActions,
       expectedMinClickedActions: options.expectedMinClickedActions,
       expectedTargetCategories: options.expectedTargetCategories,
       expectedDomDiffTextAdded: options.expectedDomDiffTextAdded,
       expectedActionFindingDetectors: options.expectedActionFindingDetectors,
-      expectedAnimationTrace: options.expectedAnimationTrace === true
+      expectedAnimationTrace: options.expectedAnimationTrace === true,
+      expectedNavigationStop: options.expectedNavigationStop === true
     });
   }
 }
@@ -373,6 +409,17 @@ try {
     args: ["--interactive", "--max-actions", "2", "--settle-ms", "100"],
     expectedInteractiveArtifacts: true,
     expectedSkippedAction: true
+  });
+  runScenario("demo/scenarios/interactive-navigation-stop.yaml", "/interactive-navigation-stop", 0, {
+    expectedVerdict: "pass",
+    args: ["--interactive", "--max-actions", "2", "--settle-ms", "100"],
+    expectedInteractiveArtifacts: true,
+    expectedMinActions: 1,
+    expectedMaxActions: 1,
+    expectedMinClickedActions: 1,
+    expectedTargetCategories: ["primary_cta"],
+    expectedDomDiffTextAdded: ["Projects"],
+    expectedNavigationStop: true
   });
   runScenario("demo/scenarios/interactive-motion.yaml", "/interactive-motion", 1, {
     expectedVerdict: "fail",

@@ -495,3 +495,12 @@ Upgraded the static contact sheet review surface:
 - Added a reviewer answer matrix that summarizes each action in terms of what the agent did, what it clicked or avoided, what changed, which artifacts support the result, and which UX rule/fix/regression check applies.
 - Kept the matrix fully local and linked to existing before/after/diff, DOM diff, accessibility diff, pointer trace, and animation trace artifacts.
 - Extended `npm run demo:verify` so interactive demo runs require the matrix headings in `contact-sheet.html`.
+
+### Checkpoint: Navigation Stop Demo Gate
+
+Added a deterministic demo gate for the default scenario-driven navigation safety policy:
+
+- Added `demo/interactive-navigation-stop.html`, where the first safe-looking primary CTA changes the URL and a second safe control remains in the original page.
+- Added `demo/scenarios/interactive-navigation-stop.yaml` with scenario-approved safe clicking but `allow_navigation: false`.
+- Routed `/interactive-navigation-stop` through the demo server.
+- Extended `npm run demo:verify` to assert the run performs exactly one clicked action, records a URL-changing action, keeps the navigation capability disabled, stops remaining planned actions, and exposes the navigation stop note in the report, action trace, and contact sheet.
