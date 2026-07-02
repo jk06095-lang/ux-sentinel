@@ -85,6 +85,10 @@ Commands:
   ux-sentinel run <scenario.yaml> --url <url> --interactive [--max-actions <n>] [--settle-ms <ms>]
   ux-sentinel ingest-feedback <file>
   ux-sentinel codex-brief <report>
+
+Safe-click policy:
+  --click-safe is standalone explore only.
+  run --interactive clicks only when the scenario sets interactive_exploration.click_all_safe_controls: true.
 `;
 }
 

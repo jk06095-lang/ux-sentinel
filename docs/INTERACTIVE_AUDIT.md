@@ -34,7 +34,7 @@ Run a scenario with interactive exploration:
 ux-sentinel run demo/scenarios/interactive-dag-clarity.yaml --url http://localhost:3000 --interactive
 ```
 
-`--max-actions <n>` limits the number of hover/focus/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll. `--click-safe` is standalone `explore` only; for scenario-driven `run --interactive`, clicking requires `interactive_exploration.click_all_safe_controls: true`.
+`--max-actions <n>` limits the number of hover/focus/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll. `--click-safe` is standalone `explore` only; scenario-driven `run --interactive` has no CLI click override and requires `interactive_exploration.click_all_safe_controls: true`.
 
 ## Artifacts
 

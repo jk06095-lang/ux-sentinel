@@ -131,8 +131,8 @@ describe("interactive exploration helpers", () => {
     expect(resolveInteractiveConfig(undefined, { commandMode: "explore", clickSafeOverride: true }).clickAllSafeControls).toBe(true);
     expect(
       resolveInteractiveConfig(
-        { id: "s", title: "S", persona: "p", interactive_exploration: { enabled: true } },
-        { commandMode: "run", clickSafeOverride: true }
+        { id: "s", title: "S", persona: "p", interactive_exploration: { enabled: true, click_all_safe_controls: false } },
+        { commandMode: "run" }
       ).clickAllSafeControls
     ).toBe(false);
   });

@@ -54,15 +54,43 @@ import type {
   Severity
 } from "./types.js";
 
-export interface InteractiveExploreOptions {
+interface InteractiveExploreBaseOptions {
   url: string;
   scenario?: Scenario;
   traceRoot?: string;
   maxActions?: number;
   settleMs?: number;
-  commandMode?: InteractiveCommandMode;
-  clickSafeOverride?: boolean;
 }
+
+export type InteractiveExploreOptions = InteractiveExploreBaseOptions & (
+  | {
+      commandMode: "explore";
+      clickSafeOverride?: boolean;
+    }
+  | {
+      commandMode: "run";
+      clickSafeOverride?: never;
+    }
+  | {
+      commandMode?: undefined;
+      clickSafeOverride?: never;
+    }
+);
+
+type ResolveInteractiveConfigOptions = Pick<InteractiveExploreBaseOptions, "maxActions" | "settleMs"> & (
+  | {
+      commandMode: "explore";
+      clickSafeOverride?: boolean;
+    }
+  | {
+      commandMode: "run";
+      clickSafeOverride?: never;
+    }
+  | {
+      commandMode?: undefined;
+      clickSafeOverride?: never;
+    }
+);
 
 export interface InteractiveConfig {
   maxActions: number;
@@ -212,7 +240,7 @@ function targetLabel(target: Pick<InteractiveTarget, "visibleText" | "ariaLabel"
   return normalizeText([target.visibleText, target.ariaLabel, target.title].filter(Boolean).join(" "));
 }
 
-export function resolveInteractiveConfig(scenario?: Scenario, options?: InteractiveExploreOptions): InteractiveConfig {
+export function resolveInteractiveConfig(scenario?: Scenario, options?: ResolveInteractiveConfigOptions): InteractiveConfig {
   const source = scenario?.interactive_exploration;
   const mode = source?.mode ?? "linear";
   const maxActions = options?.maxActions ?? source?.max_actions ?? 40;
@@ -225,11 +253,13 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
     notes.push("Interactive audit always captures before/after screenshots so the contact sheet remains evidence-backed.");
   }
   const commandMode = options?.commandMode ?? (scenario ? "run" : "explore");
+  const clickSafeOverride =
+    commandMode === "explore" && options?.commandMode === "explore" ? options.clickSafeOverride : undefined;
   const capabilityPolicy =
     commandMode === "explore"
       ? resolveInteractiveCapabilities(scenario, {
           commandMode,
-          clickSafeOverride: options?.clickSafeOverride
+          clickSafeOverride
         })
       : resolveInteractiveCapabilities(scenario, { commandMode });
   const clickAllSafeControls = capabilityPolicy.capabilities.safe_click;

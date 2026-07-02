@@ -29,8 +29,17 @@ export function parseScenarioText(source: string): Scenario {
     throw new Error("Scenario is missing required string field: persona.");
   }
 
-  const explicitFailConditions = Array.isArray(parsed.fail_conditions) ? parsed.fail_conditions : undefined;
-  const hasNonEmptyExplicitFailConditions = Boolean(explicitFailConditions?.length);
+  const hasFailConditionsField = Array.isArray(parsed.fail_conditions);
+  const parsedFailConditions = hasFailConditionsField ? parsed.fail_conditions ?? [] : [];
+  const hasNonEmptyExplicitFailConditions = parsedFailConditions.length > 0;
+  const defaultFailConditions = [
+    "primary_cta_missing",
+    "primary_cta_icon_only",
+    "empty_state_without_cta",
+    "horizontal_scroll",
+    "console_error",
+    "network_5xx"
+  ];
 
   return {
     ...parsed,
@@ -102,17 +111,9 @@ export function parseScenarioText(source: string): Scenario {
           max_animation_ms: parsed.animation_audit.max_animation_ms ?? 1200
         }
       : undefined,
-    fail_conditions:
-      explicitFailConditions
-        ? explicitFailConditions
-        : [
-            "primary_cta_missing",
-            "primary_cta_icon_only",
-            "empty_state_without_cta",
-            "horizontal_scroll",
-            "console_error",
-            "network_5xx"
-          ],
+    // Absent fail_conditions gets the default detector list. An explicit empty
+    // array means "no explicit detector list"; severity-based verdicts still apply.
+    fail_conditions: hasFailConditionsField ? parsedFailConditions : defaultFailConditions,
     fail_conditions_explicit: hasNonEmptyExplicitFailConditions
   } as Scenario;
 }

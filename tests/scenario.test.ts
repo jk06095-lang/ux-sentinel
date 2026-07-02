@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { verdictForFindings } from "../src/core/detectors.js";
 import { parseScenarioText, resolveTargetUrl } from "../src/core/scenario.js";
+import type { Finding } from "../src/core/types.js";
 
 describe("scenario parsing", () => {
   it("parses the minimal visual contract scenario", () => {
@@ -61,6 +63,51 @@ fail_conditions: []
 
     expect(scenario.fail_conditions).toEqual([]);
     expect(scenario.fail_conditions_explicit).toBe(false);
+  });
+
+  it("uses severity-based verdicts for absent and empty fail conditions only", () => {
+    const p2Finding: Finding = {
+      id: "UX-001",
+      detector: "edge_label_crosses_node",
+      title: "Edge label crosses node",
+      severity: "P2",
+      type: "Perception Mismatch",
+      evidence: "edge label overlaps a DAG node",
+      userImpact: "The selected path is ambiguous.",
+      suggestedFix: "Move labels away from node boxes.",
+      regressionCheck: "Rerun the DAG scenario."
+    };
+
+    const absentScenario = parseScenarioText(`
+id: absent-fail-conditions
+title: Absent fail conditions
+persona: first-time-user
+`);
+    const explicitScenario = parseScenarioText(`
+id: explicit-fail-conditions
+title: Explicit fail conditions
+persona: first-time-user
+fail_conditions:
+  - edge_label_crosses_node
+`);
+    const emptyScenario = parseScenarioText(`
+id: empty-fail-conditions
+title: Empty fail conditions
+persona: first-time-user
+fail_conditions: []
+`);
+
+    expect(absentScenario.fail_conditions).toContain("primary_cta_missing");
+    expect(absentScenario.fail_conditions_explicit).toBe(false);
+    expect(verdictForFindings([p2Finding], absentScenario)).toBe("ambiguous");
+
+    expect(explicitScenario.fail_conditions).toEqual(["edge_label_crosses_node"]);
+    expect(explicitScenario.fail_conditions_explicit).toBe(true);
+    expect(verdictForFindings([p2Finding], explicitScenario)).toBe("fail");
+
+    expect(emptyScenario.fail_conditions).toEqual([]);
+    expect(emptyScenario.fail_conditions_explicit).toBe(false);
+    expect(verdictForFindings([p2Finding], emptyScenario)).toBe("ambiguous");
   });
 
   it("applies start_path only to base HTTP URLs", () => {
