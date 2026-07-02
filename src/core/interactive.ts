@@ -1656,6 +1656,19 @@ export function buildContactSheetHtml(
         })
         .join("\n")
     : "<p>No action timeline was captured.</p>";
+  const stateTransitionPath = result.actions.length
+    ? result.actions
+        .map((action) => {
+          const status = action.skipped ? "skipped" : action.clicked ? "clicked" : action.focused ? "focused" : "observed";
+          const beforeState = action.beforeStateId ?? "unknown";
+          const afterState = action.afterStateId ?? "unknown";
+          const target = targetLabel(action.target) || action.target.role || action.target.tag;
+          const category = action.targetCategory ?? "unclassified";
+          const risk = action.riskLevel ?? "unknown";
+          return `<li><a href="#${escapeHtml(action.id)}">${escapeHtml(action.id)}</a> <strong>${escapeHtml(beforeState)} -> ${escapeHtml(afterState)}</strong> ${escapeHtml(status)} ${escapeHtml(action.actionType)} on ${escapeHtml(target)} <span>${escapeHtml(category)} / ${escapeHtml(risk)} risk</span></li>`;
+        })
+        .join("\n")
+    : "<li>No state transitions were captured.</li>";
   const safetyLog = result.actions.length
     ? result.actions
         .map((action) => {
@@ -1801,6 +1814,8 @@ export function buildContactSheetHtml(
     .timeline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .timeline a { text-decoration: none; color: #111827; border: 1px solid #9ca3af; border-radius: 999px; padding: 6px 9px; font-size: 12px; background: #f9fafb; }
     .timeline span { color: #6b7280; margin-left: 5px; }
+    .state-path { display: grid; gap: 6px; font-size: 13px; color: #374151; }
+    .state-path span { color: #6b7280; }
     .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     figure { margin: 0; }
     img { width: 100%; display: block; border: 1px solid #d1d5db; background: #111827; }
@@ -1831,6 +1846,8 @@ export function buildContactSheetHtml(
       <div class="timeline">${timeline}</div>
       <h3>State Graph Summary</h3>
       <p>States observed: ${stateIds.length || "unknown"} - edges: ${result.actions.length} - artifact: ${artifactLink(result.artifacts.traceDir, result.artifacts.stateGraph, stateGraph)}</p>
+      <h3>State Transition Path</h3>
+      <ol class="state-path">${stateTransitionPath}</ol>
     </section>
     <section>
       <h2>Safety Log</h2>

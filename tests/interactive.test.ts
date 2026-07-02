@@ -305,6 +305,10 @@ describe("interactive exploration helpers", () => {
           afterScreenshot: "trace/actions/a001-after.png",
           visualDiff: "trace/actions/a001-diff.png",
           screenMap: "trace/actions/a001-screen-map.json",
+          beforeStateId: "s000",
+          afterStateId: "s001",
+          targetCategory: "tooltip_help_trigger",
+          riskLevel: "low",
           pointerTrace: "trace/actions/a001-pointer-trace.json",
           pointerTraceSummary: {
             from: { x: 40, y: 40 },
@@ -406,6 +410,9 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Detector filter");
     expect(html).toContain("Action Timeline");
     expect(html).toContain("State Graph Summary");
+    expect(html).toContain("State Transition Path");
+    expect(html).toContain('<a href="#a001">a001</a> <strong>s000 -> s001</strong> observed hover on Create first project');
+    expect(html).toContain("tooltip_help_trigger / low risk");
     expect(html).toContain("Safety Log");
     expect(html).toContain("Click Candidate Decisions");
     expect(html).toContain("safe_click capability enabled and target passed planner budget checks");
