@@ -454,6 +454,8 @@ Added `ux_rule_profile` as first-class scenario metadata:
 Extended demo verification so interactive evidence is part of the automated local gate:
 
 - `npm run demo:verify` now runs `demo/scenarios/interactive-dag-clarity.yaml` with `--interactive --max-actions 10 --settle-ms 100`.
+- Added `demo/interactive-skip.html` and `demo/scenarios/interactive-skip.yaml` to force a stale-target skipped action after a safe click changes the UI.
 - The verifier reads `action-trace.json`, `state-graph.json`, `anomalies.json`, and `contact-sheet.html` instead of trusting stdout alone.
 - It asserts planner metadata, safe-click decisions, click-candidate decisions, before/after screenshots, visual diffs, DOM diffs, accessibility diffs, and pointer traces for recorded actions.
+- It separately asserts skipped actions include a skip reason, before/after screenshots, visual diff, screen map, DOM/a11y diffs, state graph edges, and contact-sheet skip evidence.
 - It checks state graph nodes/edges and contact-sheet review surface text so the demo gate proves the local artifacts are reconstructable by a human reviewer.

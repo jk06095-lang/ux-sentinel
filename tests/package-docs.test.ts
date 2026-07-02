@@ -278,17 +278,24 @@ describe("Codex integration docs", () => {
     const readme = readText("README.md");
     const progress = readText("docs/PROGRESS.md");
 
+    expect(existsSync(path.join(repoRoot, "demo/interactive-skip.html"))).toBe(true);
+    expect(existsSync(path.join(repoRoot, "demo/scenarios/interactive-skip.yaml"))).toBe(true);
     expect(verifier).toContain("expectedInteractiveArtifacts");
     expect(verifier).toContain("demo/scenarios/interactive-dag-clarity.yaml");
+    expect(verifier).toContain("demo/scenarios/interactive-skip.yaml");
+    expect(verifier).toContain("expectedSkippedAction");
     expect(verifier).toContain("action-trace.json");
     expect(verifier).toContain("state-graph.json");
     expect(verifier).toContain("contact-sheet.html");
     expect(verifier).toContain("visualDiff");
     expect(verifier).toContain("pointerTrace");
     expect(verifier).toContain("clickDecision");
+    expect(verifier).toContain("skipReason");
     expect(verifier).toContain("plannedReason");
-    expect(readme).toContain("`demo:verify` also runs the interactive DAG scenario");
+    expect(readme).toContain("`demo:verify` also runs the interactive DAG and skipped-action scenarios");
+    expect(readme).toContain("demo/scenarios/interactive-skip.yaml");
     expect(progress).toContain("Interactive Demo Artifact Gate");
+    expect(progress).toContain("stale-target skipped action");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {

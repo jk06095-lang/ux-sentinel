@@ -85,7 +85,7 @@ function outputPath(stdout, label) {
   return stdout.match(new RegExp(`^${label}: (.+)$`, "m"))?.[1]?.trim();
 }
 
-function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath }) {
+function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath, expectedSkippedAction = false }) {
   mustExist(tracePath, "interactive trace directory");
   mustExist(contactSheetPath, "interactive contact sheet");
   if (path.basename(contactSheetPath) !== "contact-sheet.html") {
@@ -117,6 +117,8 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath })
     throw new Error(`${actionTracePath} did not record interactive actions`);
   }
 
+  const actionsById = new Map(actionTrace.actions.map((action) => [action.id, action]));
+  let skippedActionCount = 0;
   for (const [index, action] of actionTrace.actions.entries()) {
     const actionLabel = `interactive action ${action.id ?? index + 1}`;
     if (!action.plannedReason || !action.targetCategory || !action.riskLevel) {
@@ -129,9 +131,19 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath })
     artifactPath(action.afterScreenshot, `${actionLabel} after screenshot`);
     artifactPath(action.visualDiff, `${actionLabel} visual diff`);
     artifactPath(action.screenMap, `${actionLabel} screen map`);
-    artifactPath(action.pointerTrace, `${actionLabel} pointer trace`);
     artifactPath(action.domDiff, `${actionLabel} DOM diff`);
     artifactPath(action.accessibilityDiff, `${actionLabel} accessibility diff`);
+    if (action.skipped) {
+      skippedActionCount += 1;
+      if (action.clickDecision !== "skipped" || !action.skipReason) {
+        throw new Error(`${actionLabel} is marked skipped without a skipped click decision and reason`);
+      }
+    } else {
+      artifactPath(action.pointerTrace, `${actionLabel} pointer trace`);
+    }
+  }
+  if (expectedSkippedAction && skippedActionCount === 0) {
+    throw new Error(`${actionTracePath} did not record the expected skipped action`);
   }
 
   if (!Array.isArray(stateGraph.nodes) || stateGraph.nodes.length === 0) {
@@ -142,7 +154,8 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath })
   }
   for (const [index, edge] of stateGraph.edges.entries()) {
     const edgeLabel = `state graph edge ${edge.id ?? index + 1}`;
-    for (const key of ["beforeStateId", "afterStateId", "beforeScreenshot", "afterScreenshot", "visualDiff", "domDiff", "accessibilityDiff", "pointerTrace"]) {
+    const action = actionsById.get(edge.actionId);
+    for (const key of ["beforeStateId", "afterStateId", "beforeScreenshot", "afterScreenshot", "visualDiff", "domDiff", "accessibilityDiff"]) {
       if (!edge[key]) {
         throw new Error(`${edgeLabel} is missing ${key}`);
       }
@@ -152,7 +165,9 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath })
     artifactPath(edge.visualDiff, `${edgeLabel} visual diff`);
     artifactPath(edge.domDiff, `${edgeLabel} DOM diff`);
     artifactPath(edge.accessibilityDiff, `${edgeLabel} accessibility diff`);
-    artifactPath(edge.pointerTrace, `${edgeLabel} pointer trace`);
+    if (!action?.skipped) {
+      artifactPath(edge.pointerTrace, `${edgeLabel} pointer trace`);
+    }
   }
 
   const report = readFileSync(reportPath, "utf8");
@@ -166,6 +181,13 @@ function assertInteractiveArtifacts({ reportPath, tracePath, contactSheetPath })
   for (const needle of ["Safety Log", "State Graph", "Pointer trace", "Safe click decision", "Accessibility"]) {
     if (!contactSheet.includes(needle)) {
       throw new Error(`${contactSheetPath} is missing review surface text: ${needle}`);
+    }
+  }
+  if (expectedSkippedAction) {
+    for (const needle of ["skipped:", "no longer exists", "actions/a002-before.png", "actions/a002-diff.png"]) {
+      if (!contactSheet.includes(needle)) {
+        throw new Error(`${contactSheetPath} is missing skipped-action evidence text: ${needle}`);
+      }
     }
   }
 }
@@ -203,7 +225,8 @@ function runScenario(scenarioPath, path, expectedStatus, options = {}) {
     assertInteractiveArtifacts({
       reportPath,
       tracePath: outputPath(result.stdout, "Trace"),
-      contactSheetPath: outputPath(result.stdout, "Contact sheet")
+      contactSheetPath: outputPath(result.stdout, "Contact sheet"),
+      expectedSkippedAction: options.expectedSkippedAction === true
     });
   }
 }
@@ -226,6 +249,12 @@ try {
     expectedVerdict: "pass",
     args: ["--interactive", "--max-actions", "10", "--settle-ms", "100"],
     expectedInteractiveArtifacts: true
+  });
+  runScenario("demo/scenarios/interactive-skip.yaml", "/interactive-skip", 0, {
+    expectedVerdict: "pass",
+    args: ["--interactive", "--max-actions", "2", "--settle-ms", "100"],
+    expectedInteractiveArtifacts: true,
+    expectedSkippedAction: true
   });
   settled = true;
   stopServer();
