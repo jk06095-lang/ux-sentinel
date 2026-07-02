@@ -58,6 +58,9 @@ describe("interactive exploration helpers", () => {
         <div data-ux-role="dag-canvas">Canvas</div>
         <button disabled>Disabled action</button>
         <form><button>Save profile</button><input type="submit" value="Submit profile" /></form>
+        <input type="submit" value="Submit outside form" />
+        <input type="file" aria-label="Upload evidence file" />
+        <input type="password" aria-label="Account password" />
         <input type="button" value="Delete from input" />
         <button>Delete project</button>
         <button>삭제</button>
@@ -81,6 +84,9 @@ describe("interactive exploration helpers", () => {
       expect(targets.find((target) => target.visibleText === "Disabled action")?.skipClickReason).toBe("disabled");
       expect(targets.find((target) => target.visibleText === "Save profile")?.skipClickReason).toBe("inside form");
       expect(targets.find((target) => target.visibleText === "Submit profile")?.skipClickReason).toBe("inside form");
+      expect(targets.find((target) => target.visibleText === "Submit outside form")?.skipClickReason).toBe("unsafe input type");
+      expect(targets.find((target) => target.ariaLabel === "Upload evidence file")?.skipClickReason).toBe("unsafe input type");
+      expect(targets.find((target) => target.ariaLabel === "Account password")?.skipClickReason).toBe("unsafe input type");
       expect(targets.find((target) => target.visibleText === "Delete from input")?.skipClickReason).toBe("dangerous label");
       for (const label of dangerousKoreanLabels) {
         expect(targets.find((target) => target.visibleText === label)?.safeToClick).toBe(false);
@@ -824,6 +830,9 @@ describe("interactive exploration helpers", () => {
           <a href="/billing">Billing</a>
           <div data-ux-role="dag-node">Graph node metadata</div>
           <form><button>Save profile</button></form>
+          <input type="submit" value="Submit outside form" />
+          <input type="file" aria-label="Upload evidence file" />
+          <input type="password" aria-label="Account password" />
           <button disabled>Disabled action</button>
         `),
         traceRoot,
@@ -842,6 +851,7 @@ describe("interactive exploration helpers", () => {
       const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
         clickCandidates: Array<{
           visibleText: string;
+          ariaLabel?: string;
           clickDecision: string;
           clickDecisionReason: string;
           planned: boolean;
@@ -849,7 +859,7 @@ describe("interactive exploration helpers", () => {
         }>;
       };
 
-      expect(actionTrace.clickCandidates).toHaveLength(6);
+      expect(actionTrace.clickCandidates).toHaveLength(9);
       expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Create first project")).toMatchObject({
         clickDecision: "allowed",
         planned: true,
@@ -863,6 +873,15 @@ describe("interactive exploration helpers", () => {
         "data-ux-role metadata only"
       );
       expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Save profile")?.clickDecisionReason).toBe("inside form");
+      expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Submit outside form")?.clickDecisionReason).toBe(
+        "unsafe input type"
+      );
+      expect(actionTrace.clickCandidates.find((item) => item.ariaLabel === "Upload evidence file")?.clickDecisionReason).toBe(
+        "unsafe input type"
+      );
+      expect(actionTrace.clickCandidates.find((item) => item.ariaLabel === "Account password")?.clickDecisionReason).toBe(
+        "unsafe input type"
+      );
       expect(actionTrace.clickCandidates.find((item) => item.visibleText === "Disabled action")?.clickDecisionReason).toBe("disabled");
 
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
@@ -870,6 +889,7 @@ describe("interactive exploration helpers", () => {
       expect(contactSheet).toContain("dangerous label");
       expect(contactSheet).toContain("data-ux-role metadata only");
       expect(contactSheet).toContain("inside form");
+      expect(contactSheet).toContain("unsafe input type");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
