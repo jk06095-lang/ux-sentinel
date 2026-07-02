@@ -500,6 +500,7 @@ Interactive visual anomaly detectors:
 - `floating_panel_overlaps_primary_action`
 - `tooltip_partially_offscreen`
 - `tooltip_blocks_trigger`
+- `hover_content_blocks_trigger`
 - `sticky_layer_hides_content`
 - `responsive_layout_breakpoint_overlap`
 - `text_occluded_by_graph_edge`

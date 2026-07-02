@@ -958,7 +958,12 @@ describe("interactive exploration helpers", () => {
       expect(result.actions[0].clickDecisionReason).toBe("cursor target drift");
       expect(result.actions[0].pointerTrace).toContain("a001-pointer-trace.json");
       expect(result.findings.map((finding) => finding.detector)).toEqual(
-        expect.arrayContaining(["overlay_appeared_during_cursor_approach", "hover_trigger_blocks_target", "cursor_target_drift"])
+        expect.arrayContaining([
+          "overlay_appeared_during_cursor_approach",
+          "hover_trigger_blocks_target",
+          "hover_content_blocks_trigger",
+          "cursor_target_drift"
+        ])
       );
       const pointerTrace = JSON.parse(await readFile(result.actions[0].pointerTrace!, "utf8")) as {
         overlayAppearedDuringApproach: boolean;

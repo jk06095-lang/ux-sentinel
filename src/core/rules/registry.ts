@@ -61,6 +61,7 @@ const localProductRules: UxRule[] = [
       "click_target_blocked_by_overlay",
       "overlay_appeared_during_cursor_approach",
       "hover_trigger_blocks_target",
+      "hover_content_blocks_trigger",
       "cursor_target_drift",
       "target_moved_during_cursor_approach",
       "tooltip_partially_offscreen"

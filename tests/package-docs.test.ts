@@ -230,6 +230,7 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("modal_trap_without_escape");
     expect(docs).toContain("popover_blocks_primary_action");
     expect(docs).toContain("tooltip_blocks_trigger");
+    expect(docs).toContain("hover_content_blocks_trigger");
     expect(docs).toContain("sticky_layer_hides_content");
     expect(docs).toContain("selected_path_not_traceable");
     expect(docs).toContain("edge_crosses_critical_label");

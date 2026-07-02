@@ -97,6 +97,7 @@ fail_conditions:
   - modal_trap_without_escape
   - popover_blocks_primary_action
   - tooltip_blocks_trigger
+  - hover_content_blocks_trigger
   - sticky_layer_hides_content
   - responsive_layout_breakpoint_overlap
   - destructive_action_without_confirmation

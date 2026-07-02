@@ -135,6 +135,7 @@ Interactive anomaly detectors include:
 - `target_moved_during_cursor_approach`
 - `overlay_appeared_during_cursor_approach`
 - `hover_trigger_blocks_target`
+- `hover_content_blocks_trigger`
 - `cursor_target_drift`
 - `focus_ring_missing`
 - `focus_obscured_by_author_content`

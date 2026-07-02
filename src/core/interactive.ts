@@ -1103,6 +1103,18 @@ function buildPointerTraceFindings(trace: PointerTrace, tracePath: string, targe
         actionId
       )
     );
+    findings.push(
+      finding(
+        "hover_content_blocks_trigger",
+        "Hover content blocks the trigger",
+        "P1",
+        `${evidence} The final hit-test did not resolve to the trigger or a descendant.`,
+        "A user can approach the visible trigger but hover content intercepts the final pointer target.",
+        "Move the hover content away from the trigger or make overlapping hover content non-intercepting.",
+        "Rerun the same action and confirm final elementFromPoint still resolves to the trigger.",
+        actionId
+      )
+    );
   }
 
   if (!trace.finalHitTestMatchedTarget) {

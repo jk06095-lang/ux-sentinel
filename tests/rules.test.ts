@@ -46,6 +46,7 @@ const knownDetectors = [
   "target_moved_during_cursor_approach",
   "overlay_appeared_during_cursor_approach",
   "hover_trigger_blocks_target",
+  "hover_content_blocks_trigger",
   "cursor_target_drift",
   "floating_panel_overlaps_primary_action",
   "tooltip_partially_offscreen",
