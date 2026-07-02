@@ -49,7 +49,7 @@ ux_rule_profile:
   require_rule_mapping: true
 ```
 
-The fuller professional-audit template lives at `demo/scenarios/professional-agentic-ui-audit.yaml`. It combines agentic planning, clean English/Korean dangerous-label avoids, visual anomaly contracts, an explicit `ux_rule_profile`, and opt-in motion audit.
+The fuller professional-audit template lives at `demo/scenarios/professional-agentic-ui-audit.yaml`. It combines agentic planning, clean English/Korean dangerous-label avoids, account-deletion and irreversible-action avoids, visual anomaly contracts, an explicit `ux_rule_profile`, and opt-in motion audit.
 
 The concrete local regression fixture for benign state continuation is `demo/scenarios/interactive-agentic-states.yaml` against `/interactive-agentic-states`. It proves the planner can keep working after safe UI state changes and replan once newly revealed controls appear by requiring clicked actions for a primary CTA, tab, menu trigger, help trigger, accordion, and discovered control, with DOM diff text and state-graph edges asserted by `npm run demo:verify`.
 

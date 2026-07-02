@@ -255,6 +255,8 @@ interactive_exploration:
   allow_navigation: false
   avoid_click_text:
     - "Delete"
+    - "Account deletion"
+    - "Irreversible"
     - "Sign out"
     - "Pay"
 

@@ -183,6 +183,8 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("click_all_safe_controls: true");
     expect(docs).toContain("data-ux-role");
     expect(docs).toContain("data-ux-clickable");
+    expect(docs).toContain("Account deletion");
+    expect(docs).toContain("Irreversible");
     expect(docs).toContain("contact-sheet.html");
     expect(docs).toContain("reviewer answer matrix");
     expect(docs).toContain("what it clicked or avoided");
@@ -208,6 +210,8 @@ describe("Codex integration docs", () => {
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("animation_audit:");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("ux_rule_profile:");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("graph_dag_readability");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("Account deletion");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("Irreversible");
     expect(docs).toContain("Why this matters");
     expect(docs).toContain("focus_ring_missing");
     expect(docs).toContain("focus_order_unexpected_jump");

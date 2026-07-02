@@ -82,7 +82,7 @@ The explorer collects visible targets from:
 - elements with `tabindex`
 - elements with `data-ux-role`
 
-It avoids dangerous clicks by visible text, aria-label, or title. Defaults include destructive and account/payment terms such as `Delete`, `Remove`, `Pay`, `Purchase`, `Logout`, and `Sign out`.
+It avoids dangerous clicks by visible text, aria-label, or title. Defaults include destructive and account/payment terms such as `Delete`, `Remove`, `Pay`, `Purchase`, `Logout`, `Sign out`, `Account deletion`, `Deletion`, and `Irreversible`.
 
 `data-ux-role` is analysis metadata by default. A `data-ux-role` element is collected for hover and layout analysis, but it is not safe to click unless it is also a native interactive control, has an interactive role such as `role=button`, has `data-ux-clickable="true"`, or has `data-ux-action`.
 
@@ -103,6 +103,8 @@ interactive_exploration:
   allow_navigation: false
   avoid_click_text:
     - "Delete"
+    - "Account deletion"
+    - "Irreversible"
     - "Sign out"
     - "Pay"
 
