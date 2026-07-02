@@ -29,6 +29,8 @@ export function parseScenarioText(source: string): Scenario {
     throw new Error("Scenario is missing required string field: persona.");
   }
 
+  const hasExplicitFailConditions = Array.isArray(parsed.fail_conditions);
+
   return {
     ...parsed,
     visual_contract: {
@@ -52,13 +54,14 @@ export function parseScenarioText(source: string): Scenario {
           enabled: parsed.interactive_exploration.enabled ?? false,
           max_actions: parsed.interactive_exploration.max_actions ?? 40,
           hover_all_clickables: parsed.interactive_exploration.hover_all_clickables ?? true,
-          click_all_safe_controls: parsed.interactive_exploration.click_all_safe_controls ?? true,
+          click_all_safe_controls: parsed.interactive_exploration.click_all_safe_controls ?? false,
           focus_all_keyboard_targets: parsed.interactive_exploration.focus_all_keyboard_targets ?? true,
           scroll_containers: parsed.interactive_exploration.scroll_containers ?? true,
           screenshot_before_after_each_action:
             parsed.interactive_exploration.screenshot_before_after_each_action ?? true,
           settle_ms: parsed.interactive_exploration.settle_ms ?? 350,
-          avoid_click_text: parsed.interactive_exploration.avoid_click_text ?? []
+          avoid_click_text: parsed.interactive_exploration.avoid_click_text ?? [],
+          allow_navigation: parsed.interactive_exploration.allow_navigation ?? false
         }
       : undefined,
     visual_anomaly_contract: parsed.visual_anomaly_contract
@@ -95,7 +98,8 @@ export function parseScenarioText(source: string): Scenario {
             "horizontal_scroll",
             "console_error",
             "network_5xx"
-          ]
+          ],
+    fail_conditions_explicit: hasExplicitFailConditions
   } as Scenario;
 }
 

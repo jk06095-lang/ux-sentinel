@@ -69,7 +69,8 @@ describe("report generation", () => {
         summary: {
           actionCount: 0,
           screenshotCount: 1,
-          anomalyCount: 0
+          anomalyCount: 0,
+          notes: []
         }
       }
     };

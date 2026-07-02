@@ -51,12 +51,16 @@ ${buildInlinePatchBrief(scenario, verdict, findings)}
 }
 
 function formatInteractiveSection(interactive: NonNullable<RunResult["observation"]["interactive"]>): string {
+  const notes = interactive.summary.notes.length
+    ? ["- notes:", ...interactive.summary.notes.map((note) => `  - ${note}`)].join("\n")
+    : "- notes: none";
   return `## Interactive Exploration
 - actions: ${interactive.summary.actionCount}
 - screenshots: ${interactive.summary.screenshotCount}
 - anomalies: ${interactive.summary.anomalyCount}
 - baseline screenshot: ${displayPath(interactive.artifacts.baseline)}
 - contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
+${notes}
 `;
 }
 

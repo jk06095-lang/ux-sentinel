@@ -33,6 +33,7 @@ export interface Scenario {
     screenshot_before_after_each_action?: boolean;
     settle_ms?: number;
     avoid_click_text?: string[];
+    allow_navigation?: boolean;
   };
   visual_anomaly_contract?: {
     no_text_occlusion?: boolean;
@@ -50,6 +51,7 @@ export interface Scenario {
     };
   };
   fail_conditions?: string[];
+  fail_conditions_explicit?: boolean;
 }
 
 export interface ElementBox {
@@ -161,6 +163,8 @@ export interface InteractiveTarget {
   tag: string;
   role: string | null;
   dataUxRole: string | null;
+  dataUxAction?: string | null;
+  dataUxClickable?: boolean;
   visibleText: string;
   ariaLabel: string | null;
   title: string | null;
@@ -203,6 +207,10 @@ export interface InteractiveActionRecord {
   focused: boolean;
   clickBlockage?: ClickBlockage;
   clickSkippedReason?: string;
+  skipped?: boolean;
+  skipReason?: string;
+  urlBefore?: string;
+  urlAfter?: string;
   consoleErrorCount: number;
   networkErrorCount: number;
   findingDetectors: string[];
@@ -230,5 +238,6 @@ export interface InteractiveExplorationResult {
     actionCount: number;
     screenshotCount: number;
     anomalyCount: number;
+    notes: string[];
   };
 }

@@ -133,6 +133,22 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("github:jk06095-lang/ux-sentinel#main");
   });
 
+  it("documents interactive audit as a main-only feature with safe click opt-in", () => {
+    const docs = [
+      readText("README.md"),
+      readText("docs/INTERACTIVE_AUDIT.md"),
+      readText("docs/prompts/04-interactive-visual-audit.md")
+    ].join("\n");
+
+    expect(docs).toContain("not part of the GitHub `v0.1.0` stable path");
+    expect(docs).toContain("clicking requires `--click-safe`");
+    expect(docs).toContain("click_all_safe_controls: true");
+    expect(docs).toContain("data-ux-role");
+    expect(docs).toContain("data-ux-clickable");
+    expect(docs).toContain("contact-sheet.html");
+    expect(docs).toContain("bbox heuristics");
+  });
+
   it("keeps the README copy prompt self-contained for clone fallback", () => {
     const readme = readText("README.md");
 

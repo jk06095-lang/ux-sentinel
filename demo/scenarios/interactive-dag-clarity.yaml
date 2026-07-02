@@ -34,6 +34,7 @@ interactive_exploration:
   scroll_containers: true
   screenshot_before_after_each_action: true
   settle_ms: 350
+  allow_navigation: false
   avoid_click_text:
     - "Delete"
     - "Remove"

@@ -195,40 +195,12 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
 
 export function verdictForFindings(findings: Finding[], scenario: Scenario): "pass" | "fail" | "ambiguous" {
   const failConditions = new Set(scenario.fail_conditions ?? []);
-  const visualAnomalyFailConditions = new Set<string>();
-  const visualContract = scenario.visual_anomaly_contract;
-  if (visualContract) {
-    if (visualContract.no_click_target_blocking !== false) {
-      visualAnomalyFailConditions.add("click_target_blocked_by_overlay");
-    }
-    if (visualContract.no_floating_panel_covering_primary_action !== false) {
-      visualAnomalyFailConditions.add("floating_panel_overlaps_primary_action");
-    }
-    if (visualContract.no_text_occlusion !== false) {
-      visualAnomalyFailConditions.add("text_occluded_by_graph_edge");
-    }
-    if (visualContract.no_svg_edge_label_overlap !== false) {
-      visualAnomalyFailConditions.add("edge_label_crosses_node");
-    }
-    if (visualContract.no_card_overlap !== false) {
-      visualAnomalyFailConditions.add("card_overlap");
-    }
-    if (visualContract.no_important_text_truncation !== false) {
-      visualAnomalyFailConditions.add("card_content_clipped");
-    }
-    if (visualContract.graph_dag?.enabled !== false) {
-      visualAnomalyFailConditions.add("dag_canvas_excessive_unused_space");
-      visualAnomalyFailConditions.add("empty_dag_column_without_explanation");
-      visualAnomalyFailConditions.add("edge_label_crosses_node");
-    }
-  }
-  const blocking = findings.filter(
-    (finding) =>
-      (finding.severity === "P0" || finding.severity === "P1") &&
-      (failConditions.size === 0 ||
-        failConditions.has(finding.detector) ||
-        visualAnomalyFailConditions.has(finding.detector))
-  );
+  const hasExplicitFailConditions =
+    failConditions.size > 0 &&
+    (scenario.fail_conditions_explicit === true || scenario.fail_conditions_explicit === undefined);
+  const blocking = hasExplicitFailConditions
+    ? findings.filter((finding) => failConditions.has(finding.detector))
+    : findings.filter((finding) => finding.severity === "P0" || finding.severity === "P1");
 
   if (blocking.length > 0) {
     return "fail";

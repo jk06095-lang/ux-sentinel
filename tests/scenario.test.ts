@@ -23,6 +23,7 @@ fail_conditions:
     expect(scenario.id).toBe("onboarding-empty-state");
     expect(scenario.visual_contract?.primary_cta?.preferred_labels).toContain("Create first project");
     expect(scenario.fail_conditions).toContain("primary_cta_missing");
+    expect(scenario.fail_conditions_explicit).toBe(true);
   });
 
   it("applies start_path only to base HTTP URLs", () => {
@@ -48,6 +49,7 @@ interactive_exploration:
   settle_ms: 125
   avoid_click_text:
     - "Delete"
+  allow_navigation: true
 visual_anomaly_contract:
   no_click_target_blocking: true
   graph_dag:
@@ -58,7 +60,10 @@ visual_anomaly_contract:
     expect(scenario.interactive_exploration?.enabled).toBe(true);
     expect(scenario.interactive_exploration?.max_actions).toBe(12);
     expect(scenario.interactive_exploration?.settle_ms).toBe(125);
+    expect(scenario.interactive_exploration?.click_all_safe_controls).toBe(false);
+    expect(scenario.interactive_exploration?.allow_navigation).toBe(true);
     expect(scenario.interactive_exploration?.avoid_click_text).toContain("Delete");
     expect(scenario.visual_anomaly_contract?.graph_dag?.max_unused_canvas_ratio).toBe(0.5);
+    expect(scenario.fail_conditions_explicit).toBe(false);
   });
 });

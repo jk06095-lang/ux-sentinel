@@ -80,7 +80,7 @@ function help(): string {
 Commands:
   ux-sentinel init
   ux-sentinel observe --url <url>
-  ux-sentinel explore --url <url> [--max-actions <n>] [--settle-ms <ms>]
+  ux-sentinel explore --url <url> [--max-actions <n>] [--settle-ms <ms>] [--click-safe]
   ux-sentinel run <scenario.yaml> --url <url>
   ux-sentinel run <scenario.yaml> --url <url> --interactive [--max-actions <n>] [--settle-ms <ms>]
   ux-sentinel ingest-feedback <file>
@@ -119,7 +119,9 @@ async function exploreCommand(args: ParsedArgs): Promise<void> {
   const result = await interactiveExplorePage({
     url,
     maxActions: numberOption(args, "max-actions"),
-    settleMs: numberOption(args, "settle-ms")
+    settleMs: numberOption(args, "settle-ms"),
+    commandMode: "explore",
+    clickSafeOverride: args.options.has("click-safe") ? true : undefined
   });
 
   console.log(`Explored ${result.screenMap.url}`);
@@ -138,7 +140,9 @@ async function runCommand(args: ParsedArgs): Promise<void> {
       url: targetUrl,
       scenario,
       maxActions: numberOption(args, "max-actions"),
-      settleMs: numberOption(args, "settle-ms")
+      settleMs: numberOption(args, "settle-ms"),
+      commandMode: "run",
+      clickSafeOverride: args.options.has("click-safe") ? true : undefined
     });
     observation = {
       screenMap: exploration.screenMap,

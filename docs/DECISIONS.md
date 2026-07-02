@@ -24,11 +24,12 @@ This file records product and technical decisions made during implementation.
 | 2026-07-01 | Keep v0.1 launch usage GitHub-only for now. | GitHub `npm exec` is verified from an external repo; npm publishing should wait until the v0.1.0 tag, release notes, and package ownership are deliberately finalized. | Accepted |
 | 2026-07-01 | Prepare `v0.1.0` as a GitHub-only release. | A tag and GitHub Release give users a stable `npm exec` target while keeping npm publishing deferred until more external-project feedback is collected. | Accepted |
 | 2026-07-03 | Add interactive audit as a deterministic local extension. | Complex UIs can pass static screenshots while hover panels, overlays, cards, and graph/DAG geometry still fail human perception; Playwright action traces and contact sheets keep the evidence inspectable without requiring LLM or vision APIs. | Accepted |
+| 2026-07-03 | Keep interactive audit click-safe by default. | Real frontend projects may have navigation, destructive controls, forms, and metadata-only graph elements; standalone `explore` should hover/focus/scroll only unless `--click-safe` is passed, and scenario clicks require explicit opt-in. | Accepted |
 
 ## Pending Decisions
 
 - Whether to publish the package to npm after GitHub-only v0.1 usage gets feedback.
 - When to actually cut and push the `v0.1.0` tag and create the GitHub release.
-- How rich scenario action steps should become beyond deterministic hover, focus, safe-click, and scroll exploration.
+- How rich scenario action steps should become beyond deterministic hover, focus, opt-in safe-click, and scroll exploration.
 - Whether future optional LLM/provider integrations belong in core or separate plugins.
 - Whether to package the repo-scoped skill as an installable Codex plugin after the prompt-only workflow has enough usage feedback.

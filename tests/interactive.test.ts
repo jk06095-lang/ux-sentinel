@@ -1,3 +1,6 @@
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { chromium } from "playwright";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,8 +9,10 @@ import {
   collectVisibleInteractiveTargets,
   detectVisualAnomalies,
   hasClippedTextMetric,
+  interactiveExplorePage,
   intersectionRatio,
-  isDangerousClickLabel
+  isDangerousClickLabel,
+  resolveInteractiveConfig
 } from "../src/core/interactive.js";
 import type { ClickBlockage, InteractiveExplorationResult, Scenario } from "../src/core/types.js";
 
@@ -27,6 +32,14 @@ function emptyAnalysis() {
   };
 }
 
+function dataUrl(html: string): string {
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+async function tempTraceRoot(): Promise<string> {
+  return mkdtemp(path.join(os.tmpdir(), "ux-sentinel-interactive-test-"));
+}
+
 describe("interactive exploration helpers", () => {
   it("collects visible interactive targets and flags unsafe clicks", async () => {
     const browser = await chromium.launch({ headless: true });
@@ -36,6 +49,10 @@ describe("interactive exploration helpers", () => {
         <button aria-label="Create first project">+</button>
         <a href="/billing">Billing</a>
         <div role="button" tabindex="0" data-ux-role="primary">Open panel</div>
+        <div data-ux-role="dag-node">Node A</div>
+        <div data-ux-role="dag-node" data-ux-action="open-detail">Node B</div>
+        <div data-ux-role="dag-node" data-ux-clickable="true">Node C</div>
+        <div data-ux-role="dag-canvas">Canvas</div>
         <button>Delete project</button>
       `);
 
@@ -45,6 +62,11 @@ describe("interactive exploration helpers", () => {
       expect(targets.some((target) => target.role === "button" && target.dataUxRole === "primary")).toBe(true);
       expect(targets.find((target) => target.visibleText === "Delete project")?.safeToClick).toBe(false);
       expect(targets.find((target) => target.visibleText === "Billing")?.skipClickReason).toBe("navigation link");
+      expect(targets.find((target) => target.visibleText === "Node A")?.safeToClick).toBe(false);
+      expect(targets.find((target) => target.visibleText === "Node A")?.skipClickReason).toBe("data-ux-role metadata only");
+      expect(targets.find((target) => target.visibleText === "Node B")?.safeToClick).toBe(true);
+      expect(targets.find((target) => target.visibleText === "Node C")?.safeToClick).toBe(true);
+      expect(targets.find((target) => target.visibleText === "Canvas")?.safeToClick).toBe(false);
     } finally {
       await browser.close();
     }
@@ -52,7 +74,27 @@ describe("interactive exploration helpers", () => {
 
   it("detects dangerous click labels", () => {
     expect(isDangerousClickLabel("Delete this project")).toBe(true);
+    expect(isDangerousClickLabel("??젣")).toBe(true);
+    expect(isDangerousClickLabel("寃곗젣")).toBe(true);
     expect(isDangerousClickLabel("Create first project")).toBe(false);
+    expect(isDangerousClickLabel("?꾨줈?앺듃 留뚮뱾湲?")).toBe(false);
+  });
+
+  it("defaults explore and scenario interactive runs to no safe clicks", () => {
+    expect(resolveInteractiveConfig(undefined, { commandMode: "explore" }).clickAllSafeControls).toBe(false);
+    expect(
+      resolveInteractiveConfig(
+        { id: "s", title: "S", persona: "p", interactive_exploration: { enabled: true } },
+        { commandMode: "run" }
+      ).clickAllSafeControls
+    ).toBe(false);
+    expect(
+      resolveInteractiveConfig(
+        { id: "s", title: "S", persona: "p", interactive_exploration: { enabled: true, click_all_safe_controls: true } },
+        { commandMode: "run" }
+      ).clickAllSafeControls
+    ).toBe(true);
+    expect(resolveInteractiveConfig(undefined, { commandMode: "explore", clickSafeOverride: true }).clickAllSafeControls).toBe(true);
   });
 
   it("calculates bbox overlap ratio", () => {
@@ -145,7 +187,7 @@ describe("interactive exploration helpers", () => {
         }
       ],
       findings: [],
-      summary: { actionCount: 1, screenshotCount: 3, anomalyCount: 0 },
+      summary: { actionCount: 1, screenshotCount: 3, anomalyCount: 0, notes: [] },
       artifacts: {
         traceDir: "trace",
         baseline: "trace/baseline.png",
@@ -163,5 +205,157 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("a001-before.png");
     expect(html).toContain("a001-after.png");
     expect(html).toContain("tooltip_partially_offscreen");
+  });
+
+  it("skips stale targets instead of clicking old coordinates", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="first" onclick="document.getElementById('second').remove()">Open panel</button>
+          <button id="second" onclick="document.body.dataset.secondClicked='true'">Second action</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "stale-target",
+          title: "Stale target",
+          persona: "tester",
+          interactive_exploration: { enabled: true, click_all_safe_controls: true }
+        }
+      });
+
+      expect(result.actions).toHaveLength(2);
+      expect(result.actions[0].clicked).toBe(true);
+      expect(result.actions[1].skipped).toBe(true);
+      expect(result.actions[1].skipReason).toContain("no longer exists");
+      expect(result.actions[1].clicked).toBe(false);
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        actions: Array<{ skipped?: boolean; skipReason?: string }>;
+      };
+      expect(actionTrace.actions[1].skipped).toBe(true);
+      expect(actionTrace.actions[1].skipReason).toContain("no longer exists");
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("skipped:");
+      expect(contactSheet).toContain("no longer exists");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("stops baseline target execution after navigation unless explicitly allowed", async () => {
+    const html = `
+      <button id="first" onclick="location.href='about:blank#next'">Change route</button>
+      <button id="second" onclick="document.body.dataset.secondClicked='true'">Second action</button>
+    `;
+    const baseScenario: Scenario = {
+      id: "navigation",
+      title: "Navigation",
+      persona: "tester",
+      interactive_exploration: { enabled: true, click_all_safe_controls: true }
+    };
+    const stoppedTraceRoot = await tempTraceRoot();
+    const allowedTraceRoot = await tempTraceRoot();
+    try {
+      const stopped = await interactiveExplorePage({
+        url: dataUrl(html),
+        traceRoot: stoppedTraceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: baseScenario
+      });
+      expect(stopped.actions).toHaveLength(1);
+      expect(stopped.actions[0].urlBefore).not.toBe(stopped.actions[0].urlAfter);
+      expect(stopped.summary.notes.join(" ")).toContain("stopped remaining baseline-collected targets");
+
+      const allowed = await interactiveExplorePage({
+        url: dataUrl(html),
+        traceRoot: allowedTraceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          ...baseScenario,
+          interactive_exploration: { enabled: true, click_all_safe_controls: true, allow_navigation: true }
+        }
+      });
+      expect(allowed.actions).toHaveLength(2);
+      expect(allowed.actions[1].skipped).toBe(true);
+    } finally {
+      await rm(stoppedTraceRoot, { recursive: true, force: true });
+      await rm(allowedTraceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not click in explore mode unless click-safe is enabled", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`<button onclick="this.textContent='Clicked'">Increment</button>`),
+        traceRoot,
+        commandMode: "explore",
+        maxActions: 1,
+        settleMs: 0
+      });
+
+      expect(result.actions[0].clicked).toBe(false);
+      expect(result.actions[0].clickSkippedReason).toBe("safe clicks disabled");
+      expect(result.actions[0].target.visibleText).toBe("Increment");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("clicks in explore mode when click-safe is enabled", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`<button onclick="this.textContent='Clicked'">Increment</button>`),
+        traceRoot,
+        commandMode: "explore",
+        clickSafeOverride: true,
+        maxActions: 1,
+        settleMs: 0
+      });
+
+      expect(result.actions[0].clicked).toBe(true);
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("always writes contact sheet screenshots even when scenario disables per-action screenshots", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`<button>Review</button>`),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "screenshots",
+          title: "Screenshots",
+          persona: "tester",
+          interactive_exploration: {
+            enabled: true,
+            screenshot_before_after_each_action: false
+          }
+        }
+      });
+
+      await stat(result.actions[0].beforeScreenshot);
+      await stat(result.actions[0].afterScreenshot);
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("a001-before.png");
+      expect(contactSheet).toContain("a001-after.png");
+      expect(result.summary.notes.join(" ")).toContain("always captures before/after screenshots");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
   });
 });

@@ -14,11 +14,25 @@ const promptFiles = [
   "docs/prompts/03-continuous-goal-loop.md"
 ];
 
+const interactivePrompt = "docs/prompts/04-interactive-visual-audit.md";
+
 describe("three magic prompt docs", () => {
   it("ships the three guided Codex prompts", () => {
     for (const file of promptFiles) {
       expect(existsSync(path.join(repoRoot, file)), file).toBe(true);
     }
+  });
+
+  it("documents the interactive visual audit prompt and safety defaults", () => {
+    expect(existsSync(path.join(repoRoot, interactivePrompt))).toBe(true);
+
+    const prompt = readText(interactivePrompt);
+    expect(prompt).toContain("main` development feature");
+    expect(prompt).toContain("clicking requires `--click-safe`");
+    expect(prompt).toContain("data-ux-role");
+    expect(prompt).toContain("data-ux-clickable");
+    expect(prompt).toContain("contact-sheet.html");
+    expect(prompt).toContain("bbox heuristics");
   });
 
   it("links the three prompt workflow from the README", () => {

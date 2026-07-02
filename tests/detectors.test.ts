@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runDetectors, verdictForFindings } from "../src/core/detectors.js";
-import type { Scenario, ScreenMap } from "../src/core/types.js";
+import type { Finding, Scenario, ScreenMap } from "../src/core/types.js";
 
 const scenario: Scenario = {
   id: "onboarding-empty-state",
@@ -150,5 +150,36 @@ describe("detectors", () => {
     const findings = runDetectors(screenMap, scenario);
 
     expect(findings.map((finding) => finding.detector)).toContain("primary_cta_below_fold");
+  });
+
+  it("fails P2 findings when the detector is explicitly listed in fail_conditions", () => {
+    const finding: Finding = {
+      id: "UX-001",
+      detector: "edge_label_crosses_node",
+      title: "Graph edge label crosses a node",
+      severity: "P2",
+      type: "Perception Mismatch",
+      evidence: "label overlaps node",
+      userImpact: "Graph path is ambiguous.",
+      suggestedFix: "Move the label.",
+      regressionCheck: "Rerun interactive audit."
+    };
+
+    expect(
+      verdictForFindings([finding], {
+        id: "dag",
+        title: "DAG",
+        persona: "tester",
+        fail_conditions: ["edge_label_crosses_node"],
+        fail_conditions_explicit: true
+      })
+    ).toBe("fail");
+    expect(
+      verdictForFindings([finding], {
+        id: "dag",
+        title: "DAG",
+        persona: "tester"
+      })
+    ).toBe("ambiguous");
   });
 });

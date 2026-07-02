@@ -23,9 +23,11 @@ export interface InteractiveExploreOptions {
   traceRoot?: string;
   maxActions?: number;
   settleMs?: number;
+  commandMode?: "explore" | "run";
+  clickSafeOverride?: boolean;
 }
 
-interface InteractiveConfig {
+export interface InteractiveConfig {
   maxActions: number;
   hoverAllClickables: boolean;
   clickAllSafeControls: boolean;
@@ -34,6 +36,8 @@ interface InteractiveConfig {
   screenshotBeforeAfterEachAction: boolean;
   settleMs: number;
   avoidClickText: string[];
+  allowNavigation: boolean;
+  notes: string[];
 }
 
 export interface VisualBox {
@@ -97,10 +101,6 @@ const defaultAvoidClickText = [
   "purchase",
   "logout",
   "sign out",
-  "삭제",
-  "제거",
-  "결제",
-  "로그아웃",
   "??젣",
   "?쒓굅",
   "寃곗젣",
@@ -150,20 +150,30 @@ function targetLabel(target: Pick<InteractiveTarget, "visibleText" | "ariaLabel"
   return normalizeText([target.visibleText, target.ariaLabel, target.title].filter(Boolean).join(" "));
 }
 
-function resolveInteractiveConfig(scenario?: Scenario, options?: InteractiveExploreOptions): InteractiveConfig {
+export function resolveInteractiveConfig(scenario?: Scenario, options?: InteractiveExploreOptions): InteractiveConfig {
   const source = scenario?.interactive_exploration;
   const maxActions = options?.maxActions ?? source?.max_actions ?? 40;
   const settleMs = options?.settleMs ?? source?.settle_ms ?? 350;
+  const notes: string[] = [];
+  if (source?.screenshot_before_after_each_action === false) {
+    notes.push("Interactive audit always captures before/after screenshots so the contact sheet remains evidence-backed.");
+  }
+  const commandMode = options?.commandMode ?? (scenario ? "run" : "explore");
+  const clickAllSafeControls =
+    options?.clickSafeOverride ??
+    (commandMode === "explore" ? false : source?.click_all_safe_controls === true);
 
   return {
     maxActions: Math.max(1, Math.min(250, Math.floor(maxActions))),
     hoverAllClickables: source?.hover_all_clickables ?? true,
-    clickAllSafeControls: source?.click_all_safe_controls ?? true,
+    clickAllSafeControls,
     focusAllKeyboardTargets: source?.focus_all_keyboard_targets ?? true,
     scrollContainers: source?.scroll_containers ?? true,
-    screenshotBeforeAfterEachAction: source?.screenshot_before_after_each_action ?? true,
+    screenshotBeforeAfterEachAction: true,
     settleMs: Math.max(0, Math.min(5_000, Math.floor(settleMs))),
-    avoidClickText: [...defaultAvoidClickText, ...(source?.avoid_click_text ?? [])]
+    avoidClickText: [...defaultAvoidClickText, ...(source?.avoid_click_text ?? [])],
+    allowNavigation: source?.allow_navigation ?? false,
+    notes
   };
 }
 
@@ -236,6 +246,8 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
           const ariaLabel = element.getAttribute("aria-label");
           const title = element.getAttribute("title");
           const dataUxRole = element.getAttribute("data-ux-role");
+          const dataUxAction = element.getAttribute("data-ux-action");
+          const dataUxClickable = element.getAttribute("data-ux-clickable") === "true";
           const visibleText = normalize(element.innerText || element.textContent || "");
           const visible =
             rect.width > 0 &&
@@ -264,18 +276,31 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
           const navigationLink = tag === "a" && Boolean(href) && !href?.startsWith("#") && role !== "button";
           const unsafeInput = tag === "input" && ["file", "password", "submit"].includes(inputType);
           const dangerousLabel = dangerous(label);
-          const safeToClick = !disabled && !insideForm && !navigationLink && !unsafeInput && !dangerousLabel;
+          const nativeClickControl =
+            tag === "button" ||
+            tag === "select" ||
+            tag === "summary" ||
+            (tag === "input" && ["button", "checkbox", "radio"].includes(inputType));
+          const roleClickControl = role ? ["button", "tab", "menuitem", "switch", "checkbox", "radio"].includes(role) : false;
+          const clickEligible = nativeClickControl || roleClickControl || dataUxClickable || Boolean(dataUxAction);
+          const dataUxMetadataOnly = Boolean(dataUxRole) && !clickEligible;
+          const safeToClick =
+            clickEligible && !disabled && !insideForm && !navigationLink && !unsafeInput && !dangerousLabel;
           const skipClickReason = disabled
             ? "disabled"
             : dangerousLabel
               ? "dangerous label"
-              : insideForm
-                ? "inside form"
-                : navigationLink
-                  ? "navigation link"
-                  : unsafeInput
-                    ? "unsafe input type"
-                    : undefined;
+              : navigationLink
+                ? "navigation link"
+              : dataUxMetadataOnly
+                ? "data-ux-role metadata only"
+                : !clickEligible
+                  ? "not a click control"
+                  : insideForm
+                    ? "inside form"
+                    : unsafeInput
+                      ? "unsafe input type"
+                      : undefined;
           const id = `t${String(index + 1).padStart(3, "0")}`;
 
           element.setAttribute("data-ux-sentinel-target-id", id);
@@ -285,6 +310,8 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
             tag,
             role,
             dataUxRole,
+            dataUxAction,
+            dataUxClickable,
             visibleText: visibleText.slice(0, 240),
             ariaLabel,
             title,
@@ -793,10 +820,12 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
       const before = path.relative(result.artifacts.traceDir, action.beforeScreenshot).replace(/\\/g, "/");
       const after = path.relative(result.artifacts.traceDir, action.afterScreenshot).replace(/\\/g, "/");
       const findings = action.findingDetectors.length ? action.findingDetectors.join(", ") : "none";
+      const status = action.skipped ? `skipped: ${action.skipReason ?? "unknown reason"}` : action.clicked ? "clicked" : "not clicked";
       return `<article>
-  <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)}</h2>
+  <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
+  <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
   <div class="shots">
     <figure><img src="${escapeHtml(before)}" alt="${escapeHtml(action.id)} before" /><figcaption>before</figcaption></figure>
@@ -809,6 +838,9 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   const findingList = result.findings.length
     ? result.findings.map((findingItem) => `<li><strong>${escapeHtml(findingItem.detector)}</strong>: ${escapeHtml(findingItem.title)}</li>`).join("\n")
     : "<li>No interactive anomalies detected.</li>";
+  const notes = result.summary.notes.length
+    ? `<h2>Notes</h2><ul>${result.summary.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("\n")}</ul>`
+    : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -834,6 +866,7 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   <header>
     <h1>ux-sentinel interactive contact sheet</h1>
     <p>Actions: ${result.summary.actionCount} - screenshots: ${result.summary.screenshotCount} - anomalies: ${result.summary.anomalyCount}</p>
+    ${notes}
     <ul>${findingList}</ul>
   </header>
   <main>
@@ -848,6 +881,106 @@ async function captureActionScreenMap(page: Page, filePath: string, consoleError
   const screenMap = await collectScreenMap(page, page.url(), consoleErrors, networkErrors);
   await writeJson(filePath, screenMap);
   return screenMap;
+}
+
+export type LiveTargetResult =
+  | { status: "ok"; target: InteractiveTarget }
+  | { status: "missing" | "invisible" | "offscreen" | "detached"; reason: string };
+
+export async function resolveLiveTarget(page: Page, target: InteractiveTarget): Promise<LiveTargetResult> {
+  return page
+    .evaluate((currentTarget) => {
+      const element = document.querySelector<HTMLElement>(`[data-ux-sentinel-target-id="${currentTarget.id}"]`);
+      if (!element) {
+        return { status: "missing" as const, reason: `Target ${currentTarget.id} no longer exists in the DOM.` };
+      }
+      if (!element.isConnected) {
+        return { status: "detached" as const, reason: `Target ${currentTarget.id} is detached from the document.` };
+      }
+
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const visible =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity || "1") > 0;
+
+      if (!visible) {
+        return { status: "invisible" as const, reason: `Target ${currentTarget.id} is invisible or has a zero-size box.` };
+      }
+
+      const insideViewport =
+        rect.left >= 0 &&
+        rect.top >= 0 &&
+        rect.right <= window.innerWidth &&
+        rect.bottom <= window.innerHeight;
+      if (!insideViewport) {
+        return { status: "offscreen" as const, reason: `Target ${currentTarget.id} is outside the current viewport.` };
+      }
+
+      return {
+        status: "ok" as const,
+        target: {
+          ...currentTarget,
+          bbox: {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          },
+          center: {
+            x: Math.round(rect.x + rect.width / 2),
+            y: Math.round(rect.y + rect.height / 2)
+          }
+        }
+      };
+    }, target)
+    .catch((error: unknown) => ({
+      status: "missing" as const,
+      reason: error instanceof Error ? error.message : String(error)
+    }));
+}
+
+async function skippedAction(
+  page: Page,
+  target: InteractiveTarget,
+  sequence: number,
+  actionsDir: string,
+  reason: string,
+  urlBefore: string,
+  consoleErrors: ConsoleIssue[],
+  networkErrors: NetworkIssue[]
+): Promise<InteractiveActionRecord> {
+  const actionId = `a${String(sequence).padStart(3, "0")}`;
+  const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
+  const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
+  const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
+
+  await page.screenshot({ path: beforeScreenshot, fullPage: false });
+  await page.screenshot({ path: afterScreenshot, fullPage: false });
+  const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
+
+  return {
+    id: actionId,
+    sequence,
+    actionType: "hover",
+    target,
+    beforeScreenshot,
+    afterScreenshot,
+    screenMap: screenMapPath,
+    clicked: false,
+    focused: false,
+    clickSkippedReason: reason,
+    skipped: true,
+    skipReason: reason,
+    urlBefore,
+    urlAfter: page.url(),
+    consoleErrorCount: screenMap.consoleErrors.length,
+    networkErrorCount: screenMap.networkErrors.length,
+    findingDetectors: []
+  };
 }
 
 async function performTargetAction(
@@ -869,30 +1002,19 @@ async function performTargetAction(
   let clicked = false;
   let focused = false;
   let clickSkippedReason = target.skipClickReason;
+  const urlBefore = page.url();
 
   await locator.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
-  const liveTarget = await locator
-    .evaluate((element, currentTarget) => {
-      const rect = element.getBoundingClientRect();
-      return {
-        ...currentTarget,
-        bbox: {
-          x: Math.round(rect.x),
-          y: Math.round(rect.y),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height)
-        },
-        center: {
-          x: Math.round(rect.x + rect.width / 2),
-          y: Math.round(rect.y + rect.height / 2)
-        }
-      };
-    }, target)
-    .catch(() => target);
-
-  if (config.screenshotBeforeAfterEachAction) {
-    await page.screenshot({ path: beforeScreenshot, fullPage: false });
+  const live = await resolveLiveTarget(page, target);
+  if (live.status !== "ok") {
+    return {
+      action: await skippedAction(page, target, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
+      findings
+    };
   }
+  const liveTarget = live.target;
+
+  await page.screenshot({ path: beforeScreenshot, fullPage: false });
 
   const blockage = await collectClickBlockage(page, liveTarget);
   if (blockage) {
@@ -902,7 +1024,7 @@ async function performTargetAction(
   await page.mouse.move(liveTarget.center.x, liveTarget.center.y);
   await page.waitForTimeout(config.settleMs);
 
-  if (config.focusAllKeyboardTargets && target.focusable) {
+  if (config.focusAllKeyboardTargets && liveTarget.focusable) {
     await locator.focus({ timeout: 500 }).then(() => {
       focused = true;
     }).catch(() => undefined);
@@ -919,11 +1041,11 @@ async function performTargetAction(
     await page.waitForTimeout(config.settleMs);
   } else if (blockage) {
     clickSkippedReason = "blocked by overlay";
+  } else if (!config.clickAllSafeControls && liveTarget.safeToClick) {
+    clickSkippedReason = "safe clicks disabled";
   }
 
-  if (config.screenshotBeforeAfterEachAction) {
-    await page.screenshot({ path: afterScreenshot, fullPage: false });
-  }
+  await page.screenshot({ path: afterScreenshot, fullPage: false });
 
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
   const visualFindings = detectVisualAnomalies(await collectVisualAnalysis(page, scenario), scenario, actionId);
@@ -941,6 +1063,8 @@ async function performTargetAction(
     focused,
     clickBlockage: blockage,
     clickSkippedReason,
+    urlBefore,
+    urlAfter: page.url(),
     consoleErrorCount: screenMap.consoleErrors.length,
     networkErrorCount: screenMap.networkErrors.length,
     findingDetectors: findings.map((item) => item.detector)
@@ -1024,14 +1148,24 @@ async function performScrollAction(
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
+  const urlBefore = page.url();
 
+  await page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first().scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
+  const live = await resolveLiveTarget(page, target);
+  if (live.status !== "ok") {
+    return {
+      action: await skippedAction(page, target, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors),
+      findings: []
+    };
+  }
+  const liveTarget = live.target;
   await page.screenshot({ path: beforeScreenshot, fullPage: false });
   await page.evaluate((targetId) => {
     const element = document.querySelector<HTMLElement>(`[data-ux-sentinel-target-id="${targetId}"]`);
     if (element) {
       element.scrollBy({ top: Math.max(80, element.clientHeight * 0.65), left: 0, behavior: "auto" });
     }
-  }, target.id);
+  }, liveTarget.id);
   await page.waitForTimeout(config.settleMs);
   await page.screenshot({ path: afterScreenshot, fullPage: false });
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
@@ -1042,13 +1176,15 @@ async function performScrollAction(
       id: actionId,
       sequence,
       actionType: "scroll",
-      target,
+      target: liveTarget,
       beforeScreenshot,
       afterScreenshot,
       screenMap: screenMapPath,
       clicked: false,
       focused: false,
       clickSkippedReason: "scroll only",
+      urlBefore,
+      urlAfter: page.url(),
       consoleErrorCount: screenMap.consoleErrors.length,
       networkErrorCount: screenMap.networkErrors.length,
       findingDetectors: findings.map((item) => item.detector)
@@ -1075,6 +1211,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
   const networkErrors: NetworkIssue[] = [];
   const actions: InteractiveActionRecord[] = [];
   const findings: Finding[] = [];
+  const notes = [...config.notes];
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -1106,20 +1243,44 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
 
     const targets = config.hoverAllClickables ? await collectVisibleInteractiveTargets(page, config.avoidClickText) : [];
     let sequence = 1;
+    let stoppedForNavigation = false;
     for (const target of targets.slice(0, config.maxActions)) {
       const result = await performTargetAction(page, target, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
       actions.push(result.action);
       findings.push(...result.findings);
       sequence += 1;
+      if (
+        result.action.urlBefore &&
+        result.action.urlAfter &&
+        result.action.urlBefore !== result.action.urlAfter &&
+        !config.allowNavigation
+      ) {
+        stoppedForNavigation = true;
+        notes.push(
+          `Navigation changed URL from ${result.action.urlBefore} to ${result.action.urlAfter} after ${result.action.id}; stopped remaining baseline-collected targets.`
+        );
+        break;
+      }
     }
 
-    if (config.scrollContainers && sequence <= config.maxActions) {
+    if (config.scrollContainers && !stoppedForNavigation && sequence <= config.maxActions) {
       const scrollTargets = await collectScrollableTargets(page, config.avoidClickText);
       for (const target of scrollTargets.slice(0, config.maxActions - sequence + 1)) {
         const result = await performScrollAction(page, target, sequence, actionsDir, config, options.scenario, consoleErrors, networkErrors);
         actions.push(result.action);
         findings.push(...result.findings);
         sequence += 1;
+        if (
+          result.action.urlBefore &&
+          result.action.urlAfter &&
+          result.action.urlBefore !== result.action.urlAfter &&
+          !config.allowNavigation
+        ) {
+          notes.push(
+            `Navigation changed URL from ${result.action.urlBefore} to ${result.action.urlAfter} after ${result.action.id}; stopped remaining scroll targets.`
+          );
+          break;
+        }
       }
     }
 
@@ -1127,7 +1288,8 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
     const summary = {
       actionCount: actions.length,
       screenshotCount: 1 + actions.length * 2,
-      anomalyCount: numberedFindings.length
+      anomalyCount: numberedFindings.length,
+      notes
     };
     const result: InteractiveExplorationResult = {
       screenMap,
@@ -1148,7 +1310,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       summary
     };
 
-    await writeJson(actionTracePath, actions);
+    await writeJson(actionTracePath, { summary, actions });
     await writeJson(anomaliesPath, numberedFindings);
     await writeText(contactSheetPath, buildContactSheetHtml(result));
 
@@ -1164,6 +1326,7 @@ export function formatInteractiveSummary(result: InteractiveExplorationResult): 
     `Actions: ${result.summary.actionCount}`,
     `Screenshots: ${result.summary.screenshotCount}`,
     `Anomalies: ${result.summary.anomalyCount}`,
+    `Notes: ${result.summary.notes.length ? result.summary.notes.join(" | ") : "none"}`,
     `Action trace: ${displayPath(result.artifacts.actionTrace)}`,
     `Anomalies: ${displayPath(result.artifacts.anomalies)}`,
     `Contact sheet: ${displayPath(result.artifacts.contactSheet)}`

@@ -258,3 +258,28 @@ Verification:
 - `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.
 - `node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 10 --settle-ms 100` passed and generated `action-trace.json`, `anomalies.json`, and `contact-sheet.html`.
 - `node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 10 --settle-ms 100` passed with verdict `pass` and generated the interactive report/contact sheet.
+
+### Checkpoint: Interactive Audit Hardening
+
+Status: done
+
+Hardened interactive audit before v0.2 readiness:
+
+- Revalidates each target before action and skips missing, detached, invisible, zero-size, or offscreen targets instead of reusing old coordinates.
+- Records `urlBefore`, `urlAfter`, skipped status, and skip reasons in `action-trace.json`.
+- Stops remaining baseline-collected targets after navigation unless `interactive_exploration.allow_navigation: true`.
+- Makes standalone `explore` hover/focus/scroll only by default; clicking requires `--click-safe`.
+- Makes scenario-driven clicking opt-in with `interactive_exploration.click_all_safe_controls: true`.
+- Treats `data-ux-role` as analysis metadata by default; non-native metadata elements require `data-ux-clickable="true"` or `data-ux-action` before safe-click filtering can allow them.
+- Always writes before/after action screenshots so `contact-sheet.html` has valid evidence.
+- Makes explicit `fail_conditions` authoritative even for P2/P3 findings.
+
+Verification:
+
+- `npm run build` passed.
+- `npm test` passed with 8 test files and 45 tests.
+- `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.
+- `node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 10 --settle-ms 100` passed and action trace showed `clicked: false`.
+- `node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 10 --settle-ms 100 --click-safe` passed and action trace showed `clicked: true`.
+- `node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 10 --settle-ms 100` passed with verdict `pass`.
+- `node dist/cli.js codex-brief .ux-sentinel/reports/interactive-dag-clarity-2026-07-02T16-17-40-263Z.md` generated a brief with interactive evidence paths.

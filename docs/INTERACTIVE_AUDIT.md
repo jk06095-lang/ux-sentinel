@@ -2,7 +2,9 @@
 
 `ux-sentinel` can run an interactive audit for UI states that are hard to judge from a single static screenshot: DAGs, graph canvases, hover panels, floating overlays, tab layouts, timelines, cards, and dense detail panes.
 
-Interactive audit is still local-first and deterministic. It uses Playwright to move the mouse, hover targets, focus keyboard targets, click safe controls, scroll containers, capture before/after evidence, and run rule-based visual anomaly checks. It does not require an external LLM or vision API.
+Interactive audit is currently a `main` development feature. It is not part of the GitHub `v0.1.0` stable path unless it is released later.
+
+Interactive audit is still local-first and deterministic. It uses Playwright to move the mouse, hover targets, focus keyboard targets, scroll containers, capture before/after evidence, and run rule-based visual anomaly checks. It does not require an external LLM or vision API.
 
 ## Commands
 
@@ -12,13 +14,19 @@ Explore a page without a scenario:
 ux-sentinel explore --url http://localhost:3000 --max-actions 40 --settle-ms 350
 ```
 
+Standalone `explore` defaults to hover, focus, and scroll only. It does not click safe controls unless explicitly enabled:
+
+```bash
+ux-sentinel explore --url http://localhost:3000 --max-actions 40 --settle-ms 350 --click-safe
+```
+
 Run a scenario with interactive exploration:
 
 ```bash
 ux-sentinel run demo/scenarios/interactive-dag-clarity.yaml --url http://localhost:3000 --interactive
 ```
 
-`--max-actions <n>` limits the number of hover/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll.
+`--max-actions <n>` limits the number of hover/focus/click/scroll actions. `--settle-ms <ms>` controls how long the page settles after hover, focus, click, and scroll. For scenario-driven `run --interactive`, clicking requires `interactive_exploration.click_all_safe_controls: true`.
 
 ## Artifacts
 
@@ -37,6 +45,10 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 
 The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, and finding detectors linked to that action.
 
+Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
+
+Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, or a previous action changed the page.
+
 ## Safe Target Collection
 
 The explorer collects visible targets from:
@@ -51,7 +63,9 @@ The explorer collects visible targets from:
 - elements with `tabindex`
 - elements with `data-ux-role`
 
-It avoids dangerous clicks by visible text, aria-label, or title. Defaults include destructive and account/payment terms such as `Delete`, `Remove`, `Pay`, `Purchase`, `Logout`, and `Sign out`, plus Korean equivalents. Navigation links and form-submit controls are recorded but not clicked by default.
+It avoids dangerous clicks by visible text, aria-label, or title. Defaults include destructive and account/payment terms such as `Delete`, `Remove`, `Pay`, `Purchase`, `Logout`, and `Sign out`.
+
+`data-ux-role` is analysis metadata by default. A `data-ux-role` element is collected for hover and layout analysis, but it is not safe to click unless it is also a native interactive control, has an interactive role such as `role=button`, has `data-ux-clickable="true"`, or has `data-ux-action`.
 
 ## Scenario Extension
 
@@ -60,11 +74,14 @@ interactive_exploration:
   enabled: true
   max_actions: 80
   hover_all_clickables: true
+  # Default is false. Set true only when this scenario safely opts into clicks.
   click_all_safe_controls: true
   focus_all_keyboard_targets: true
   scroll_containers: true
+  # Kept for schema compatibility; screenshots are always captured.
   screenshot_before_after_each_action: true
   settle_ms: 350
+  allow_navigation: false
   avoid_click_text:
     - "Delete"
     - "Sign out"
@@ -105,5 +122,7 @@ These are geometry and DOM/layout heuristics. They are meant to produce inspecta
 
 - This is not a full autonomous browser agent.
 - It does not type into forms or perform destructive actions.
+- Standalone `explore` does not click by default; clicking requires `--click-safe`.
+- Scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`.
 - It does not use visual AI by default.
 - Graph and DAG checks are bbox heuristics; humans should review `contact-sheet.html` before treating a finding as final.

@@ -4,7 +4,7 @@ DOM says pass. Humans say “what do I click?”
 
 ux-sentinel is a local CLI that detects perception mismatches in AI-generated frontends: cases where the DOM, accessibility tree, or guided test says a feature exists, but the human-visible UI does not clearly communicate the next action.
 
-It collects screenshots, visible text, DOM/accessibility evidence, layout signals, console errors, and network failures, then generates a report and a Codex-ready patch brief. Current development builds also include interactive audit mode for hover, focus, safe-click, scroll, overlay, card, and graph/DAG perception checks.
+It collects screenshots, visible text, DOM/accessibility evidence, layout signals, console errors, and network failures, then generates a report and a Codex-ready patch brief. Current `main` development builds also include interactive audit mode for hover, focus, scroll, overlay, card, and graph/DAG perception checks. Interactive audit is not part of the GitHub `v0.1.0` stable path unless it is released later.
 
 ## Why this exists
 
@@ -75,6 +75,7 @@ Latest development path:
 ```bash
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel explore --url http://localhost:3000
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel explore --url http://localhost:3000 --click-safe
 ```
 
 If GitHub `npm exec` fails, Codex can use a temporary clone instead:
@@ -156,6 +157,8 @@ Explore a page interactively:
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
 ```
 
+`explore` defaults to hover, focus, and scroll only. It does not click controls unless you pass `--click-safe`.
+
 Run a visual-contract scenario:
 
 ```bash
@@ -184,7 +187,7 @@ node dist/cli.js codex-brief .ux-sentinel/reports/<report>.md
 
 - `ux-sentinel init`
 - `ux-sentinel observe --url <url>`
-- `ux-sentinel explore --url <url>`
+- `ux-sentinel explore --url <url> [--click-safe]`
 - `ux-sentinel run <scenario.yaml> --url <url>`
 - `ux-sentinel run <scenario.yaml> --url <url> --interactive`
 - `ux-sentinel ingest-feedback <file>`
@@ -235,11 +238,14 @@ interactive_exploration:
   enabled: true
   max_actions: 80
   hover_all_clickables: true
+  # Default is false. Set true only when the scenario safely opts into clicks.
   click_all_safe_controls: true
   focus_all_keyboard_targets: true
   scroll_containers: true
+  # Kept for schema compatibility; interactive audit always captures before/after screenshots.
   screenshot_before_after_each_action: true
   settle_ms: 350
+  allow_navigation: false
   avoid_click_text:
     - "Delete"
     - "Sign out"
@@ -260,6 +266,8 @@ visual_anomaly_contract:
     max_unused_canvas_ratio: 0.65
 ```
 
+For standalone `explore`, clicking requires `--click-safe`. For scenario-driven `run --interactive`, clicking requires `interactive_exploration.click_all_safe_controls: true`. Elements with `data-ux-role` are collected as analysis metadata by default; add `data-ux-clickable="true"` or `data-ux-action="..."` to opt a non-native element into safe-click filtering.
+
 ## Sample Report Output
 
 ```markdown
@@ -275,6 +283,7 @@ visual_anomaly_contract:
 - screenshots: 25
 - anomalies: 2
 - contact sheet: .ux-sentinel/traces/<timestamp>/contact-sheet.html
+- notes: none
 
 ## Findings
 
@@ -364,6 +373,7 @@ Then use a second terminal for the checks:
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/broken
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/fixed
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
+node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250 --click-safe
 node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20
 ```
 
@@ -386,6 +396,8 @@ Interactive exploration writes:
 - `actions/a001-before.png`
 - `actions/a001-after.png`
 - `actions/a001-screen-map.json`
+
+Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason. The contact sheet is the primary human review surface for interactive audit.
 
 Scenario reports are written under `.ux-sentinel/reports/`. Codex patch briefs are written under `.ux-sentinel/briefs/`.
 
@@ -422,7 +434,8 @@ Interactive visual anomaly detectors:
 - This MVP uses deterministic DOM, layout, accessibility, console, and network evidence. It does not use a visual AI model.
 - It does not call external LLM APIs.
 - It is not a SaaS dashboard, cloud runner, account system, database, Chrome extension, or enterprise QA platform.
-- Interactive audit moves the mouse, focuses targets, scrolls containers, and clicks only safe controls; it does not type into forms or perform destructive actions.
+- Interactive audit moves the mouse, focuses targets, and scrolls containers. Clicking is disabled by default and requires `--click-safe` or explicit scenario opt-in with `click_all_safe_controls: true`.
+- `data-ux-role` is analysis metadata by default, not permission to click. Use `data-ux-clickable="true"` or `data-ux-action` to opt non-native elements into safe-click filtering.
 - Graph and DAG anomaly checks are bbox heuristics. Review `contact-sheet.html` before treating them as final UX truth.
 - It is not a replacement for human UX research; it is a local evidence harness for catching obvious perception mismatches before review.
 - It is not currently published as an npm registry package.
