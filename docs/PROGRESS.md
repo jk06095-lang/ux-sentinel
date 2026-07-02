@@ -439,4 +439,4 @@ Added a second broken/fixed demo pair for the first high-priority static detecto
 - `demo/high-priority-broken.html` intentionally exercises `click_target_too_small`, `visible_label_not_in_accessible_name`, `looks_clickable_but_not_actionable`, and `destructive_action_without_confirmation`.
 - `demo/high-priority-fixed.html` fixes the same UI by using standard target sizes, aligned visible/accessibility labels, real actionable affordances, and confirmation/undo copy for the destructive control.
 - `demo/scenarios/high-priority-detectors.yaml` lists those detector ids as explicit fail conditions.
-- `npm run demo:verify` now checks the original empty-state broken/fixed pair and the high-priority detector broken/fixed pair.
+- `npm run demo:verify` now checks exact fail/pass verdicts for the original empty-state pair and the high-priority detector pair, then reads the broken high-priority report to confirm the intended detector findings include concrete evidence.

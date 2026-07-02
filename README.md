@@ -367,7 +367,7 @@ It also includes a high-priority detector pair:
 - `demo/high-priority-broken.html`: intentionally triggers small click target, visible-label/accessibility-name mismatch, clickable-looking non-action, and destructive-action-without-confirmation findings.
 - `demo/high-priority-fixed.html`: fixes the same UI with a correctly named primary CTA, standard target sizes, real secondary action affordance, and visible confirmation/undo copy.
 
-Run the full demo gate:
+Run the full demo gate. It checks exact fail/pass verdicts and confirms the high-priority broken report includes the intended detector evidence:
 
 ```bash
 npm run build

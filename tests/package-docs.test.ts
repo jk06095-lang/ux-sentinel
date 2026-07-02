@@ -222,10 +222,14 @@ describe("Codex integration docs", () => {
     const verifier = readText("scripts/verify-demo.mjs");
     expect(verifier).toContain("/high-priority-broken");
     expect(verifier).toContain("/high-priority-fixed");
+    expect(verifier).toContain("expectedVerdict");
+    expect(verifier).toContain("expectedDetectors");
+    expect(verifier).toContain("without concrete evidence");
 
     const readme = readText("README.md");
     expect(readme).toContain("demo/high-priority-broken.html");
     expect(readme).toContain("demo/scenarios/high-priority-detectors.yaml");
+    expect(readme).toContain("intended detector evidence");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {
