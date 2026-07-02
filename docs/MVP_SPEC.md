@@ -189,6 +189,12 @@ fail_conditions:
   - important_text_truncated
 ```
 
+`fail_conditions` behavior is intentional:
+
+- If the field is absent, ux-sentinel uses the default detector list and severity-based default behavior.
+- If the field is a non-empty array, the listed detectors are explicit fail conditions even when their severity would otherwise be ambiguous.
+- If the field is an empty array, ux-sentinel does not replace it with defaults; it treats the scenario as having no explicit detector list and falls back to severity-based default behavior.
+
 ## Screen Map Format
 
 Generate screen-map.json:

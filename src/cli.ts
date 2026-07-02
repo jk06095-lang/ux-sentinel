@@ -88,6 +88,7 @@ Commands:
 
 Safe-click policy:
   --click-safe is standalone explore only.
+  Passing --click-safe to run is rejected.
   run --interactive clicks only when the scenario sets interactive_exploration.click_all_safe_controls: true.
 `;
 }

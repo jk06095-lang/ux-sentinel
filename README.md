@@ -157,7 +157,7 @@ Explore a page interactively:
 node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
 ```
 
-`explore` defaults to hover, focus, and scroll only. It does not click controls unless you pass `--click-safe`; `run --interactive` has no CLI click override.
+`explore` defaults to hover, focus, and scroll only. It does not click controls unless you pass `--click-safe`; `run --interactive` has no CLI click override, and passing `--click-safe` to `run` is rejected.
 
 Run a visual-contract scenario:
 
@@ -233,6 +233,8 @@ fail_conditions:
   - network_5xx
   - horizontal_scroll
 ```
+
+If `fail_conditions` is absent, ux-sentinel uses the default detector list and normal severity-based verdict behavior. A non-empty array is explicit and makes the listed detectors fail regardless of severity. An empty array (`fail_conditions: []`) means no explicit detector list, so normal severity-based behavior still applies.
 
 Interactive extension for graph, overlay, and hover-heavy screens:
 

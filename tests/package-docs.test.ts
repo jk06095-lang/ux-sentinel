@@ -32,7 +32,35 @@ describe("package metadata for GitHub npm exec", () => {
   });
 
   it("rejects click-safe on scenario-driven run commands", () => {
-    expect(readText("src/cli.ts")).toContain("--click-safe is only supported by `ux-sentinel explore`");
+    const cli = readText("src/cli.ts");
+
+    expect(cli).toContain("Passing --click-safe to run is rejected.");
+    expect(cli).toContain("--click-safe is only supported by `ux-sentinel explore`");
+    expect(cli).toContain("commandMode: \"run\"");
+    expect(cli).not.toContain("commandMode: \"run\",\n      clickSafeOverride");
+  });
+
+  it("keeps dangerous Korean labels clean and removes old mojibake labels", () => {
+    const sources = [
+      "src/core/interactive.ts",
+      "tests/interactive.test.ts",
+      "demo/scenarios/interactive-dag-clarity.yaml",
+      "demo/scenarios/professional-agentic-ui-audit.yaml"
+    ].map(readText).join("\n");
+    const cleanLabels = ["삭제", "제거", "결제", "로그아웃"];
+    const oldMojibakeLabels = [
+      [0x3f, 0x3f, 0xc823],
+      [0x3f, 0xc493, 0xad45],
+      [0x5bc3, 0xacd7, 0xc823],
+      [0x6fe1, 0xc493, 0xb807, 0x3f, 0xafa9, 0xc350]
+    ].map((codePoints) => String.fromCodePoint(...codePoints));
+
+    for (const label of cleanLabels) {
+      expect(sources).toContain(label);
+    }
+    for (const label of oldMojibakeLabels) {
+      expect(sources).not.toContain(label);
+    }
   });
 });
 
@@ -151,6 +179,7 @@ describe("Codex integration docs", () => {
 
     expect(docs).toContain("not part of the GitHub `v0.1.0` stable path");
     expect(docs).toContain("clicking requires `--click-safe`");
+    expect(docs).toContain("passing `--click-safe` to `run --interactive` is rejected");
     expect(docs).toContain("click_all_safe_controls: true");
     expect(docs).toContain("data-ux-role");
     expect(docs).toContain("data-ux-clickable");
@@ -211,6 +240,14 @@ describe("Codex integration docs", () => {
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("selected_path_not_traceable");
     expect(readText("docs/examples/agentic-audit-report.md")).toContain("contact-sheet.html");
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
+  });
+
+  it("documents intentional fail_conditions empty-array behavior", () => {
+    const docs = [readText("README.md"), readText("docs/MVP_SPEC.md")].join("\n");
+
+    expect(docs).toContain("If `fail_conditions` is absent");
+    expect(docs).toContain("A non-empty array is explicit");
+    expect(docs).toContain("An empty array (`fail_conditions: []`) means no explicit detector list");
   });
 
   it("ships the high-priority detector demo pair and verifies it in demo:verify", () => {

@@ -112,6 +112,16 @@ describe("interactive exploration helpers", () => {
     expect(isDangerousClickLabel("로그아웃")).toBe(true);
     expect(isDangerousClickLabel("Create first project")).toBe(false);
     expect(isDangerousClickLabel("프로젝트 만들기")).toBe(false);
+
+    const oldMojibakeLabels = [
+      [0x3f, 0x3f, 0xc823],
+      [0x3f, 0xc493, 0xad45],
+      [0x5bc3, 0xacd7, 0xc823],
+      [0x6fe1, 0xc493, 0xb807, 0x3f, 0xafa9, 0xc350]
+    ].map((codePoints) => String.fromCodePoint(...codePoints));
+    for (const label of oldMojibakeLabels) {
+      expect(isDangerousClickLabel(label)).toBe(false);
+    }
   });
 
   it("defaults explore and scenario interactive runs to no safe clicks", () => {

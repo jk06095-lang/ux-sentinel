@@ -66,6 +66,17 @@ fail_conditions: []
   });
 
   it("uses severity-based verdicts for absent and empty fail conditions only", () => {
+    const p1Finding: Finding = {
+      id: "UX-000",
+      detector: "focus_ring_missing",
+      title: "Focus ring missing",
+      severity: "P1",
+      type: "Perception Mismatch",
+      evidence: "focused control has no visible indicator",
+      userImpact: "Keyboard users may lose their current position.",
+      suggestedFix: "Show a visible focus indicator.",
+      regressionCheck: "Tab through the scenario and confirm focus is visible."
+    };
     const p2Finding: Finding = {
       id: "UX-001",
       detector: "edge_label_crosses_node",
@@ -99,6 +110,7 @@ fail_conditions: []
 
     expect(absentScenario.fail_conditions).toContain("primary_cta_missing");
     expect(absentScenario.fail_conditions_explicit).toBe(false);
+    expect(verdictForFindings([p1Finding], absentScenario)).toBe("fail");
     expect(verdictForFindings([p2Finding], absentScenario)).toBe("ambiguous");
 
     expect(explicitScenario.fail_conditions).toEqual(["edge_label_crosses_node"]);
@@ -107,6 +119,7 @@ fail_conditions: []
 
     expect(emptyScenario.fail_conditions).toEqual([]);
     expect(emptyScenario.fail_conditions_explicit).toBe(false);
+    expect(verdictForFindings([p1Finding], emptyScenario)).toBe("fail");
     expect(verdictForFindings([p2Finding], emptyScenario)).toBe("ambiguous");
   });
 
