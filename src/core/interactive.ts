@@ -1488,6 +1488,29 @@ function uniqueValues(values: Array<string | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b));
 }
 
+async function pointerTraceSummary(pointerTracePath: string | undefined): Promise<StateGraphEdge["cursorMovement"] | undefined> {
+  if (!pointerTracePath) {
+    return undefined;
+  }
+
+  try {
+    const trace = JSON.parse(await readFile(pointerTracePath, "utf8")) as PointerTrace;
+    return {
+      from: trace.from,
+      to: trace.to,
+      targetCenter: trace.targetCenter,
+      pointCount: trace.points.length,
+      movementDurationMs: trace.movementDurationMs,
+      hoverDurationMs: trace.hoverDurationMs,
+      targetMovedDuringApproach: trace.targetMovedDuringApproach,
+      overlayAppearedDuringApproach: trace.overlayAppearedDuringApproach,
+      finalHitTestMatchedTarget: trace.finalHitTestMatchedTarget
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function relativeArtifact(traceDir: string, filePath: string | undefined): string {
   return filePath ? path.relative(traceDir, filePath).replace(/\\/g, "/") : "none";
 }
@@ -1859,6 +1882,7 @@ async function recordActionStateEvidence(options: {
   const domDiff = diffStateSnapshots(options.beforeState, afterState);
   await writeJson(domDiffPath, domDiff);
   await writeJson(accessibilityDiffPath, diffAccessibilitySnapshots(options.beforeState, afterState));
+  const cursorMovement = await pointerTraceSummary(options.action.pointerTrace);
 
   options.action.beforeStateId = options.beforeState.node.id;
   options.action.afterStateId = afterState.node.id;
@@ -1890,6 +1914,7 @@ async function recordActionStateEvidence(options: {
       domDiff: domDiffPath,
       accessibilityDiff: accessibilityDiffPath,
       pointerTrace: options.action.pointerTrace,
+      cursorMovement,
       animationTrace: options.action.animationTrace,
       findingDetectors: options.action.findingDetectors
     }

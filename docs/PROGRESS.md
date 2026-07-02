@@ -316,6 +316,7 @@ Added reconstructable state evidence for interactive audit:
 - Added per-action `aNNN-dom-diff.json` and `aNNN-a11y-diff.json`.
 - Added `beforeStateId`, `afterStateId`, `domDiff`, and `accessibilityDiff` to action records.
 - Added state graph and diff paths to reports, Codex briefs, CLI summaries, and contact-sheet rows.
+- Added cursor movement summaries to state graph edges so reviewers can inspect point count, duration, target movement, overlay appearance, and final hit-test status without opening the full pointer trace first.
 
 ### Checkpoint: Pointer Trace Evidence
 

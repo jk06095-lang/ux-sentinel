@@ -131,6 +131,18 @@ describe("state graph evidence", () => {
           afterScreenshot: "actions/a001-after.png",
           domDiff: "actions/a001-dom-diff.json",
           accessibilityDiff: "actions/a001-a11y-diff.json",
+          pointerTrace: "actions/a001-pointer-trace.json",
+          cursorMovement: {
+            from: { x: 40, y: 40 },
+            to: { x: 120, y: 80 },
+            targetCenter: { x: 120, y: 80 },
+            pointCount: 5,
+            movementDurationMs: 240,
+            hoverDurationMs: 100,
+            targetMovedDuringApproach: false,
+            overlayAppearedDuringApproach: false,
+            finalHitTestMatchedTarget: true
+          },
           findingDetectors: []
         }
       ]
@@ -139,5 +151,7 @@ describe("state graph evidence", () => {
     expect(graph.version).toBe(1);
     expect(graph.edges[0].beforeStateId).toBe("s000");
     expect(graph.edges[0].afterStateId).toBe("s001");
+    expect(graph.edges[0].cursorMovement?.pointCount).toBe(5);
+    expect(graph.edges[0].cursorMovement?.finalHitTestMatchedTarget).toBe(true);
   });
 });

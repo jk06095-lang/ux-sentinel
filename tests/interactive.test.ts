@@ -585,6 +585,12 @@ describe("interactive exploration helpers", () => {
           accessibilityDiff: string;
           visualDiff?: string;
           pointerTrace?: string;
+          cursorMovement?: {
+            pointCount: number;
+            movementDurationMs: number;
+            hoverDurationMs: number;
+            finalHitTestMatchedTarget: boolean;
+          };
         }>;
       };
       expect(stateGraph.nodes.map((node) => node.id)).toEqual(["s000", "s001"]);
@@ -592,6 +598,12 @@ describe("interactive exploration helpers", () => {
       expect(stateGraph.edges[0]).toMatchObject({ actionId: "a001", beforeStateId: "s000", afterStateId: "s001" });
       expect(stateGraph.edges[0].visualDiff).toContain("a001-diff.png");
       expect(stateGraph.edges[0].pointerTrace).toContain("a001-pointer-trace.json");
+      expect(stateGraph.edges[0].cursorMovement).toMatchObject({
+        pointCount: pointerTrace.points.length,
+        movementDurationMs: 0,
+        hoverDurationMs: 0,
+        finalHitTestMatchedTarget: true
+      });
       const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
         beforeStateId: string;
         afterStateId: string;
