@@ -157,6 +157,9 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("cursor target drift");
     expect(docs).toContain("UX_RULE_REGISTRY.md");
     expect(docs).toContain("Why this matters");
+    expect(docs).toContain("focus_ring_missing");
+    expect(docs).toContain("click_target_too_small");
+    expect(docs).toContain("no_feedback_after_action");
   });
 
   it("keeps the README copy prompt self-contained for clone fallback", () => {

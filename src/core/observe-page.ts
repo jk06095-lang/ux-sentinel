@@ -68,6 +68,9 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
         const role = element.getAttribute("role");
         const ariaLabel = element.getAttribute("aria-label");
         const title = element.getAttribute("title");
+        const dataUxRole = element.getAttribute("data-ux-role");
+        const dataUxAction = element.getAttribute("data-ux-action");
+        const dataUxClickable = element.getAttribute("data-ux-clickable") === "true";
         const visibleText = normalize(element.innerText || element.textContent || "");
         const visible =
           rect.width > 0 &&
@@ -84,6 +87,18 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           element.hasAttribute("disabled") ||
           element.getAttribute("aria-disabled") === "true" ||
           (element as HTMLButtonElement).disabled === true;
+        const nativeAffordance = interactiveTags.has(tag);
+        const hasPointerCursor = style.cursor === "pointer";
+        const backgroundVisible = style.backgroundColor !== "rgba(0, 0, 0, 0)" && style.backgroundColor !== "transparent";
+        const borderVisible =
+          parseFloat(style.borderTopWidth || "0") > 0 &&
+          style.borderTopStyle !== "none" &&
+          style.borderTopColor !== "rgba(0, 0, 0, 0)";
+        const hasVisibleAffordance =
+          nativeAffordance ||
+          hasPointerCursor ||
+          borderVisible ||
+          (backgroundVisible && ["button", "link", "menuitem", "tab", "switch", "checkbox", "radio"].includes(role ?? ""));
         const aboveFold = rect.top < viewportHeight && rect.bottom > 0;
         const hasVisibleLabel = Boolean(visibleText) && !isIconOnly(visibleText);
         const looksClickable =
@@ -92,7 +107,8 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           rect.width >= 24 &&
           rect.height >= 24 &&
           style.visibility !== "hidden" &&
-          style.display !== "none";
+          style.display !== "none" &&
+          hasVisibleAffordance;
         const textTruncated =
           Boolean(visibleText) && (element.scrollWidth > element.clientWidth + 2 || element.scrollHeight > element.clientHeight + 2);
         const visualWeight = Math.min(1, Math.round(((rect.width * rect.height) / viewportArea) * 10000) / 10000);
@@ -101,7 +117,11 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           id: `e${index + 1}`,
           tag,
           role,
+          dataUxRole,
+          dataUxAction,
+          dataUxClickable,
           visibleText: visibleText.slice(0, 240),
+          accessibleName: normalize(ariaLabel || title || visibleText).slice(0, 240),
           ariaLabel,
           title,
           bbox: {
@@ -118,7 +138,10 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           hasVisibleLabel,
           isIconOnly: clickable && isIconOnly(visibleText),
           textTruncated,
-          visualWeight
+          visualWeight,
+          cursor: style.cursor,
+          hasPointerCursor,
+          hasVisibleAffordance
         };
       })
       .filter((element) => element.visible && (element.clickable || element.visibleText || element.ariaLabel))

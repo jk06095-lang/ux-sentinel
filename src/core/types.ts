@@ -128,7 +128,11 @@ export interface ScreenElement {
   id: string;
   tag: string;
   role: string | null;
+  dataUxRole?: string | null;
+  dataUxAction?: string | null;
+  dataUxClickable?: boolean;
   visibleText: string;
+  accessibleName?: string;
   ariaLabel: string | null;
   title: string | null;
   bbox: ElementBox;
@@ -141,6 +145,9 @@ export interface ScreenElement {
   isIconOnly: boolean;
   textTruncated: boolean;
   visualWeight: number;
+  cursor?: string;
+  hasPointerCursor?: boolean;
+  hasVisibleAffordance?: boolean;
 }
 
 export interface ConsoleIssue {
@@ -293,6 +300,16 @@ export interface PointerTrace {
   finalHitTestMatchedTarget: boolean;
 }
 
+export interface FocusEvidence {
+  activeElementMatchesTarget: boolean;
+  hasVisibleFocusIndicator: boolean;
+  outlineStyle: string;
+  outlineWidth: string;
+  boxShadow: string;
+  hitTestMatchedTarget: boolean;
+  blocker?: ClickBlockage["blocker"];
+}
+
 export interface InteractiveActionRecord {
   id: string;
   sequence: number;
@@ -318,6 +335,7 @@ export interface InteractiveActionRecord {
   domDiff?: string;
   accessibilityDiff?: string;
   pointerTrace?: string;
+  focusEvidence?: FocusEvidence;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;

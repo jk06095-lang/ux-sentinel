@@ -225,6 +225,7 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("tooltip_partially_offscreen");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
+    expect(html).toContain("Focus evidence:");
   });
 
   it("skips stale targets instead of clicking old coordinates", async () => {
@@ -425,6 +426,44 @@ describe("interactive exploration helpers", () => {
       };
       expect(domDiff.beforeStateId).toBe("s000");
       expect(domDiff.afterStateId).toBe("s001");
+      expect(result.actions[0].findingDetectors).toContain("no_feedback_after_action");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("detects missing and obscured focus evidence after focusing keyboard targets", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button { position: absolute; left: 80px; top: 80px; width: 180px; height: 44px; outline: none; box-shadow: none; }
+            button:focus { outline: none; box-shadow: none; }
+            #cover { position: fixed; left: 72px; top: 72px; width: 210px; height: 70px; z-index: 5; background: white; }
+          </style>
+          <button onfocus="document.getElementById('cover').hidden = false">Focus target</button>
+          <div id="cover" hidden>Covering focus</div>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 20,
+        scenario: {
+          id: "focus-evidence",
+          title: "Focus evidence",
+          persona: "keyboard-user",
+          interactive_exploration: { enabled: true, focus_all_keyboard_targets: true }
+        }
+      });
+
+      expect(result.actions[0].focused).toBe(true);
+      expect(result.actions[0].focusEvidence?.activeElementMatchesTarget).toBe(true);
+      expect(result.actions[0].focusEvidence?.hasVisibleFocusIndicator).toBe(false);
+      expect(result.actions[0].focusEvidence?.hitTestMatchedTarget).toBe(false);
+      expect(result.findings.map((finding) => finding.detector)).toEqual(
+        expect.arrayContaining(["focus_ring_missing", "focus_obscured_by_author_content"])
+      );
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

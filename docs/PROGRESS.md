@@ -331,3 +331,12 @@ Added detector-to-rule mapping for current findings:
 - Extended findings with `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths.
 - Reports now render UX rule metadata and "Why this matters" text.
 - Added tests that fail if implemented detectors are not mapped to at least one UX rule.
+
+### Checkpoint: Expanded High-Priority Detectors
+
+Added the first expanded detector batch:
+
+- Static screen-map detectors for `click_target_too_small`, `click_target_spacing_too_tight`, `clickable_without_visible_affordance`, `looks_clickable_but_not_actionable`, `visible_label_not_in_accessible_name`, `aria_label_contradicts_visible_text`, and `destructive_action_without_confirmation`.
+- Interactive focus detectors for `focus_ring_missing`, `focus_obscured_by_author_content`, and `keyboard_target_not_reachable`.
+- Agentic state-diff detector for `no_feedback_after_action`.
+- Added screen-map style/action metadata and focus evidence so these findings are grounded in bbox, computed style, hit-test, and state-diff evidence.

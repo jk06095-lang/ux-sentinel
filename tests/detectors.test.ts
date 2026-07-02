@@ -122,6 +122,125 @@ describe("detectors", () => {
     expect(findings.map((finding) => finding.detector)).toContain("network_5xx");
   });
 
+  it("detects evidence-backed affordance, label, size, spacing, and destructive-action issues", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Open settings", "Save", "Delete account", "A", "B"],
+      elements: [
+        {
+          id: "small",
+          tag: "button",
+          role: "button",
+          visibleText: "A",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 20, y: 20, width: 24, height: 24 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0006,
+          hasVisibleAffordance: true
+        },
+        {
+          id: "tight",
+          tag: "button",
+          role: "button",
+          visibleText: "B",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 48, y: 20, width: 24, height: 24 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.0006,
+          hasVisibleAffordance: true
+        },
+        {
+          id: "plain",
+          tag: "div",
+          role: "button",
+          visibleText: "Open settings",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 20, y: 80, width: 180, height: 40 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: false,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.006,
+          cursor: "auto",
+          hasVisibleAffordance: false
+        },
+        {
+          id: "label",
+          tag: "button",
+          role: "button",
+          visibleText: "Save",
+          ariaLabel: "Delete account",
+          title: null,
+          bbox: { x: 20, y: 140, width: 160, height: 44 },
+          clickable: true,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: true,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.006,
+          hasVisibleAffordance: true
+        },
+        {
+          id: "fake",
+          tag: "div",
+          role: null,
+          visibleText: "Open fake panel",
+          ariaLabel: null,
+          title: null,
+          bbox: { x: 20, y: 200, width: 160, height: 44 },
+          clickable: false,
+          disabled: false,
+          aboveFold: true,
+          visible: true,
+          looksClickable: false,
+          hasVisibleLabel: true,
+          isIconOnly: false,
+          textTruncated: false,
+          visualWeight: 0.006,
+          cursor: "pointer",
+          hasPointerCursor: true
+        }
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).toEqual(
+      expect.arrayContaining([
+        "click_target_too_small",
+        "click_target_spacing_too_tight",
+        "clickable_without_visible_affordance",
+        "visible_label_not_in_accessible_name",
+        "aria_label_contradicts_visible_text",
+        "destructive_action_without_confirmation",
+        "looks_clickable_but_not_actionable"
+      ])
+    );
+  });
+
   it("fails when the primary CTA is only below the fold", () => {
     const screenMap = baseScreenMap({
       visibleText: ["Projects", "No projects yet", "Create first project"],

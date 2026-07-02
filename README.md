@@ -273,6 +273,8 @@ For standalone `explore`, clicking requires `--click-safe`. For scenario-driven 
 
 Interactive traces include `actions/a001-pointer-trace.json` for hover, focus, and click-capable actions. Pointer traces record the cursor path, hover duration, target movement, overlay appearance, and whether the final hit-test still matched the target. If a safe click would land on a different element after hover, ux-sentinel skips the click and records `cursor target drift`.
 
+Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, focus visibility, destructive-action cues, and agentic click feedback.
+
 ## Sample Report Output
 
 ```markdown

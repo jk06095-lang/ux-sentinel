@@ -84,6 +84,8 @@ Pointer traces are written as `actions/aNNN-pointer-trace.json`. They record the
 
 Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, and `Confidence`.
 
+The first expanded detector batch adds target-size, target-spacing, visible affordance, visible/accessibility label mismatch, focus-ring, focus-obscuring, destructive-action cue, and click-feedback checks. These rely on screen-map bbox/style evidence, focus evidence, pointer hit-tests, or state diffs.
+
 ## Current Limits
 
 This is the planner foundation, not the full professional audit surface yet. Upcoming work should add:

@@ -117,10 +117,21 @@ visual_anomaly_contract:
 Interactive anomaly detectors include:
 
 - `click_target_blocked_by_overlay`
+- `click_target_too_small`
+- `click_target_spacing_too_tight`
+- `clickable_without_visible_affordance`
+- `looks_clickable_but_not_actionable`
 - `target_moved_during_cursor_approach`
 - `overlay_appeared_during_cursor_approach`
 - `hover_trigger_blocks_target`
 - `cursor_target_drift`
+- `focus_ring_missing`
+- `focus_obscured_by_author_content`
+- `keyboard_target_not_reachable`
+- `visible_label_not_in_accessible_name`
+- `aria_label_contradicts_visible_text`
+- `no_feedback_after_action`
+- `destructive_action_without_confirmation`
 - `floating_panel_overlaps_primary_action`
 - `tooltip_partially_offscreen`
 - `text_occluded_by_graph_edge`
@@ -130,7 +141,7 @@ Interactive anomaly detectors include:
 - `dag_canvas_excessive_unused_space`
 - `empty_dag_column_without_explanation`
 
-These are geometry and DOM/layout heuristics. They are meant to produce inspectable evidence, not taste judgments.
+These are geometry, DOM/layout, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
 
 ## Limits
 

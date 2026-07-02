@@ -1,4 +1,4 @@
-import type { Finding, Scenario, ScreenMap, Severity } from "./types.js";
+import type { Finding, Scenario, ScreenElement, ScreenMap, Severity } from "./types.js";
 import { enrichFindingsWithRules } from "./rules/registry.js";
 import {
   ariaPrimaryCtas,
@@ -10,6 +10,9 @@ import {
 import { defaultPreferredLabels } from "./scenario.js";
 
 const emptyStateHints = ["No projects", "Nothing here", "Empty", "아직", "없습니다", "비어", "0개"];
+
+const destructiveHints = ["delete", "remove", "pay", "purchase", "logout", "sign out", "삭제", "제거", "결제", "로그아웃"];
+const confirmationHints = ["confirm", "confirmation", "are you sure", "undo", "복구", "확인"];
 
 function preferredLabels(scenario: Scenario): string[] {
   return scenario.visual_contract?.primary_cta?.preferred_labels?.length
@@ -33,6 +36,34 @@ function finding(
 function hasEmptyState(screenMap: ScreenMap): boolean {
   const text = pageText(screenMap).toLowerCase();
   return emptyStateHints.some((hint) => text.includes(hint.toLowerCase()));
+}
+
+function normalizedIncludes(haystack: string | null | undefined, needle: string | null | undefined): boolean {
+  const normalizedHaystack = (haystack ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  const normalizedNeedle = (needle ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  return Boolean(normalizedHaystack && normalizedNeedle) && normalizedHaystack.includes(normalizedNeedle);
+}
+
+function meaningfulText(value: string | null | undefined): string {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function elementActionLabel(element: ScreenElement): string {
+  return meaningfulText([element.visibleText, element.ariaLabel, element.title, element.accessibleName].filter(Boolean).join(" "));
+}
+
+function isDestructiveLabel(label: string): boolean {
+  const normalized = label.toLowerCase();
+  return Boolean(normalized) && destructiveHints.some((hint) => normalized.includes(hint.toLowerCase()));
+}
+
+function hasConfirmationCue(screenMap: ScreenMap, element: ScreenElement): boolean {
+  const text = `${pageText(screenMap)} ${elementActionLabel(element)}`.toLowerCase();
+  return confirmationHints.some((hint) => text.includes(hint.toLowerCase()));
+}
+
+function clickableElements(screenMap: ScreenMap): ScreenElement[] {
+  return screenMap.elements.filter((element) => element.visible && element.clickable && !element.disabled);
 }
 
 export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[] {
@@ -102,6 +133,147 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
           "Confirm the control has a visible label or is clearly secondary."
         )
       );
+    }
+
+    if (
+      element.visible &&
+      element.clickable &&
+      element.hasVisibleLabel &&
+      element.ariaLabel &&
+      !normalizedIncludes(element.ariaLabel, element.visibleText)
+    ) {
+      findings.push(
+        finding(
+          "visible_label_not_in_accessible_name",
+          "Visible label is not included in the accessible name",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} visible text "${element.visibleText}" is not present in aria-label "${element.ariaLabel}".`,
+          "Sighted users and assistive-technology users may understand the same control as different actions.",
+          "Keep the visible label in the accessible name, or remove the conflicting aria-label.",
+          "Run the scenario and confirm visible control labels are included in their accessible names."
+        )
+      );
+    }
+
+    if (
+      element.visible &&
+      element.clickable &&
+      element.hasVisibleLabel &&
+      element.ariaLabel &&
+      !normalizedIncludes(element.ariaLabel, element.visibleText) &&
+      !normalizedIncludes(element.visibleText, element.ariaLabel)
+    ) {
+      findings.push(
+        finding(
+          "aria_label_contradicts_visible_text",
+          "ARIA label contradicts visible text",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} visible text "${element.visibleText}" conflicts with aria-label "${element.ariaLabel}".`,
+          "The same control can communicate different consequences depending on whether the user reads the screen or accessibility tree.",
+          "Align aria-label with the visible label and action consequence.",
+          "Inspect the screen map and confirm the accessible name and visible text describe the same action."
+        )
+      );
+    }
+  }
+
+  for (const element of clickableElements(screenMap)) {
+    const minSize = Math.min(element.bbox.width, element.bbox.height);
+    if (minSize > 0 && minSize < 32) {
+      findings.push(
+        finding(
+          "click_target_too_small",
+          "Click target is smaller than the recommended touch/pointer size",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} "${elementActionLabel(element)}" bbox is ${element.bbox.width}x${element.bbox.height}px.`,
+          "Small controls are harder to notice and easier to misclick, especially near other controls.",
+          "Increase the target's hit area to at least 32x32px, preferably 44x44px for primary actions.",
+          "Run observe or interactive audit and confirm the target bbox is no longer below the size threshold."
+        )
+      );
+    }
+
+    if (element.hasVisibleAffordance === false) {
+      findings.push(
+        finding(
+          "clickable_without_visible_affordance",
+          "Clickable element lacks a visible affordance",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} "${elementActionLabel(element)}" is clickable but has cursor "${element.cursor ?? "unknown"}" and no visible affordance marker in the screen map.`,
+          "A human may not realize the text or region can be acted on even though DOM-based checks can click it.",
+          "Add visible button/link styling, a pointer cursor for custom controls, or clearer command copy.",
+          "Inspect the overlay and confirm clickable controls have a visible affordance."
+        )
+      );
+    }
+
+    const label = elementActionLabel(element);
+    if (isDestructiveLabel(label) && !hasConfirmationCue(screenMap, element)) {
+      findings.push(
+        finding(
+          "destructive_action_without_confirmation",
+          "Destructive action has no visible confirmation cue",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} exposes destructive label "${label}" without nearby confirmation, undo, or recovery copy in visible text.`,
+          "Users may not understand the consequence or recovery path before a destructive action.",
+          "Add confirmation, undo, or consequence copy before allowing the destructive action.",
+          "Run the scenario and confirm destructive controls are paired with a visible confirmation or recovery path."
+        )
+      );
+    }
+  }
+
+  for (const element of screenMap.elements) {
+    const looksActionable = element.visible && !element.clickable && (element.hasPointerCursor || element.dataUxClickable || element.dataUxAction);
+    if (looksActionable) {
+      findings.push(
+        finding(
+          "looks_clickable_but_not_actionable",
+          "Element looks clickable but is not actionable",
+          "P2",
+          "Perception Mismatch",
+          `${element.id} "${elementActionLabel(element)}" has cursor/action metadata but was not classified as clickable in the screen map.`,
+          "Users may try to interact with a visual affordance that has no actual action.",
+          "Attach a real button/link role or remove the pointer/action styling from non-actionable content.",
+          "Run observe and confirm clickable-looking elements are either actionable or no longer styled as controls."
+        )
+      );
+    }
+  }
+
+  const actionable = clickableElements(screenMap);
+  for (let index = 0; index < actionable.length; index += 1) {
+    for (let other = index + 1; other < actionable.length; other += 1) {
+      const first = actionable[index];
+      const second = actionable[other];
+      const horizontallyClose =
+        first.bbox.y < second.bbox.y + second.bbox.height &&
+        first.bbox.y + first.bbox.height > second.bbox.y &&
+        Math.abs(second.bbox.x - (first.bbox.x + first.bbox.width)) < 8;
+      const verticallyClose =
+        first.bbox.x < second.bbox.x + second.bbox.width &&
+        first.bbox.x + first.bbox.width > second.bbox.x &&
+        Math.abs(second.bbox.y - (first.bbox.y + first.bbox.height)) < 8;
+      if (horizontallyClose || verticallyClose) {
+        findings.push(
+          finding(
+            "click_target_spacing_too_tight",
+            "Click targets are spaced too tightly",
+            "P2",
+            "Perception Mismatch",
+            `${first.id} "${elementActionLabel(first)}" and ${second.id} "${elementActionLabel(second)}" have less than 8px spacing between their bboxes.`,
+            "Adjacent actions can be hard to choose accurately and can lead to accidental clicks.",
+            "Add spacing between adjacent controls or combine them into a clearer grouped control.",
+            "Run observe and confirm adjacent clickable bboxes have at least 8px of spacing."
+          )
+        );
+        break;
+      }
     }
   }
 

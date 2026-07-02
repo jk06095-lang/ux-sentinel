@@ -15,6 +15,7 @@ import {
   diffStateSnapshots,
   type StateGraphEdge,
   type StateGraphNode,
+  type StateDiff,
   type StateSnapshot
 } from "./state-graph.js";
 import type {
@@ -22,6 +23,7 @@ import type {
   ConsoleIssue,
   ElementBox,
   Finding,
+  FocusEvidence,
   InteractiveCapabilities,
   InteractiveActionRecord,
   InteractiveCapabilityPolicy,
@@ -309,9 +311,12 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
           const href = element instanceof HTMLAnchorElement ? element.href : null;
           const inputType = element instanceof HTMLInputElement ? element.type.toLowerCase() : "";
           const focusable =
+            tag === "button" ||
+            tag === "a" ||
             tag === "input" ||
             tag === "select" ||
             tag === "textarea" ||
+            tag === "summary" ||
             element.hasAttribute("tabindex") ||
             roleSet.has(role ?? "");
           const label = [visibleText, ariaLabel, title].filter(Boolean).join(" ");
@@ -910,6 +915,139 @@ function buildPointerTraceFindings(trace: PointerTrace, tracePath: string, targe
   return findings;
 }
 
+async function collectFocusEvidence(page: Page, target: InteractiveTarget): Promise<FocusEvidence> {
+  return page.evaluate((targetId) => {
+    const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();
+    const element = document.querySelector<HTMLElement>(`[data-ux-sentinel-target-id="${targetId}"]`);
+    const active = document.activeElement as HTMLElement | null;
+    const style = element ? window.getComputedStyle(element) : undefined;
+    const rect = element?.getBoundingClientRect();
+    const point = rect
+      ? {
+          x: Math.round(rect.x + rect.width / 2),
+          y: Math.round(rect.y + rect.height / 2)
+        }
+      : undefined;
+    const top = point ? (document.elementFromPoint(point.x, point.y) as HTMLElement | null) : null;
+    const topRect = top?.getBoundingClientRect();
+    const activeElementMatchesTarget = Boolean(element && active && (active === element || element.contains(active)));
+    const hitTestMatchedTarget = Boolean(element && top && (top === element || element.contains(top)));
+    const outlineWidth = style?.outlineWidth ?? "0px";
+    const outlineWidthValue = Number.parseFloat(outlineWidth || "0") || 0;
+    const outlineVisible = Boolean(style && style.outlineStyle !== "none" && outlineWidthValue > 0);
+    const boxShadowVisible = Boolean(style && style.boxShadow && style.boxShadow !== "none");
+
+    return {
+      activeElementMatchesTarget,
+      hasVisibleFocusIndicator: outlineVisible || boxShadowVisible,
+      outlineStyle: style?.outlineStyle ?? "none",
+      outlineWidth,
+      boxShadow: style?.boxShadow ?? "none",
+      hitTestMatchedTarget,
+      blocker:
+        !hitTestMatchedTarget && top && topRect
+          ? {
+              tag: top.tagName.toLowerCase(),
+              role: top.getAttribute("role"),
+              text: normalize(top.innerText || top.textContent || "").slice(0, 160),
+              ariaLabel: top.getAttribute("aria-label"),
+              bbox: {
+                x: Math.round(topRect.x),
+                y: Math.round(topRect.y),
+                width: Math.round(topRect.width),
+                height: Math.round(topRect.height)
+              }
+            }
+          : undefined
+    };
+  }, target.id);
+}
+
+function buildFocusFindings(evidence: FocusEvidence, target: InteractiveTarget, actionId: string): Finding[] {
+  const findings: Finding[] = [];
+  const label = targetLabel(target) || target.tag;
+
+  if (!evidence.activeElementMatchesTarget) {
+    findings.push(
+      finding(
+        "keyboard_target_not_reachable",
+        "Keyboard focus did not reach the intended target",
+        "P1",
+        `${target.id} "${label}" was focusable in the target map, but document.activeElement did not match it after focus().`,
+        "Keyboard users may not be able to reach the control that the visual UI suggests is available.",
+        "Fix tabindex, disabled state, or focus delegation so keyboard focus lands on the intended control.",
+        "Run interactive exploration and confirm the action trace focus evidence matches the target.",
+        actionId
+      )
+    );
+    return findings;
+  }
+
+  if (!evidence.hasVisibleFocusIndicator) {
+    findings.push(
+      finding(
+        "focus_ring_missing",
+        "Focused target has no visible focus indicator",
+        "P1",
+        `${target.id} "${label}" focused with outline ${evidence.outlineStyle}/${evidence.outlineWidth} and box-shadow "${evidence.boxShadow}".`,
+        "Keyboard users can lose track of the current action target.",
+        "Add a visible :focus-visible style with outline, ring, or equivalent high-contrast indicator.",
+        "Focus the same target and confirm before/after screenshots show a visible focus indicator.",
+        actionId
+      )
+    );
+  }
+
+  if (!evidence.hitTestMatchedTarget) {
+    findings.push(
+      finding(
+        "focus_obscured_by_author_content",
+        "Focused target is obscured by author content",
+        "P1",
+        `${target.id} "${label}" is focused, but center hit-test resolves to ${evidence.blocker?.tag ?? "unknown element"} "${evidence.blocker?.text || evidence.blocker?.ariaLabel || ""}".`,
+        "A keyboard user may have focus on a control they cannot see or safely activate.",
+        "Move or dismiss the covering content, or ensure focused controls are scrolled and layered above overlays.",
+        "Run interactive exploration and confirm focused targets are visible and hit-testable.",
+        actionId
+      )
+    );
+  }
+
+  return findings;
+}
+
+function buildFeedbackFindings(action: InteractiveActionRecord, diff: StateDiff, domDiffPath: string): Finding[] {
+  if (!action.clicked) {
+    return [];
+  }
+
+  const noVisibleStateChange =
+    !diff.urlChanged &&
+    diff.visibleTextAdded.length === 0 &&
+    diff.visibleTextRemoved.length === 0 &&
+    !diff.domStructureChanged &&
+    JSON.stringify(diff.openStatesBefore) === JSON.stringify(diff.openStatesAfter) &&
+    diff.consoleErrorDelta <= 0 &&
+    diff.networkErrorDelta <= 0;
+
+  if (!noVisibleStateChange) {
+    return [];
+  }
+
+  return [
+    finding(
+      "no_feedback_after_action",
+      "Action produced no visible feedback",
+      "P2",
+      `${action.id} clicked ${action.target.id} "${targetLabel(action.target) || action.target.tag}", but DOM/text/open-state diff showed no visible state change. DOM diff: ${domDiffPath}.`,
+      "A user may not know whether the action worked, failed, or is still pending.",
+      "Show visible feedback after the action, such as changed state, confirmation copy, a loading state, or an error/recovery path.",
+      "Run the same agentic interactive scenario and confirm the action produces a visible state change or feedback message.",
+      action.id
+    )
+  ];
+}
+
 function renumberInteractiveFindings(findings: Finding[]): Finding[] {
   return enrichFindingsWithRules(findings).map((item, index) => ({
     ...item,
@@ -941,6 +1079,9 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
       const pointerTrace = action.pointerTrace
         ? path.relative(result.artifacts.traceDir, action.pointerTrace).replace(/\\/g, "/")
         : "none";
+      const focusEvidence = action.focusEvidence
+        ? `active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
+        : "none";
       return `<article>
   <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
@@ -948,6 +1089,7 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
   <p><strong>Pointer trace:</strong> ${escapeHtml(pointerTrace)}</p>
+  <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
   <p><strong>Diffs:</strong> ${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / ${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
@@ -1015,7 +1157,8 @@ async function recordActionStateEvidence(options: {
   beforeState: StateSnapshot;
   stateSequence: number;
   actionsDir: string;
-}): Promise<{ nextState: StateSnapshot; edge: StateGraphEdge }> {
+  detectNoFeedback: boolean;
+}): Promise<{ nextState: StateSnapshot; edge: StateGraphEdge; findings: Finding[] }> {
   const afterAccessibilitySnapshot = await safeAccessibilitySnapshot(options.page);
   const afterState = await collectStateSnapshot(options.page, {
     id: `s${String(options.stateSequence).padStart(3, "0")}`,
@@ -1026,16 +1169,22 @@ async function recordActionStateEvidence(options: {
   });
   const domDiffPath = path.join(options.actionsDir, `${options.action.id}-dom-diff.json`);
   const accessibilityDiffPath = path.join(options.actionsDir, `${options.action.id}-a11y-diff.json`);
-  await writeJson(domDiffPath, diffStateSnapshots(options.beforeState, afterState));
+  const domDiff = diffStateSnapshots(options.beforeState, afterState);
+  await writeJson(domDiffPath, domDiff);
   await writeJson(accessibilityDiffPath, diffAccessibilitySnapshots(options.beforeState, afterState));
 
   options.action.beforeStateId = options.beforeState.node.id;
   options.action.afterStateId = afterState.node.id;
   options.action.domDiff = domDiffPath;
   options.action.accessibilityDiff = accessibilityDiffPath;
+  const findings = options.detectNoFeedback ? buildFeedbackFindings(options.action, domDiff, domDiffPath) : [];
+  if (findings.length) {
+    options.action.findingDetectors = Array.from(new Set([...options.action.findingDetectors, ...findings.map((item) => item.detector)]));
+  }
 
   return {
     nextState: afterState,
+    findings,
     edge: {
       id: `e${String(options.action.sequence).padStart(3, "0")}`,
       actionId: options.action.id,
@@ -1210,6 +1359,7 @@ async function performTargetAction(
   let clickSkippedReason = target.skipClickReason;
   let pointerTracePath: string | undefined;
   let pointerEnd: PointerPoint | undefined;
+  let focusEvidence: FocusEvidence | undefined;
   const urlBefore = page.url();
 
   await locator.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
@@ -1254,6 +1404,10 @@ async function performTargetAction(
       focused = true;
     }).catch(() => undefined);
     await page.waitForTimeout(config.settleMs);
+    if (focused) {
+      focusEvidence = await collectFocusEvidence(page, liveTarget);
+      findings.push(...buildFocusFindings(focusEvidence, liveTarget, actionId));
+    }
   }
 
   if (clickDecision.decision === "allowed") {
@@ -1284,6 +1438,7 @@ async function performTargetAction(
     afterScreenshot,
     screenMap: screenMapPath,
     pointerTrace: pointerTracePath,
+    focusEvidence,
     clicked,
     focused,
     clickBlockage: blockage,
@@ -1539,7 +1694,8 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         screenMap: result.screenMap,
         beforeState: currentState,
         stateSequence,
-        actionsDir
+        actionsDir,
+        detectNoFeedback: config.mode === "agentic"
       });
       currentState = evidence.nextState;
       stateNodes.push(evidence.nextState.node);
@@ -1547,6 +1703,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       stateSequence += 1;
       actions.push(result.action);
       findings.push(...result.findings);
+      findings.push(...evidence.findings);
       sequence += 1;
       if (
         result.action.urlBefore &&
