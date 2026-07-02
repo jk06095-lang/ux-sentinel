@@ -87,3 +87,7 @@ fail_conditions:
   - floating_panel_overlaps_primary_action
   - important_text_truncated
   - edge_label_crosses_node
+  - selected_path_not_traceable
+  - edge_crosses_critical_label
+  - graph_control_not_discoverable
+  - node_label_truncated

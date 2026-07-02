@@ -404,3 +404,14 @@ Added deterministic modal/popover detector coverage:
 - `popover_blocks_primary_action` flags popover-like foreground layers whose bbox overlaps the scenario primary CTA.
 
 Screen maps now preserve `aria-modal` metadata. These checks use role/data-ux-role, visible action labels, and bbox intersection evidence; they do not click or infer hidden behavior.
+
+### Checkpoint: Graph/DAG Screen-Map Detectors
+
+Added graph/DAG detector coverage that only runs when `visual_anomaly_contract.graph_dag.enabled: true` and graph surface evidence exists:
+
+- `graph_control_not_discoverable` flags graph surfaces without visible zoom, fit, reset, pan, layout, or related graph controls.
+- `node_label_truncated` flags graph/DAG node labels whose screen-map text is clipped.
+- `selected_path_not_traceable` flags selected-path evidence that lacks enough node/edge evidence to reconstruct the path.
+- `edge_crosses_critical_label` flags graph edge bboxes intersecting critical graph label bboxes.
+
+These checks use `data-ux-role`, SVG/canvas tags, bbox intersection, and text truncation evidence rather than visual AI.

@@ -188,8 +188,13 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("dialog_close_unavailable");
     expect(docs).toContain("modal_trap_without_escape");
     expect(docs).toContain("popover_blocks_primary_action");
+    expect(docs).toContain("selected_path_not_traceable");
+    expect(docs).toContain("edge_crosses_critical_label");
+    expect(docs).toContain("graph_control_not_discoverable");
+    expect(docs).toContain("node_label_truncated");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("dialog_without_accessible_name");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("modal_trap_without_escape");
+    expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("selected_path_not_traceable");
     expect(readText("docs/examples/agentic-audit-report.md")).toContain("contact-sheet.html");
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
   });

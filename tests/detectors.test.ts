@@ -584,6 +584,101 @@ describe("detectors", () => {
     expect(detectors).not.toContain("modal_trap_without_escape");
   });
 
+  it("detects graph/DAG orientation and traceability issues when the graph contract is enabled", () => {
+    const graphScenario: Scenario = {
+      ...scenario,
+      visual_anomaly_contract: {
+        graph_dag: {
+          enabled: true,
+          selected_path_must_be_traceable: true
+        }
+      }
+    };
+    const screenMap = baseScreenMap({
+      visibleText: ["Selected path", "Revenue expansion node label", "Critical conversion label"],
+      elements: [
+        baseElement({
+          id: "surface",
+          tag: "svg",
+          dataUxRole: "graph-canvas",
+          visibleText: "",
+          bbox: { x: 40, y: 80, width: 760, height: 420 },
+          hasVisibleLabel: false,
+          visualWeight: 0.3464
+        }),
+        baseElement({
+          id: "selected",
+          dataUxRole: "selected-path",
+          visibleText: "Selected path",
+          bbox: { x: 60, y: 96, width: 160, height: 28 }
+        }),
+        baseElement({
+          id: "node-a",
+          dataUxRole: "dag-node",
+          visibleText: "Revenue expansion node label",
+          bbox: { x: 120, y: 160, width: 120, height: 36 },
+          textTruncated: true
+        }),
+        baseElement({
+          id: "edge-a",
+          tag: "path",
+          dataUxRole: "dag-edge",
+          visibleText: "",
+          bbox: { x: 180, y: 206, width: 280, height: 20 },
+          hasVisibleLabel: false
+        }),
+        baseElement({
+          id: "critical-label",
+          tag: "text",
+          dataUxRole: "critical-label",
+          visibleText: "Critical conversion label",
+          bbox: { x: 220, y: 198, width: 160, height: 34 }
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, graphScenario).map((finding) => finding.detector);
+
+    expect(detectors).toEqual(
+      expect.arrayContaining([
+        "graph_control_not_discoverable",
+        "node_label_truncated",
+        "selected_path_not_traceable",
+        "edge_crosses_critical_label"
+      ])
+    );
+  });
+
+  it("does not run graph/DAG screen-map detectors when the graph contract is absent", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["Selected path", "Revenue expansion node label"],
+      elements: [
+        baseElement({
+          id: "surface",
+          tag: "svg",
+          dataUxRole: "graph-canvas",
+          visibleText: "",
+          bbox: { x: 40, y: 80, width: 760, height: 420 },
+          hasVisibleLabel: false,
+          visualWeight: 0.3464
+        }),
+        baseElement({
+          id: "node-a",
+          dataUxRole: "dag-node",
+          visibleText: "Revenue expansion node label",
+          bbox: { x: 120, y: 160, width: 120, height: 36 },
+          textTruncated: true
+        })
+      ]
+    });
+
+    const detectors = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+
+    expect(detectors).not.toContain("graph_control_not_discoverable");
+    expect(detectors).not.toContain("node_label_truncated");
+    expect(detectors).not.toContain("selected_path_not_traceable");
+  });
+
   it("fails when the primary CTA is only below the fold", () => {
     const screenMap = baseScreenMap({
       visibleText: ["Projects", "No projects yet", "Create first project"],

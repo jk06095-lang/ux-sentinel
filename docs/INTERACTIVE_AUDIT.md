@@ -161,6 +161,10 @@ Interactive anomaly detectors include:
 - `tooltip_partially_offscreen`
 - `text_occluded_by_graph_edge`
 - `edge_label_crosses_node`
+- `selected_path_not_traceable`
+- `edge_crosses_critical_label`
+- `graph_control_not_discoverable`
+- `node_label_truncated`
 - `card_content_clipped`
 - `card_overlap`
 - `dag_canvas_excessive_unused_space`
@@ -170,7 +174,7 @@ Interactive anomaly detectors include:
 - `animation_causes_layout_shift`
 - `animation_uses_layout_paint_properties`
 
-These are geometry, DOM/layout, label/action consistency, visual-hierarchy, status/recovery, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
+These are geometry, DOM/layout, label/action consistency, visual-hierarchy, graph/DAG metadata, status/recovery, focus-style, hit-test, and state-diff heuristics. They are meant to produce inspectable evidence, not taste judgments. Static graph/DAG screen-map detectors only run when `visual_anomaly_contract.graph_dag.enabled: true` and graph surface evidence is present. `no_feedback_after_action` currently runs for agentic interactive audits, where action/state evidence is expected to explain whether a click changed visible state.
 
 ## Reviewing The Contact Sheet
 

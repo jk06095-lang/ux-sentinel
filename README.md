@@ -282,7 +282,7 @@ Interactive traces include `actions/a001-pointer-trace.json` for hover, focus, a
 
 When `animation_audit.enabled: true`, interactive runs also write `actions/a001-animation-trace.json` with CSS transition/animation evidence, optional reduced-motion comparison, risky properties, and motion findings such as `animation_ignores_reduced_motion`.
 
-Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, dialog/status accessibility, dialog/modal escape, popover-over-primary overlap, empty/loading/dead-end recovery, primary-action hierarchy, label/action consistency, focus visibility, destructive-action cues, agentic click feedback, and opt-in motion audit.
+Current interactive development builds also map findings to UX rules and include expanded deterministic detectors for target size/spacing, visible affordance, visible/accessibility label mismatch, dialog/status accessibility, dialog/modal escape, popover-over-primary overlap, graph/DAG control and traceability, empty/loading/dead-end recovery, primary-action hierarchy, label/action consistency, focus visibility, destructive-action cues, agentic click feedback, and opt-in motion audit.
 
 For a larger opt-in template, see `demo/scenarios/professional-agentic-ui-audit.yaml`.
 
@@ -472,6 +472,10 @@ Interactive visual anomaly detectors:
 - `tooltip_partially_offscreen`
 - `text_occluded_by_graph_edge`
 - `edge_label_crosses_node`
+- `selected_path_not_traceable`
+- `edge_crosses_critical_label`
+- `graph_control_not_discoverable`
+- `node_label_truncated`
 - `card_content_clipped`
 - `card_overlap`
 - `dag_canvas_excessive_unused_space`

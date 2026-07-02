@@ -19,6 +19,8 @@ const escapeActionHints = ["close", "dismiss", "cancel", "back", "done", "x"];
 const deadEndHints = ["error", "failed", "failure", "unavailable", "not found", "forbidden", "permission", "access denied", "can't continue"];
 const loadingHints = ["loading", "please wait", "processing", "saving", "syncing", "submitting"];
 const statusHints = ["saved", "updated", "complete", "completed", "success", "failed", "error", "loading", "processing"];
+const graphControlHints = ["zoom", "fit", "reset", "pan", "center", "layout", "minimap", "expand", "collapse", "filter"];
+const selectedPathHints = ["selected path", "active path", "highlighted path", "current path", "path selected"];
 const statusRoles = new Set(["status", "alert", "log", "progressbar"]);
 
 function preferredLabels(scenario: Scenario): string[] {
@@ -104,6 +106,85 @@ function isPopoverLikeElement(element: ScreenElement): boolean {
       roleOrUx.includes("listbox") ||
       roleOrUx.includes("dialog") ||
       roleOrUx.includes("floating"))
+  );
+}
+
+function graphDagEnabled(scenario: Scenario): boolean {
+  return scenario.visual_anomaly_contract?.graph_dag?.enabled === true;
+}
+
+function roleText(element: ScreenElement): string {
+  return `${element.tag} ${element.role ?? ""} ${element.dataUxRole ?? ""} ${element.dataUxAction ?? ""}`.toLowerCase();
+}
+
+function isGraphSurfaceElement(element: ScreenElement): boolean {
+  const roleOrUx = roleText(element);
+  return (
+    element.visible &&
+    (element.tag === "svg" ||
+      element.tag === "canvas" ||
+      roleOrUx.includes("graph") ||
+      roleOrUx.includes("dag") ||
+      roleOrUx.includes("flowchart") ||
+      roleOrUx.includes("canvas"))
+  );
+}
+
+function isGraphNodeElement(element: ScreenElement): boolean {
+  const roleOrUx = roleText(element);
+  return element.visible && (roleOrUx.includes("graph-node") || roleOrUx.includes("dag-node") || roleOrUx.includes("node"));
+}
+
+function isGraphEdgeElement(element: ScreenElement): boolean {
+  const roleOrUx = roleText(element);
+  return (
+    element.visible &&
+    (roleOrUx.includes("graph-edge") ||
+      roleOrUx.includes("dag-edge") ||
+      roleOrUx.includes("edge") ||
+      roleOrUx.includes("connector") ||
+      element.tag === "path" ||
+      element.tag === "line" ||
+      element.tag === "polyline")
+  );
+}
+
+function isGraphLabelElement(element: ScreenElement): boolean {
+  const roleOrUx = roleText(element);
+  return (
+    element.visible &&
+    Boolean(element.visibleText) &&
+    (roleOrUx.includes("graph-label") ||
+      roleOrUx.includes("dag-label") ||
+      roleOrUx.includes("edge-label") ||
+      roleOrUx.includes("critical-label") ||
+      element.tag === "text")
+  );
+}
+
+function isGraphControlElement(element: ScreenElement): boolean {
+  if (!element.visible || !element.clickable || element.disabled) {
+    return false;
+  }
+  const roleOrUx = roleText(element);
+  const label = elementActionLabel(element).toLowerCase();
+  return (
+    roleOrUx.includes("graph-control") ||
+    roleOrUx.includes("dag-control") ||
+    roleOrUx.includes("canvas-control") ||
+    graphControlHints.some((hint) => label.includes(hint))
+  );
+}
+
+function isSelectedPathEvidence(element: ScreenElement): boolean {
+  const roleOrUx = roleText(element);
+  const label = elementActionLabel(element).toLowerCase();
+  return (
+    element.visible &&
+    (roleOrUx.includes("selected-path") ||
+      roleOrUx.includes("active-path") ||
+      roleOrUx.includes("highlighted-path") ||
+      selectedPathHints.some((hint) => label.includes(hint)))
   );
 }
 
@@ -370,6 +451,89 @@ export function runDetectors(screenMap: ScreenMap, scenario: Scenario): Finding[
           "Run interactive audit and confirm no popover-like foreground layer intersects the primary CTA bbox."
         )
       );
+    }
+  }
+
+  if (graphDagEnabled(scenario)) {
+    const graphSurface = screenMap.elements.filter(isGraphSurfaceElement);
+    if (graphSurface.length > 0) {
+      const graphControls = screenMap.elements.filter(isGraphControlElement);
+      const graphNodes = screenMap.elements.filter(isGraphNodeElement);
+      const graphEdges = screenMap.elements.filter(isGraphEdgeElement);
+      const selectedPathEvidence = screenMap.elements.filter(isSelectedPathEvidence);
+      const graphLooksInteractive = graphSurface.some((element) => element.tag === "svg" || element.tag === "canvas" || element.visualWeight >= 0.05);
+
+      if (graphLooksInteractive && graphControls.length === 0) {
+        findings.push(
+          finding(
+            "graph_control_not_discoverable",
+            "Graph controls are not discoverable",
+            "P2",
+            "Perception Mismatch",
+            `Graph contract is enabled and graph surface evidence exists (${graphSurface.map((element) => `${element.id}:${element.tag}/${element.dataUxRole ?? element.role ?? ""}`).join(", ")}), but no visible graph control label or data-ux-role was found.`,
+            "Users may see a graph or DAG but not discover how to zoom, fit, pan, reset, or orient the canvas.",
+            "Add visible graph controls with clear labels or data-ux-role metadata such as graph-control, fit, reset, zoom, or layout.",
+            "Run the graph scenario and confirm at least one visible graph control is present in the screen map."
+          )
+        );
+      }
+
+      const truncatedNode = graphNodes.find((element) => element.textTruncated && meaningfulText(element.visibleText).length > 6);
+      if (truncatedNode) {
+        findings.push(
+          finding(
+            "node_label_truncated",
+            "Graph node label is truncated",
+            "P2",
+            "Perception Mismatch",
+            `${truncatedNode.id} "${truncatedNode.visibleText}" is graph-node evidence with bbox ${truncatedNode.bbox.width}x${truncatedNode.bbox.height}px and textTruncated=true.`,
+            "Users may not be able to identify a node or compare graph branches when node labels are clipped.",
+            "Allow node labels to wrap, widen the node, shorten the label, or provide an accessible persistent detail affordance.",
+            "Run the graph scenario and confirm graph node labels no longer report textTruncated=true."
+          )
+        );
+      }
+
+      if (
+        scenario.visual_anomaly_contract?.graph_dag?.selected_path_must_be_traceable === true &&
+        selectedPathEvidence.length > 0 &&
+        (graphNodes.length < 2 || graphEdges.length === 0)
+      ) {
+        findings.push(
+          finding(
+            "selected_path_not_traceable",
+            "Selected graph path is not traceable",
+            "P2",
+            "Perception Mismatch",
+            `Selected-path evidence exists (${selectedPathEvidence.map((element) => element.id).join(", ")}), but graph evidence has ${graphNodes.length} node(s) and ${graphEdges.length} edge(s).`,
+            "A user can see that a path is selected but cannot visually trace how the selected nodes are connected.",
+            "Render selected-path nodes and connecting edges with visible labels and graph metadata so the path can be reconstructed.",
+            "Run the graph scenario and confirm selected-path evidence includes at least two nodes and a connecting edge."
+          )
+        );
+      }
+
+      const graphLabels = screenMap.elements.filter(isGraphLabelElement);
+      const crossingEdge = graphEdges
+        .map((edge) => ({
+          edge,
+          label: graphLabels.find((label) => label.id !== edge.id && intersectionRatio(edge.bbox, label.bbox) >= 0.15)
+        }))
+        .find((pair) => pair.label);
+      if (crossingEdge?.label) {
+        findings.push(
+          finding(
+            "edge_crosses_critical_label",
+            "Graph edge crosses a critical label",
+            "P2",
+            "Perception Mismatch",
+            `${crossingEdge.edge.id} intersects ${crossingEdge.label.id} "${crossingEdge.label.visibleText}" with ratio ${intersectionRatio(crossingEdge.edge.bbox, crossingEdge.label.bbox).toFixed(2)}.`,
+            "Graph labels can become ambiguous when edges cross through the text users need to identify a path or node.",
+            "Reroute the edge, move the label, add padding, or reserve a label lane that edges cannot cross.",
+            "Run the graph scenario and confirm edge bboxes no longer intersect critical label bboxes."
+          )
+        );
+      }
     }
   }
 
