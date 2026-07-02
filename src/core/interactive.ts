@@ -1,4 +1,5 @@
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { chromium, type ConsoleMessage, type Page, type Response } from "playwright";
 import { buildScreenMapOverlay } from "./overlay.js";
 import { collectScreenMap, safeAccessibilitySnapshot } from "./observe-page.js";
@@ -1149,6 +1150,9 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
     .map((action) => {
       const before = path.relative(result.artifacts.traceDir, action.beforeScreenshot).replace(/\\/g, "/");
       const after = path.relative(result.artifacts.traceDir, action.afterScreenshot).replace(/\\/g, "/");
+      const visualDiff = action.visualDiff
+        ? path.relative(result.artifacts.traceDir, action.visualDiff).replace(/\\/g, "/")
+        : "none";
       const findings = action.findingDetectors.length ? action.findingDetectors.join(", ") : "none";
       const status = action.skipped ? `skipped: ${action.skipReason ?? "unknown reason"}` : action.clicked ? "clicked" : "not clicked";
       const clickDecision = action.clickDecision
@@ -1176,12 +1180,17 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
   <p><strong>Animation trace:</strong> ${escapeHtml(animationTrace)}</p>
   <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
-  <p><strong>Diffs:</strong> ${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / ${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
+  <p><strong>Diffs:</strong> visual=${escapeHtml(visualDiff)} / dom=${escapeHtml(action.domDiff ? path.relative(result.artifacts.traceDir, action.domDiff).replace(/\\/g, "/") : "none")} / a11y=${escapeHtml(action.accessibilityDiff ? path.relative(result.artifacts.traceDir, action.accessibilityDiff).replace(/\\/g, "/") : "none")}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
   <div class="shots">
     <figure><img src="${escapeHtml(before)}" alt="${escapeHtml(action.id)} before" /><figcaption>before</figcaption></figure>
     <figure><img src="${escapeHtml(after)}" alt="${escapeHtml(action.id)} after" /><figcaption>after</figcaption></figure>
+    ${
+      action.visualDiff
+        ? `<figure><img src="${escapeHtml(visualDiff)}" alt="${escapeHtml(action.id)} visual diff" /><figcaption>visual diff</figcaption></figure>`
+        : ""
+    }
   </div>
 </article>`;
     })
@@ -1208,7 +1217,7 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
     h2 { margin: 0 0 8px; font-size: 16px; }
     p { margin: 4px 0; font-size: 13px; color: #374151; }
     ul { margin: 8px 0 0; }
-    .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
     figure { margin: 0; }
     img { max-width: 100%; border: 1px solid #d1d5db; background: #111827; }
     figcaption { font-size: 12px; color: #4b5563; margin-top: 4px; }
@@ -1233,6 +1242,36 @@ async function captureActionScreenMap(page: Page, filePath: string, consoleError
   const screenMap = await collectScreenMap(page, page.url(), consoleErrors, networkErrors);
   await writeJson(filePath, screenMap);
   return screenMap;
+}
+
+async function writeVisualDiffScreenshot(page: Page, beforeScreenshot: string, afterScreenshot: string, diffPath: string): Promise<void> {
+  const [beforeBuffer, afterBuffer] = await Promise.all([readFile(beforeScreenshot), readFile(afterScreenshot)]);
+  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+  const diffPage = await page.context().newPage();
+  try {
+    await diffPage.setViewportSize(viewport);
+    await diffPage.setContent(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    .frame { position: relative; width: ${viewport.width}px; height: ${viewport.height}px; background: #000; }
+    img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+    .after { mix-blend-mode: difference; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <img src="data:image/png;base64,${beforeBuffer.toString("base64")}" alt="before" />
+    <img class="after" src="data:image/png;base64,${afterBuffer.toString("base64")}" alt="after" />
+  </div>
+</body>
+</html>`);
+    await diffPage.screenshot({ path: diffPath, fullPage: false });
+  } finally {
+    await diffPage.close();
+  }
 }
 
 async function recordActionStateEvidence(options: {
@@ -1280,6 +1319,7 @@ async function recordActionStateEvidence(options: {
       afterStateId: afterState.node.id,
       beforeScreenshot: options.action.beforeScreenshot,
       afterScreenshot: options.action.afterScreenshot,
+      visualDiff: options.action.visualDiff,
       domDiff: domDiffPath,
       accessibilityDiff: accessibilityDiffPath,
       pointerTrace: options.action.pointerTrace,
@@ -1363,10 +1403,12 @@ async function skippedAction(
   const target = planned.target;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
+  const visualDiff = path.join(actionsDir, `${actionId}-diff.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
 
   await page.screenshot({ path: beforeScreenshot, fullPage: false });
   await page.screenshot({ path: afterScreenshot, fullPage: false });
+  await writeVisualDiffScreenshot(page, beforeScreenshot, afterScreenshot, visualDiff);
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
 
   return {
@@ -1377,6 +1419,7 @@ async function skippedAction(
       target,
       beforeScreenshot,
       afterScreenshot,
+      visualDiff,
       screenMap: screenMapPath,
       clicked: false,
       focused: false,
@@ -1436,6 +1479,7 @@ async function performTargetAction(
   const actionId = `a${String(sequence).padStart(3, "0")}`;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
+  const visualDiff = path.join(actionsDir, `${actionId}-diff.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
   const target = planned.target;
   const locator = page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first();
@@ -1517,6 +1561,7 @@ async function performTargetAction(
   }
 
   await page.screenshot({ path: afterScreenshot, fullPage: false });
+  await writeVisualDiffScreenshot(page, beforeScreenshot, afterScreenshot, visualDiff);
 
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
   const visualFindings = detectVisualAnomalies(await collectVisualAnalysis(page, scenario), scenario, actionId);
@@ -1529,6 +1574,7 @@ async function performTargetAction(
     target: liveTarget,
     beforeScreenshot,
     afterScreenshot,
+    visualDiff,
     screenMap: screenMapPath,
     pointerTrace: pointerTracePath,
     animationTrace: animationTracePath,
@@ -1629,6 +1675,7 @@ async function performScrollAction(
   const actionId = `a${String(sequence).padStart(3, "0")}`;
   const beforeScreenshot = path.join(actionsDir, `${actionId}-before.png`);
   const afterScreenshot = path.join(actionsDir, `${actionId}-after.png`);
+  const visualDiff = path.join(actionsDir, `${actionId}-diff.png`);
   const screenMapPath = path.join(actionsDir, `${actionId}-screen-map.json`);
   const urlBefore = page.url();
   const target = planned.target;
@@ -1652,6 +1699,7 @@ async function performScrollAction(
   }, liveTarget.id);
   await page.waitForTimeout(config.settleMs);
   await page.screenshot({ path: afterScreenshot, fullPage: false });
+  await writeVisualDiffScreenshot(page, beforeScreenshot, afterScreenshot, visualDiff);
   const screenMap = await captureActionScreenMap(page, screenMapPath, consoleErrors, networkErrors);
   const findings = detectVisualAnomalies(await collectVisualAnalysis(page, scenario), scenario, actionId);
 
@@ -1663,6 +1711,7 @@ async function performScrollAction(
       target: liveTarget,
       beforeScreenshot,
       afterScreenshot,
+      visualDiff,
       screenMap: screenMapPath,
       clicked: false,
       focused: false,
@@ -1712,7 +1761,8 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
 
   const browser = await chromium.launch({ headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const page = await context.newPage();
 
     page.on("console", (message) => {
       if (message.type() === "error") {
@@ -1815,7 +1865,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
     const numberedFindings = renumberInteractiveFindings(findings);
     const summary = {
       actionCount: actions.length,
-      screenshotCount: 1 + actions.length * 2,
+      screenshotCount: 1 + actions.length * 3,
       anomalyCount: numberedFindings.length,
       notes
     };

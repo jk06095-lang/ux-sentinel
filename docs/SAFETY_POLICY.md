@@ -56,4 +56,4 @@ Every action record in `action-trace.json` includes a safe-click decision:
 - `skipped` when the target or policy blocks clicking
 - `not_applicable` for actions such as scroll
 
-Skipped actions must keep before/after screenshots, a screen map, and a clear skip reason. Hover, focus, and click-capable actions also write `actions/aNNN-pointer-trace.json` so a reviewer can inspect cursor movement, hover-triggered overlays, target movement, and final hit-test drift. The contact sheet shows the safe-click decision and pointer trace path so a reviewer can see what the runner did and what it refused to do.
+Skipped actions must keep before/after screenshots, a visual diff, a screen map, and a clear skip reason. Hover, focus, and click-capable actions also write `actions/aNNN-pointer-trace.json` so a reviewer can inspect cursor movement, hover-triggered overlays, target movement, and final hit-test drift. The contact sheet shows the safe-click decision, visual diff path, and pointer trace path so a reviewer can see what the runner did and what it refused to do.

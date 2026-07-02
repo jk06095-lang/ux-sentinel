@@ -50,17 +50,18 @@ Interactive runs write under `.ux-sentinel/traces/<timestamp>/`:
 - `contact-sheet.html`
 - `actions/a001-before.png`
 - `actions/a001-after.png`
+- `actions/a001-diff.png`
 - `actions/a001-screen-map.json`
 - `actions/a001-dom-diff.json`
 - `actions/a001-a11y-diff.json`
 - `actions/a001-pointer-trace.json`
 - `actions/a001-animation-trace.json` when `animation_audit.enabled: true`
 
-The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after screenshots, pointer trace path, optional animation trace path, and finding detectors linked to that action.
+The contact sheet is the fastest human review surface: each action shows the target, bbox, before/after/diff screenshots, pointer trace path, optional animation trace path, and finding detectors linked to that action.
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
-Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, when pointer approach reveals an overlay, or when the final hit-test drifts away from the intended target. The action trace also records the resolved capability policy, planner budget, target category, planned reason, risk level, pointer trace path, and each action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, DOM diff files, accessibility diff files, pointer trace files, and finding detectors.
+Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, when pointer approach reveals an overlay, or when the final hit-test drifts away from the intended target. The action trace also records the resolved capability policy, planner budget, target category, planned reason, risk level, pointer trace path, and each action's safe-click decision and reason. `state-graph.json` links state nodes and action edges with before/after screenshots, visual diff screenshots, DOM diff files, accessibility diff files, pointer trace files, and finding detectors.
 
 ## Safe Target Collection
 

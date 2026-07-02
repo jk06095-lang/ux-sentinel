@@ -370,6 +370,7 @@ export interface InteractiveActionRecord {
   target: InteractiveTarget;
   beforeScreenshot: string;
   afterScreenshot: string;
+  visualDiff?: string;
   screenMap: string;
   clicked: boolean;
   focused: boolean;

@@ -38,6 +38,7 @@ export interface StateGraphEdge {
   afterStateId: string;
   beforeScreenshot: string;
   afterScreenshot: string;
+  visualDiff?: string;
   domDiff: string;
   accessibilityDiff: string;
   pointerTrace?: string;

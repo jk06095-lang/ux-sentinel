@@ -193,6 +193,7 @@ describe("interactive exploration helpers", () => {
           },
           beforeScreenshot: "trace/actions/a001-before.png",
           afterScreenshot: "trace/actions/a001-after.png",
+          visualDiff: "trace/actions/a001-diff.png",
           screenMap: "trace/actions/a001-screen-map.json",
           pointerTrace: "trace/actions/a001-pointer-trace.json",
           animationTrace: "trace/actions/a001-animation-trace.json",
@@ -204,7 +205,7 @@ describe("interactive exploration helpers", () => {
         }
       ],
       findings: [],
-      summary: { actionCount: 1, screenshotCount: 3, anomalyCount: 0, notes: [] },
+      summary: { actionCount: 1, screenshotCount: 4, anomalyCount: 0, notes: [] },
       artifacts: {
         traceDir: "trace",
         baseline: "trace/baseline.png",
@@ -222,12 +223,14 @@ describe("interactive exploration helpers", () => {
 
     expect(html).toContain("a001-before.png");
     expect(html).toContain("a001-after.png");
+    expect(html).toContain("a001-diff.png");
     expect(html).toContain("a001-pointer-trace.json");
     expect(html).toContain("a001-animation-trace.json");
     expect(html).toContain("tooltip_partially_offscreen");
     expect(html).toContain("Safe click decision:");
     expect(html).toContain("Pointer trace:");
     expect(html).toContain("Animation trace:");
+    expect(html).toContain("visual diff");
     expect(html).toContain("Focus evidence:");
   });
 
@@ -396,10 +399,12 @@ describe("interactive exploration helpers", () => {
       expect(result.actions[0].afterStateId).toBe("s001");
       expect(result.actions[0].domDiff).toContain("a001-dom-diff.json");
       expect(result.actions[0].accessibilityDiff).toContain("a001-a11y-diff.json");
+      expect(result.actions[0].visualDiff).toContain("a001-diff.png");
       expect(result.actions[0].pointerTrace).toContain("a001-pointer-trace.json");
       await stat(result.artifacts.stateGraph);
       await stat(result.actions[0].domDiff!);
       await stat(result.actions[0].accessibilityDiff!);
+      await stat(result.actions[0].visualDiff!);
       await stat(result.actions[0].pointerTrace!);
       const pointerTrace = JSON.parse(await readFile(result.actions[0].pointerTrace!, "utf8")) as {
         points: Array<{ x: number; y: number; t: number }>;
@@ -415,12 +420,14 @@ describe("interactive exploration helpers", () => {
           afterStateId: string;
           domDiff: string;
           accessibilityDiff: string;
+          visualDiff?: string;
           pointerTrace?: string;
         }>;
       };
       expect(stateGraph.nodes.map((node) => node.id)).toEqual(["s000", "s001"]);
       expect(stateGraph.nodes[0].visibleTextHash).toMatch(/^[a-f0-9]{64}$/);
       expect(stateGraph.edges[0]).toMatchObject({ actionId: "a001", beforeStateId: "s000", afterStateId: "s001" });
+      expect(stateGraph.edges[0].visualDiff).toContain("a001-diff.png");
       expect(stateGraph.edges[0].pointerTrace).toContain("a001-pointer-trace.json");
       const domDiff = JSON.parse(await readFile(result.actions[0].domDiff!, "utf8")) as {
         beforeStateId: string;
@@ -552,9 +559,11 @@ describe("interactive exploration helpers", () => {
 
       await stat(result.actions[0].beforeScreenshot);
       await stat(result.actions[0].afterScreenshot);
+      await stat(result.actions[0].visualDiff!);
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("a001-before.png");
       expect(contactSheet).toContain("a001-after.png");
+      expect(contactSheet).toContain("a001-diff.png");
       expect(result.summary.notes.join(" ")).toContain("always captures before/after screenshots");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });

@@ -350,3 +350,12 @@ Added the first deterministic motion-audit slice:
 - Added motion findings for `animation_ignores_reduced_motion`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, and `animation_uses_layout_paint_properties`.
 - Linked animation traces into action records, state graph edges, contact-sheet rows, and UX rule evidence paths.
 - Documented the opt-in behavior in `docs/MOTION_AUDIT.md`.
+
+### Checkpoint: Visual Diff Evidence
+
+Added per-action visual diff artifacts:
+
+- Writes `actions/aNNN-diff.png` for hover, focus, click-capable, scroll, and skipped actions.
+- Adds `visualDiff` to action records and state graph edges.
+- Shows visual diff thumbnails and paths in `contact-sheet.html`.
+- Counts diff images in the interactive screenshot summary so evidence totals reflect before/after/diff panels.
