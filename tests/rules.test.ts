@@ -1,17 +1,28 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { enrichFindingWithRules, rulesForDetector, unmappedDetectors } from "../src/core/rules/registry.js";
+import { allUxRules, enrichFindingWithRules, rulesForDetector, unmappedDetectors } from "../src/core/rules/registry.js";
 import type { Finding } from "../src/core/types.js";
 
 const repoRoot = process.cwd();
 
 function implementedDetectors(): string[] {
   const detectorNames = new Set<string>();
-  for (const sourceFile of ["src/core/detectors.ts", "src/core/interactive.ts"]) {
+  for (const sourceFile of ["src/core/detectors.ts", "src/core/interactive.ts", "src/core/animation-audit.ts"]) {
     const source = readFileSync(path.join(repoRoot, sourceFile), "utf8");
     for (const match of source.matchAll(/finding\(\s*["']([a-z0-9_]+)["']/g)) {
       detectorNames.add(match[1]);
+    }
+  }
+
+  return Array.from(detectorNames).sort((a, b) => a.localeCompare(b));
+}
+
+function ruleDetectors(): string[] {
+  const detectorNames = new Set<string>();
+  for (const rule of allUxRules()) {
+    for (const detector of rule.detectors) {
+      detectorNames.add(detector);
     }
   }
 
@@ -26,6 +37,13 @@ describe("UX rule registry", () => {
     expect(detectors).toContain("primary_cta_missing");
     expect(detectors).toContain("animation_ignores_reduced_motion");
     expect(unmappedDetectors(detectors)).toEqual([]);
+  });
+
+  it("keeps every rule detector backed by an implemented finding", () => {
+    const implemented = new Set(implementedDetectors());
+    const rulesOnly = ruleDetectors().filter((detector) => !implemented.has(detector));
+
+    expect(rulesOnly).toEqual([]);
   });
 
   it("enriches findings with rule metadata and confidence", () => {
