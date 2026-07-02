@@ -1,0 +1,53 @@
+id: interactive-hover-block
+title: Interactive audit detects hover content blocking a trigger
+persona: first-time-user
+mode: visual_contract
+start_path: /
+
+goal:
+  user_wants: "Open the hover-triggered panel without the trigger being blocked"
+  primary_intent: "open_hover_panel"
+
+visual_contract:
+  page_must_answer:
+    - "What action is available?"
+    - "Can the pointer still reach the action after hover content appears?"
+  primary_cta:
+    preferred_labels:
+      - "Open hover panel"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+  empty_state:
+    if_detected_requires_primary_cta: false
+
+interactive_exploration:
+  enabled: true
+  mode: agentic
+  max_actions: 1
+  max_depth: 1
+  max_clicks: 1
+  max_state_changes: 1
+  hover_all_clickables: true
+  click_all_safe_controls: true
+  focus_all_keyboard_targets: true
+  scroll_containers: false
+  screenshot_before_after_each_action: true
+  settle_ms: 100
+  allow_navigation: false
+  avoid_click_text:
+    - "Delete"
+    - "Remove"
+    - "Pay"
+    - "Purchase"
+    - "Logout"
+    - "Sign out"
+
+fail_conditions:
+  - hover_content_blocks_trigger
+  - hover_trigger_blocks_target
+  - cursor_target_drift
+  - overlay_appeared_during_cursor_approach
+  - click_target_blocked_by_overlay
+  - console_error
+  - network_5xx

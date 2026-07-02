@@ -99,7 +99,8 @@ function assertInteractiveArtifacts({
   expectedActionFindingDetectors = [],
   expectedAnimationTrace = false,
   expectedNavigationStop = false,
-  expectedNavigationAllowed = false
+  expectedNavigationAllowed = false,
+  expectedPointerDrift = false
 }) {
   mustExist(tracePath, "interactive trace directory");
   mustExist(contactSheetPath, "interactive contact sheet");
@@ -159,6 +160,7 @@ function assertInteractiveArtifacts({
   const domDiffTextAdded = [];
   const actionFindingDetectors = new Set();
   const animationTracePaths = [];
+  const pointerTraceRecords = [];
   for (const [index, action] of actionTrace.actions.entries()) {
     const actionLabel = `interactive action ${action.id ?? index + 1}`;
     if (!action.plannedReason || !action.targetCategory || !action.riskLevel) {
@@ -180,6 +182,7 @@ function assertInteractiveArtifacts({
       }
     } else {
       artifactPath(action.pointerTrace, `${actionLabel} pointer trace`);
+      pointerTraceRecords.push(readJson(action.pointerTrace, `${actionLabel} pointer trace`));
     }
     if (action.clicked) {
       clickedActionCount += 1;
@@ -220,6 +223,18 @@ function assertInteractiveArtifacts({
   }
   if (expectedAnimationTrace && animationTracePaths.length === 0) {
     throw new Error(`${actionTracePath} did not record an expected animation trace`);
+  }
+  if (expectedPointerDrift) {
+    if (
+      !pointerTraceRecords.some(
+        (trace) => trace.overlayAppearedDuringApproach === true && trace.finalHitTestMatchedTarget === false
+      )
+    ) {
+      throw new Error(`${actionTracePath} did not record expected hover overlay pointer drift evidence`);
+    }
+    if (!actionTrace.actions.some((action) => action.clickDecision === "skipped" && action.clickDecisionReason === "cursor target drift")) {
+      throw new Error(`${actionTracePath} did not skip the hover-blocked click with cursor target drift`);
+    }
   }
   if (expectedNavigationStop) {
     const noteText = (actionTrace.summary?.notes ?? []).join(" ");
@@ -344,6 +359,13 @@ function assertInteractiveArtifacts({
       throw new Error(`${contactSheetPath} should not include a navigation stop note when navigation is allowed`);
     }
   }
+  if (expectedPointerDrift) {
+    for (const needle of ["hover_content_blocks_trigger", "cursor_target_drift", "skipped: cursor target drift"]) {
+      if (!contactSheet.includes(needle)) {
+        throw new Error(`${contactSheetPath} is missing hover-block pointer evidence text: ${needle}`);
+      }
+    }
+  }
 }
 
 function runScenario(scenarioPath, path, expectedStatus, options = {}) {
@@ -390,7 +412,8 @@ function runScenario(scenarioPath, path, expectedStatus, options = {}) {
       expectedActionFindingDetectors: options.expectedActionFindingDetectors,
       expectedAnimationTrace: options.expectedAnimationTrace === true,
       expectedNavigationStop: options.expectedNavigationStop === true,
-      expectedNavigationAllowed: options.expectedNavigationAllowed === true
+      expectedNavigationAllowed: options.expectedNavigationAllowed === true,
+      expectedPointerDrift: options.expectedPointerDrift === true
     });
   }
 }
@@ -459,6 +482,29 @@ try {
     expectedTargetCategories: ["primary_cta"],
     expectedDomDiffTextAdded: ["Navigation destination ready", "Allowed navigation confirmed"],
     expectedNavigationAllowed: true
+  });
+  runScenario("demo/scenarios/interactive-hover-block.yaml", "/interactive-hover-block", 1, {
+    expectedVerdict: "fail",
+    args: ["--interactive", "--max-actions", "1", "--settle-ms", "100"],
+    expectedDetectors: [
+      "overlay_appeared_during_cursor_approach",
+      "hover_trigger_blocks_target",
+      "hover_content_blocks_trigger",
+      "cursor_target_drift"
+    ],
+    expectedInteractiveArtifacts: true,
+    expectedPlannerMode: "agentic",
+    expectedMinActions: 1,
+    expectedMaxActions: 1,
+    expectedTargetCategories: ["primary_cta"],
+    expectedDomDiffTextAdded: ["Hover panel"],
+    expectedActionFindingDetectors: [
+      "overlay_appeared_during_cursor_approach",
+      "hover_trigger_blocks_target",
+      "hover_content_blocks_trigger",
+      "cursor_target_drift"
+    ],
+    expectedPointerDrift: true
   });
   runScenario("demo/scenarios/interactive-motion.yaml", "/interactive-motion", 1, {
     expectedVerdict: "fail",

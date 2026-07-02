@@ -513,3 +513,12 @@ Added the explicit opt-in counterpart for scenario-driven navigation:
 - Added `demo/scenarios/interactive-navigation-allow.yaml` with `mode: agentic`, safe clicking enabled, and `allow_navigation: true`.
 - Routed `/interactive-navigation-allow` and `/interactive-navigation-allow-next` through the demo server.
 - Extended `npm run demo:verify` to assert the run keeps `navigation: true`, records a URL-changing action, performs two clicked actions, replans onto the destination page, and avoids the navigation stop note.
+
+### Checkpoint: Hover Block Pointer Demo Gate
+
+Added a deterministic demo gate for pointer-path hover blockers:
+
+- Added `demo/interactive-hover-block.html`, where hovering the primary CTA opens foreground content directly over the trigger.
+- Added `demo/scenarios/interactive-hover-block.yaml` with safe clicking enabled and fail conditions for `hover_content_blocks_trigger`, `hover_trigger_blocks_target`, `cursor_target_drift`, and `overlay_appeared_during_cursor_approach`.
+- Routed `/interactive-hover-block` through the demo server.
+- Extended `npm run demo:verify` to assert the run records pointer trace evidence with `overlayAppearedDuringApproach: true` and `finalHitTestMatchedTarget: false`, skips the safe click with `cursor target drift`, attaches the hover detector ids to the action, and exposes the pointer evidence in the report and contact sheet.

@@ -13,6 +13,7 @@ const routes = new Map([
   ["/high-priority-broken", "high-priority-broken.html"],
   ["/high-priority-fixed", "high-priority-fixed.html"],
   ["/interactive-agentic-states", "interactive-agentic-states.html"],
+  ["/interactive-hover-block", "interactive-hover-block.html"],
   ["/interactive-navigation-allow", "interactive-navigation-allow.html"],
   ["/interactive-navigation-allow-next", "interactive-navigation-allow-next.html"],
   ["/interactive-motion", "interactive-motion.html"],
