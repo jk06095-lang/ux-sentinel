@@ -1546,7 +1546,9 @@ function attachActionEvidencePathsToFindings(findings: Finding[], actions: Inter
         screenMap: action.screenMap,
         ...(action.visualDiff ? { visualDiff: action.visualDiff } : {}),
         ...(action.domDiff ? { domDiff: action.domDiff } : {}),
-        ...(action.accessibilityDiff ? { accessibilityDiff: action.accessibilityDiff } : {})
+        ...(action.accessibilityDiff ? { accessibilityDiff: action.accessibilityDiff } : {}),
+        ...(action.pointerTrace ? { pointerTrace: action.pointerTrace } : {}),
+        ...(action.animationTrace ? { animationTrace: action.animationTrace } : {})
       }
     };
   });

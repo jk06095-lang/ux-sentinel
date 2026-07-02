@@ -751,7 +751,8 @@ describe("interactive exploration helpers", () => {
               afterScreenshot: expect.stringContaining("a001-after.png"),
               visualDiff: expect.stringContaining("a001-diff.png"),
               domDiff: expect.stringContaining("a001-dom-diff.json"),
-              accessibilityDiff: expect.stringContaining("a001-a11y-diff.json")
+              accessibilityDiff: expect.stringContaining("a001-a11y-diff.json"),
+              pointerTrace: expect.stringContaining("a001-pointer-trace.json")
             })
           })
         ])
