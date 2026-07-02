@@ -40,6 +40,37 @@ describe("report generation", () => {
         consoleErrors: [],
         networkErrors: [],
         risks: []
+      },
+      interactive: {
+        screenMap: {
+          url: "http://example.test",
+          timestamp: "2026-07-01T00:00:00.000Z",
+          viewport: { width: 1280, height: 720 },
+          document: { width: 1280, height: 720, hasHorizontalScroll: false },
+          visibleText: [],
+          elements: [],
+          consoleErrors: [],
+          networkErrors: [],
+          risks: []
+        },
+        accessibilitySnapshot: null,
+        actions: [],
+        findings: [],
+        artifacts: {
+          traceDir: ".ux-sentinel/traces/test",
+          baseline: ".ux-sentinel/traces/test/baseline.png",
+          screenMap: ".ux-sentinel/traces/test/screen-map.json",
+          overlay: ".ux-sentinel/traces/test/screen-map.html",
+          actionsDir: ".ux-sentinel/traces/test/actions",
+          actionTrace: ".ux-sentinel/traces/test/action-trace.json",
+          anomalies: ".ux-sentinel/traces/test/anomalies.json",
+          contactSheet: ".ux-sentinel/traces/test/contact-sheet.html"
+        },
+        summary: {
+          actionCount: 0,
+          screenshotCount: 1,
+          anomalyCount: 0
+        }
       }
     };
 
@@ -53,7 +84,10 @@ describe("report generation", () => {
 
     expect(report).toContain("# UX Sentinel Report");
     expect(report).toContain("screen-map.html");
+    expect(report).toContain("## Interactive Exploration");
+    expect(report).toContain("contact-sheet.html");
     expect(report).toContain("## Codex Patch Brief");
+    expect(report).toContain("Do not change scenarios or visual contracts");
     expect(report).toContain("UX-001");
   });
 });

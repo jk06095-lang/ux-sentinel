@@ -1,0 +1,71 @@
+id: interactive-dag-clarity
+title: Interactive graph remains readable after hover and safe actions
+persona: first-time-user
+mode: visual_contract
+start_path: /
+
+goal:
+  user_wants: "Understand the selected DAG path and available next action"
+  primary_intent: "inspect_graph_state"
+
+visual_contract:
+  page_must_answer:
+    - "Where am I in the graph?"
+    - "Which path is selected?"
+    - "What can I inspect or do next?"
+  primary_cta:
+    preferred_labels:
+      - "Inspect path"
+      - "Open details"
+      - "Create first project"
+      - "Create project"
+    avoid_icon_only: true
+    must_be_visible_above_fold: true
+    must_look_clickable: true
+  empty_state:
+    if_detected_requires_primary_cta: true
+
+interactive_exploration:
+  enabled: true
+  max_actions: 80
+  hover_all_clickables: true
+  click_all_safe_controls: true
+  focus_all_keyboard_targets: true
+  scroll_containers: true
+  screenshot_before_after_each_action: true
+  settle_ms: 350
+  avoid_click_text:
+    - "Delete"
+    - "Remove"
+    - "Pay"
+    - "Purchase"
+    - "Logout"
+    - "Sign out"
+    - "삭제"
+    - "제거"
+    - "결제"
+    - "로그아웃"
+
+visual_anomaly_contract:
+  no_text_occlusion: true
+  no_click_target_blocking: true
+  no_floating_panel_covering_primary_action: true
+  no_svg_edge_label_overlap: true
+  no_card_overlap: true
+  no_important_text_truncation: true
+  graph_dag:
+    enabled: true
+    columns_must_have_labels: true
+    selected_path_must_be_traceable: true
+    edge_labels_must_not_cross_nodes: true
+    max_unused_canvas_ratio: 0.65
+
+fail_conditions:
+  - primary_cta_icon_only
+  - horizontal_scroll
+  - console_error
+  - network_5xx
+  - click_target_blocked_by_overlay
+  - floating_panel_overlaps_primary_action
+  - edge_label_crosses_node
+  - card_content_clipped

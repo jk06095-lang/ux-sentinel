@@ -4,7 +4,7 @@ DOM says pass. Humans say “what do I click?”
 
 ux-sentinel is a local CLI that detects perception mismatches in AI-generated frontends: cases where the DOM, accessibility tree, or guided test says a feature exists, but the human-visible UI does not clearly communicate the next action.
 
-It collects screenshots, visible text, DOM/accessibility evidence, layout signals, console errors, and network failures, then generates a report and a Codex-ready patch brief.
+It collects screenshots, visible text, DOM/accessibility evidence, layout signals, console errors, and network failures, then generates a report and a Codex-ready patch brief. Current development builds also include interactive audit mode for hover, focus, safe-click, scroll, overlay, card, and graph/DAG perception checks.
 
 ## Why this exists
 
@@ -74,6 +74,7 @@ Latest development path:
 
 ```bash
 npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel init
+npm exec --yes --package=github:jk06095-lang/ux-sentinel#main -- ux-sentinel explore --url http://localhost:3000
 ```
 
 If GitHub `npm exec` fails, Codex can use a temporary clone instead:
@@ -149,10 +150,22 @@ Observe a page without a scenario:
 node dist/cli.js observe --url http://127.0.0.1:4173/fixed
 ```
 
+Explore a page interactively:
+
+```bash
+node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
+```
+
 Run a visual-contract scenario:
 
 ```bash
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/broken
+```
+
+Run a scenario with interactive exploration:
+
+```bash
+node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive
 ```
 
 Turn feedback into a distilled YAML record:
@@ -171,9 +184,16 @@ node dist/cli.js codex-brief .ux-sentinel/reports/<report>.md
 
 - `ux-sentinel init`
 - `ux-sentinel observe --url <url>`
+- `ux-sentinel explore --url <url>`
 - `ux-sentinel run <scenario.yaml> --url <url>`
+- `ux-sentinel run <scenario.yaml> --url <url> --interactive`
 - `ux-sentinel ingest-feedback <file>`
 - `ux-sentinel codex-brief <report>`
+
+Interactive audit docs:
+
+- [docs/INTERACTIVE_AUDIT.md](docs/INTERACTIVE_AUDIT.md)
+- [docs/prompts/04-interactive-visual-audit.md](docs/prompts/04-interactive-visual-audit.md)
 
 ## Sample Scenario
 
@@ -208,6 +228,38 @@ fail_conditions:
   - horizontal_scroll
 ```
 
+Interactive extension for graph, overlay, and hover-heavy screens:
+
+```yaml
+interactive_exploration:
+  enabled: true
+  max_actions: 80
+  hover_all_clickables: true
+  click_all_safe_controls: true
+  focus_all_keyboard_targets: true
+  scroll_containers: true
+  screenshot_before_after_each_action: true
+  settle_ms: 350
+  avoid_click_text:
+    - "Delete"
+    - "Sign out"
+    - "Pay"
+
+visual_anomaly_contract:
+  no_text_occlusion: true
+  no_click_target_blocking: true
+  no_floating_panel_covering_primary_action: true
+  no_svg_edge_label_overlap: true
+  no_card_overlap: true
+  no_important_text_truncation: true
+  graph_dag:
+    enabled: true
+    columns_must_have_labels: true
+    selected_path_must_be_traceable: true
+    edge_labels_must_not_cross_nodes: true
+    max_unused_canvas_ratio: 0.65
+```
+
 ## Sample Report Output
 
 ```markdown
@@ -217,6 +269,12 @@ fail_conditions:
 - result: fail
 - functional issues: 0
 - perception mismatch issues: 4
+
+## Interactive Exploration
+- actions: 12
+- screenshots: 25
+- anomalies: 2
+- contact sheet: .ux-sentinel/traces/<timestamp>/contact-sheet.html
 
 ## Findings
 
@@ -305,6 +363,8 @@ Then use a second terminal for the checks:
 ```bash
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/broken
 node dist/cli.js run demo/scenarios/onboarding-empty-state.yaml --url http://127.0.0.1:4173/fixed
+node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 20 --settle-ms 250
+node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20
 ```
 
 ## Evidence Artifacts
@@ -317,11 +377,23 @@ Each observation/run writes local artifacts under `.ux-sentinel/traces/<timestam
 - `accessibility.json`
 - `observer-report.md` for `observe`
 
+Interactive exploration writes:
+
+- `baseline.png`
+- `action-trace.json`
+- `anomalies.json`
+- `contact-sheet.html`
+- `actions/a001-before.png`
+- `actions/a001-after.png`
+- `actions/a001-screen-map.json`
+
 Scenario reports are written under `.ux-sentinel/reports/`. Codex patch briefs are written under `.ux-sentinel/briefs/`.
 
 The demo generates screenshots automatically as `.ux-sentinel/traces/<timestamp>/screenshot.png`; these local runtime artifacts are ignored by git.
 
 ## Current Detectors
+
+Static visual-contract detectors:
 
 - `primary_cta_missing`
 - `primary_cta_icon_only`
@@ -333,11 +405,25 @@ The demo generates screenshots automatically as `.ux-sentinel/traces/<timestamp>
 - `network_5xx`
 - `important_text_truncated`
 
+Interactive visual anomaly detectors:
+
+- `click_target_blocked_by_overlay`
+- `floating_panel_overlaps_primary_action`
+- `tooltip_partially_offscreen`
+- `text_occluded_by_graph_edge`
+- `edge_label_crosses_node`
+- `card_content_clipped`
+- `card_overlap`
+- `dag_canvas_excessive_unused_space`
+- `empty_dag_column_without_explanation`
+
 ## Limitations
 
 - This MVP uses deterministic DOM, layout, accessibility, console, and network evidence. It does not use a visual AI model.
 - It does not call external LLM APIs.
 - It is not a SaaS dashboard, cloud runner, account system, database, Chrome extension, or enterprise QA platform.
+- Interactive audit moves the mouse, focuses targets, scrolls containers, and clicks only safe controls; it does not type into forms or perform destructive actions.
+- Graph and DAG anomaly checks are bbox heuristics. Review `contact-sheet.html` before treating them as final UX truth.
 - It is not a replacement for human UX research; it is a local evidence harness for catching obvious perception mismatches before review.
 - It is not currently published as an npm registry package.
 - The repo-scoped Codex skill draft is included for local workflow design; it is not a published Codex plugin.
@@ -347,7 +433,8 @@ The demo generates screenshots automatically as `.ux-sentinel/traces/<timestamp>
 ## Roadmap
 
 - More visual-contract detectors for disabled recovery, confusing hierarchy, and copy/consequence mismatch.
-- Scenario action steps beyond initial observation.
+- Richer scenario action steps that remain deterministic and local-first.
+- Optional vision review behind an explicit disabled-by-default flag.
 - Optional provider hooks for teams that want LLM-assisted feedback distillation.
 - Richer screen-map overlay controls.
 - Package publishing workflow after the MVP stabilizes.

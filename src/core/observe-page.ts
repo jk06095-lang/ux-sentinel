@@ -28,7 +28,7 @@ function networkIssue(response: Response): NetworkIssue {
   };
 }
 
-async function safeAccessibilitySnapshot(page: Page): Promise<unknown> {
+export async function safeAccessibilitySnapshot(page: Page): Promise<unknown> {
   const maybePage = page as Page & {
     accessibility?: {
       snapshot(options?: { interestingOnly?: boolean }): Promise<unknown>;
@@ -46,7 +46,7 @@ async function safeAccessibilitySnapshot(page: Page): Promise<unknown> {
   }
 }
 
-async function collectScreenMap(page: Page, url: string, consoleErrors: ConsoleIssue[], networkErrors: NetworkIssue[]): Promise<ScreenMap> {
+export async function collectScreenMap(page: Page, url: string, consoleErrors: ConsoleIssue[], networkErrors: NetworkIssue[]): Promise<ScreenMap> {
   const data = await page.evaluate(() => {
     const iconTexts = new Set(["", "+", "-", "×", "x", "...", "…", "⋯", "☰", "≡", "›", "‹", ">", "<"]);
     const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();

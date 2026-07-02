@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { createCodexBrief } from "./core/brief.js";
-import { runDetectors, verdictForFindings } from "./core/detectors.js";
+import { renumberFindings, runDetectors, verdictForFindings } from "./core/detectors.js";
 import { displayPath, writeJson } from "./core/files.js";
 import { ingestFeedback } from "./core/feedback.js";
 import { initProject } from "./core/init.js";
+import { formatInteractiveSummary, interactiveExplorePage } from "./core/interactive.js";
 import { observePage } from "./core/observe-page.js";
 import { buildReportMarkdown, writeRunReport } from "./core/report.js";
 import { parseScenarioFile, resolveTargetUrl } from "./core/scenario.js";
-import type { RunResult } from "./core/types.js";
+import type { ObservationResult, RunResult } from "./core/types.js";
 
 interface ParsedArgs {
   command?: string;
@@ -53,6 +54,18 @@ function requireOption(args: ParsedArgs, name: string): string {
   return value;
 }
 
+function numberOption(args: ParsedArgs, name: string): number | undefined {
+  const value = stringOption(args, name);
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Option --${name} must be a number.`);
+  }
+  return parsed;
+}
+
 function requirePositional(args: ParsedArgs, label: string): string {
   const value = args.positionals[0];
   if (!value) {
@@ -67,7 +80,9 @@ function help(): string {
 Commands:
   ux-sentinel init
   ux-sentinel observe --url <url>
+  ux-sentinel explore --url <url> [--max-actions <n>] [--settle-ms <ms>]
   ux-sentinel run <scenario.yaml> --url <url>
+  ux-sentinel run <scenario.yaml> --url <url> --interactive [--max-actions <n>] [--settle-ms <ms>]
   ux-sentinel ingest-feedback <file>
   ux-sentinel codex-brief <report>
 `;
@@ -99,13 +114,51 @@ async function observeCommand(args: ParsedArgs): Promise<void> {
   }
 }
 
+async function exploreCommand(args: ParsedArgs): Promise<void> {
+  const url = requireOption(args, "url");
+  const result = await interactiveExplorePage({
+    url,
+    maxActions: numberOption(args, "max-actions"),
+    settleMs: numberOption(args, "settle-ms")
+  });
+
+  console.log(`Explored ${result.screenMap.url}`);
+  console.log(formatInteractiveSummary(result));
+}
+
 async function runCommand(args: ParsedArgs): Promise<void> {
   const scenarioPath = path.resolve(requirePositional(args, "scenario.yaml"));
   const inputUrl = requireOption(args, "url");
   const scenario = await parseScenarioFile(scenarioPath);
   const targetUrl = resolveTargetUrl(inputUrl, scenario);
-  const observation = await observePage({ url: targetUrl, scenario });
-  const findings = runDetectors(observation.screenMap, scenario);
+  const interactiveRequested = args.options.has("interactive") || scenario.interactive_exploration?.enabled === true;
+  let observation: ObservationResult;
+  if (interactiveRequested) {
+    const exploration = await interactiveExplorePage({
+      url: targetUrl,
+      scenario,
+      maxActions: numberOption(args, "max-actions"),
+      settleMs: numberOption(args, "settle-ms")
+    });
+    observation = {
+      screenMap: exploration.screenMap,
+      accessibilitySnapshot: exploration.accessibilitySnapshot,
+      artifacts: {
+        traceDir: exploration.artifacts.traceDir,
+        screenshot: exploration.artifacts.baseline,
+        screenMap: exploration.artifacts.screenMap,
+        overlay: exploration.artifacts.overlay,
+        accessibility: exploration.artifacts.accessibility
+      },
+      interactive: exploration
+    };
+  } else {
+    observation = await observePage({ url: targetUrl, scenario });
+  }
+  const findings = renumberFindings([
+    ...runDetectors(observation.screenMap, scenario),
+    ...(observation.interactive?.findings ?? [])
+  ]);
   const verdict = verdictForFindings(findings, scenario);
 
   observation.screenMap.risks = findings.map((finding) => ({
@@ -131,6 +184,11 @@ async function runCommand(args: ParsedArgs): Promise<void> {
   console.log(`Verdict: ${verdict}`);
   console.log(`Report: ${displayPath(reportPath)}`);
   console.log(`Trace: ${displayPath(observation.artifacts.traceDir)}`);
+  if (observation.interactive) {
+    console.log(`Contact sheet: ${displayPath(observation.interactive.artifacts.contactSheet)}`);
+    console.log(`Interactive actions: ${observation.interactive.summary.actionCount}`);
+    console.log(`Interactive anomalies: ${observation.interactive.summary.anomalyCount}`);
+  }
 
   if (verdict === "fail") {
     process.exitCode = 1;
@@ -163,6 +221,9 @@ async function main(): Promise<void> {
       break;
     case "observe":
       await observeCommand(args);
+      break;
+    case "explore":
+      await exploreCommand(args);
       break;
     case "run":
       await runCommand(args);

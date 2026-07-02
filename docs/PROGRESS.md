@@ -227,3 +227,34 @@ Post-release `v0.1.0` smoke:
 - reports and traces written under the target temp repo `.ux-sentinel`
 
 npm publish remains deferred.
+
+## 2026-07-03
+
+### Checkpoint: Interactive Audit Mode
+
+Status: done
+
+Added deterministic interactive audit support:
+
+- `ux-sentinel explore --url <url>`
+- `ux-sentinel run <scenario.yaml> --url <url> --interactive`
+- optional `--max-actions <n>`
+- optional `--settle-ms <ms>`
+
+Implemented Playwright-based target collection for visible controls, safe-click filtering for destructive/payment/account actions, hover/focus/click/scroll action capture, `action-trace.json`, `anomalies.json`, and `contact-sheet.html`.
+
+Added rule-based visual anomaly coverage for blocked click targets, floating panels covering primary actions, off-screen tooltips, graph edge/text overlap, edge labels crossing nodes, clipped card content, overlapping cards, excessive DAG canvas whitespace, and unexplained empty DAG columns.
+
+Added docs and scenario examples:
+
+- `docs/INTERACTIVE_AUDIT.md`
+- `docs/prompts/04-interactive-visual-audit.md`
+- `demo/scenarios/interactive-dag-clarity.yaml`
+
+Verification:
+
+- `npm run build` passed.
+- `npm test` passed with 7 test files and 32 tests.
+- `npm run demo:verify` passed with the broken demo failing and the fixed demo passing.
+- `node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 10 --settle-ms 100` passed and generated `action-trace.json`, `anomalies.json`, and `contact-sheet.html`.
+- `node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 10 --settle-ms 100` passed with verdict `pass` and generated the interactive report/contact sheet.

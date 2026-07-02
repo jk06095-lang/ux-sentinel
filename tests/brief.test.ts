@@ -11,6 +11,9 @@ describe("codex brief generation", () => {
 
 ## Verdict
 - result: fail
+- interactive action trace: .ux-sentinel/traces/test/action-trace.json
+- interactive contact sheet: .ux-sentinel/traces/test/contact-sheet.html
+- interactive anomalies: .ux-sentinel/traces/test/anomalies.json
 
 ## Findings
 
@@ -27,6 +30,8 @@ describe("codex brief generation", () => {
 
     expect(brief).toContain("# Codex Patch Brief");
     expect(brief).toContain("onboarding-empty-state");
+    expect(brief).toContain("contact-sheet.html");
+    expect(brief).toContain("Do not change scenarios");
     expect(brief).toContain("Do not rely on aria-label alone");
   });
 });

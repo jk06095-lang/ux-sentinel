@@ -36,4 +36,29 @@ start_path: /dashboard
     expect(resolveTargetUrl("http://127.0.0.1:4173", scenario)).toBe("http://127.0.0.1:4173/dashboard");
     expect(resolveTargetUrl("http://127.0.0.1:4173/broken", scenario)).toBe("http://127.0.0.1:4173/broken");
   });
+
+  it("parses interactive exploration and visual anomaly contract extensions", () => {
+    const scenario = parseScenarioText(`
+id: interactive-dag
+title: DAG remains visually traceable
+persona: first-time-user
+interactive_exploration:
+  enabled: true
+  max_actions: 12
+  settle_ms: 125
+  avoid_click_text:
+    - "Delete"
+visual_anomaly_contract:
+  no_click_target_blocking: true
+  graph_dag:
+    enabled: true
+    max_unused_canvas_ratio: 0.5
+`);
+
+    expect(scenario.interactive_exploration?.enabled).toBe(true);
+    expect(scenario.interactive_exploration?.max_actions).toBe(12);
+    expect(scenario.interactive_exploration?.settle_ms).toBe(125);
+    expect(scenario.interactive_exploration?.avoid_click_text).toContain("Delete");
+    expect(scenario.visual_anomaly_contract?.graph_dag?.max_unused_canvas_ratio).toBe(0.5);
+  });
 });

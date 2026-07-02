@@ -15,6 +15,9 @@ export function buildCodexBriefMarkdown(report: string, sourceReport: string): s
   const scenario = matchLine(report, "id");
   const url = matchLine(report, "url");
   const result = matchLine(report, "result");
+  const actionTrace = matchLine(report, "interactive action trace");
+  const contactSheet = matchLine(report, "interactive contact sheet");
+  const anomalies = matchLine(report, "interactive anomalies");
   const findings = extractFindings(report);
 
   return `# Codex Patch Brief
@@ -24,6 +27,9 @@ export function buildCodexBriefMarkdown(report: string, sourceReport: string): s
 - scenario: ${scenario}
 - url: ${url}
 - result: ${result}
+- interactive action trace: ${actionTrace}
+- interactive contact sheet: ${contactSheet}
+- interactive anomalies: ${anomalies}
 
 ## Goal
 
@@ -38,10 +44,12 @@ ${findings.length ? findings.join("\n\n") : "No findings were parsed from the so
 - The same ux-sentinel scenario passes after the UI patch.
 - The primary next action is visible to a human, not only present in the DOM or accessibility tree.
 - Evidence artifacts still include screenshot, screen-map.json, screen-map.html, console errors, and network errors.
+- If the source report includes interactive exploration, the contact sheet and action trace no longer show the same visual anomaly.
 
 ## Forbidden Fixes
 
 - Do not suppress or delete checks to make the report pass.
+- Do not change scenarios, fail conditions, or visual contracts just to hide findings.
 - Do not rely on aria-label alone for a primary CTA.
 - Do not add SaaS, auth, database, hosted runner, Chrome extension, or required LLM API behavior.
 

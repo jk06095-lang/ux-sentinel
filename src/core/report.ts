@@ -10,6 +10,7 @@ export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): stri
   const { scenario, url, verdict, findings, observation } = result;
   const functional = findings.filter((finding) => finding.type === "Functional Issue");
   const perception = findings.filter((finding) => finding.type === "Perception Mismatch");
+  const interactive = observation.interactive;
 
   return `# UX Sentinel Report
 
@@ -33,6 +34,11 @@ export function buildReportMarkdown(result: Omit<RunResult, "reportPath">): stri
 - accessibility snapshot: ${observation.artifacts.accessibility ? displayPath(observation.artifacts.accessibility) : "not available"}
 - console errors: ${observation.screenMap.consoleErrors.length}
 - network errors: ${observation.screenMap.networkErrors.length}
+${interactive ? `- interactive action trace: ${displayPath(interactive.artifacts.actionTrace)}
+- interactive contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
+- interactive anomalies: ${displayPath(interactive.artifacts.anomalies)}` : ""}
+
+${interactive ? formatInteractiveSection(interactive) : ""}
 
 ## Findings
 
@@ -41,6 +47,16 @@ ${findings.length ? findings.map(formatFinding).join("\n\n") : "No findings."}
 ## Codex Patch Brief
 
 ${buildInlinePatchBrief(scenario, verdict, findings)}
+`;
+}
+
+function formatInteractiveSection(interactive: NonNullable<RunResult["observation"]["interactive"]>): string {
+  return `## Interactive Exploration
+- actions: ${interactive.summary.actionCount}
+- screenshots: ${interactive.summary.screenshotCount}
+- anomalies: ${interactive.summary.anomalyCount}
+- baseline screenshot: ${displayPath(interactive.artifacts.baseline)}
+- contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
 `;
 }
 
@@ -71,6 +87,7 @@ function buildInlinePatchBrief(scenario: Scenario, verdict: Verdict, findings: F
     "",
     "Forbidden fixes:",
     "- Do not hide or suppress ux-sentinel findings without fixing the visible UI.",
+    "- Do not change scenarios or visual contracts just to hide interactive findings.",
     "- Do not rely on aria-labels alone for a primary action.",
     "- Do not introduce a SaaS, account system, cloud runner, database, Chrome extension, or required LLM API."
   ].join("\n");

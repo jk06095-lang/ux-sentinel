@@ -47,6 +47,44 @@ export function parseScenarioText(source: string): Scenario {
           parsed.visual_contract?.empty_state?.if_detected_requires_primary_cta ?? true
       }
     },
+    interactive_exploration: parsed.interactive_exploration
+      ? {
+          enabled: parsed.interactive_exploration.enabled ?? false,
+          max_actions: parsed.interactive_exploration.max_actions ?? 40,
+          hover_all_clickables: parsed.interactive_exploration.hover_all_clickables ?? true,
+          click_all_safe_controls: parsed.interactive_exploration.click_all_safe_controls ?? true,
+          focus_all_keyboard_targets: parsed.interactive_exploration.focus_all_keyboard_targets ?? true,
+          scroll_containers: parsed.interactive_exploration.scroll_containers ?? true,
+          screenshot_before_after_each_action:
+            parsed.interactive_exploration.screenshot_before_after_each_action ?? true,
+          settle_ms: parsed.interactive_exploration.settle_ms ?? 350,
+          avoid_click_text: parsed.interactive_exploration.avoid_click_text ?? []
+        }
+      : undefined,
+    visual_anomaly_contract: parsed.visual_anomaly_contract
+      ? {
+          no_text_occlusion: parsed.visual_anomaly_contract.no_text_occlusion ?? true,
+          no_click_target_blocking: parsed.visual_anomaly_contract.no_click_target_blocking ?? true,
+          no_floating_panel_covering_primary_action:
+            parsed.visual_anomaly_contract.no_floating_panel_covering_primary_action ?? true,
+          no_svg_edge_label_overlap: parsed.visual_anomaly_contract.no_svg_edge_label_overlap ?? true,
+          no_card_overlap: parsed.visual_anomaly_contract.no_card_overlap ?? true,
+          no_important_text_truncation: parsed.visual_anomaly_contract.no_important_text_truncation ?? true,
+          graph_dag: parsed.visual_anomaly_contract.graph_dag
+            ? {
+                enabled: parsed.visual_anomaly_contract.graph_dag.enabled ?? true,
+                columns_must_have_labels:
+                  parsed.visual_anomaly_contract.graph_dag.columns_must_have_labels ?? true,
+                selected_path_must_be_traceable:
+                  parsed.visual_anomaly_contract.graph_dag.selected_path_must_be_traceable ?? true,
+                edge_labels_must_not_cross_nodes:
+                  parsed.visual_anomaly_contract.graph_dag.edge_labels_must_not_cross_nodes ?? true,
+                max_unused_canvas_ratio:
+                  parsed.visual_anomaly_contract.graph_dag.max_unused_canvas_ratio ?? 0.65
+              }
+            : undefined
+        }
+      : undefined,
     fail_conditions:
       parsed.fail_conditions?.length
         ? parsed.fail_conditions
