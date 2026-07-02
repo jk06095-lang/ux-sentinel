@@ -283,3 +283,13 @@ Verification:
 - `node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 10 --settle-ms 100 --click-safe` passed and action trace showed `clicked: true`.
 - `node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 10 --settle-ms 100` passed with verdict `pass`.
 - `node dist/cli.js codex-brief .ux-sentinel/reports/interactive-dag-clarity-2026-07-02T16-17-40-263Z.md` generated a brief with interactive evidence paths.
+
+### Checkpoint: Capability-Based Interactive Safety
+
+Started the agentic interactive audit foundation without weakening the hardened click policy:
+
+- Added an explicit capability model for `observe`, `hover`, `focus`, `scroll`, `safe_click`, `navigation`, `typing`, `form_submit`, and `destructive_action`.
+- Kept standalone `explore --click-safe` as the only CLI path that enables safe clicks outside a scenario.
+- Kept `run --interactive --click-safe` from enabling clicks; scenario-driven clicking still requires `interactive_exploration.click_all_safe_controls: true`.
+- Added safe-click allow/skip decisions and reasons to action records and contact-sheet rows.
+- Documented the policy in `docs/SAFETY_POLICY.md`.

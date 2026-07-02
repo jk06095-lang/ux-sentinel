@@ -6,6 +6,8 @@ Interactive audit is currently a `main` development feature. It is not part of t
 
 Interactive audit is still local-first and deterministic. It uses Playwright to move the mouse, hover targets, focus keyboard targets, scroll containers, capture before/after evidence, and run rule-based visual anomaly checks. It does not require an external LLM or vision API.
 
+Safety policy details live in [SAFETY_POLICY.md](SAFETY_POLICY.md). The runner resolves a capability policy before acting: observe, hover, focus, and scroll are enabled by default; safe clicks are disabled unless enabled by the correct command or scenario path; typing, form submission, and destructive actions remain disabled.
+
 ## Commands
 
 Explore a page without a scenario:
@@ -47,7 +49,7 @@ The contact sheet is the fastest human review surface: each action shows the tar
 
 Interactive audit always captures before/after screenshots so `contact-sheet.html` remains evidence-backed. If a scenario sets `screenshot_before_after_each_action: false`, ux-sentinel keeps the field for compatibility but records a note and still writes screenshots.
 
-Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, or a previous action changed the page.
+Skipped actions are represented in `action-trace.json` and `contact-sheet.html` with a clear skip reason. A target can be skipped when it disappears, detaches, becomes invisible, moves offscreen, or a previous action changed the page. The action trace also records the resolved capability policy plus each action's safe-click decision and reason.
 
 ## Safe Target Collection
 
@@ -124,5 +126,6 @@ These are geometry and DOM/layout heuristics. They are meant to produce inspecta
 - It does not type into forms or perform destructive actions.
 - Standalone `explore` does not click by default; clicking requires `--click-safe`.
 - Scenario-driven clicking requires `interactive_exploration.click_all_safe_controls: true`; `run --interactive` does not accept `--click-safe` as a one-off click override.
+- The core runner records safe-click allow/skip decisions for action trace review.
 - It does not use visual AI by default.
 - Graph and DAG checks are bbox heuristics; humans should review `contact-sheet.html` before treating a finding as final.

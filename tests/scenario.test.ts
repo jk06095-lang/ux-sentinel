@@ -82,7 +82,11 @@ title: DAG remains visually traceable
 persona: first-time-user
 interactive_exploration:
   enabled: true
+  mode: agentic
   max_actions: 12
+  max_depth: 2
+  max_clicks: 4
+  max_state_changes: 8
   settle_ms: 125
   avoid_click_text:
     - "Delete"
@@ -95,7 +99,11 @@ visual_anomaly_contract:
 `);
 
     expect(scenario.interactive_exploration?.enabled).toBe(true);
+    expect(scenario.interactive_exploration?.mode).toBe("agentic");
     expect(scenario.interactive_exploration?.max_actions).toBe(12);
+    expect(scenario.interactive_exploration?.max_depth).toBe(2);
+    expect(scenario.interactive_exploration?.max_clicks).toBe(4);
+    expect(scenario.interactive_exploration?.max_state_changes).toBe(8);
     expect(scenario.interactive_exploration?.settle_ms).toBe(125);
     expect(scenario.interactive_exploration?.click_all_safe_controls).toBe(false);
     expect(scenario.interactive_exploration?.allow_navigation).toBe(true);

@@ -16,6 +16,7 @@ Rules:
 - Treat `contact-sheet.html` as the primary human review surface.
 - Remember that `explore` defaults to hover, focus, and scroll only; clicking requires `--click-safe`.
 - Do not pass `--click-safe` to `run --interactive`; scenario clicks require `interactive_exploration.click_all_safe_controls: true`.
+- Review the capability policy and safe-click decisions in `action-trace.json` before treating a click path as intentional.
 - Treat `data-ux-role` as analysis metadata by default. Use `data-ux-clickable="true"` or `data-ux-action` to opt non-native elements into safe-click filtering.
 - Treat graph/DAG checks as bbox heuristics that need human review.
 

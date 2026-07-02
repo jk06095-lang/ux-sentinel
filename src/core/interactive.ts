@@ -4,12 +4,16 @@ import { buildScreenMapOverlay } from "./overlay.js";
 import { collectScreenMap, safeAccessibilitySnapshot } from "./observe-page.js";
 import { defaultPreferredLabels } from "./scenario.js";
 import { displayPath, ensureDir, timestamp, writeJson, writeText } from "./files.js";
+import { resolveInteractiveCapabilities } from "./capabilities.js";
 import type {
   ClickBlockage,
   ConsoleIssue,
   ElementBox,
   Finding,
+  InteractiveCapabilities,
   InteractiveActionRecord,
+  InteractiveCapabilityPolicy,
+  InteractiveCommandMode,
   InteractiveExplorationResult,
   InteractiveTarget,
   NetworkIssue,
@@ -23,7 +27,7 @@ export interface InteractiveExploreOptions {
   traceRoot?: string;
   maxActions?: number;
   settleMs?: number;
-  commandMode?: "explore" | "run";
+  commandMode?: InteractiveCommandMode;
   clickSafeOverride?: boolean;
 }
 
@@ -37,6 +41,7 @@ export interface InteractiveConfig {
   settleMs: number;
   avoidClickText: string[];
   allowNavigation: boolean;
+  capabilityPolicy: InteractiveCapabilityPolicy;
   notes: string[];
 }
 
@@ -159,10 +164,11 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
     notes.push("Interactive audit always captures before/after screenshots so the contact sheet remains evidence-backed.");
   }
   const commandMode = options?.commandMode ?? (scenario ? "run" : "explore");
-  const clickAllSafeControls =
-    commandMode === "explore" && options?.clickSafeOverride === true
-      ? true
-      : commandMode === "run" && source?.click_all_safe_controls === true;
+  const capabilityPolicy = resolveInteractiveCapabilities(scenario, {
+    commandMode,
+    clickSafeOverride: options?.clickSafeOverride
+  });
+  const clickAllSafeControls = capabilityPolicy.capabilities.safe_click;
 
   return {
     maxActions: Math.max(1, Math.min(250, Math.floor(maxActions))),
@@ -173,7 +179,8 @@ export function resolveInteractiveConfig(scenario?: Scenario, options?: Interact
     screenshotBeforeAfterEachAction: true,
     settleMs: Math.max(0, Math.min(5_000, Math.floor(settleMs))),
     avoidClickText: [...defaultAvoidClickText, ...(source?.avoid_click_text ?? [])],
-    allowNavigation: source?.allow_navigation ?? false,
+    allowNavigation: capabilityPolicy.capabilities.navigation,
+    capabilityPolicy,
     notes
   };
 }
@@ -249,7 +256,8 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
           const dataUxRole = element.getAttribute("data-ux-role");
           const dataUxAction = element.getAttribute("data-ux-action");
           const dataUxClickable = element.getAttribute("data-ux-clickable") === "true";
-          const visibleText = normalize(element.innerText || element.textContent || "");
+          const inputValue = element instanceof HTMLInputElement ? element.value : "";
+          const visibleText = normalize(element.innerText || element.textContent || inputValue || "");
           const visible =
             rect.width > 0 &&
             rect.height > 0 &&
@@ -293,15 +301,15 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
               ? "dangerous label"
               : navigationLink
                 ? "navigation link"
-              : dataUxMetadataOnly
-                ? "data-ux-role metadata only"
-                : !clickEligible
-                  ? "not a click control"
+                : dataUxMetadataOnly
+                  ? "data-ux-role metadata only"
                   : insideForm
                     ? "inside form"
                     : unsafeInput
                       ? "unsafe input type"
-                      : undefined;
+                      : !clickEligible
+                        ? "not a click control"
+                        : undefined;
           const id = `t${String(index + 1).padStart(3, "0")}`;
 
           element.setAttribute("data-ux-sentinel-target-id", id);
@@ -822,10 +830,14 @@ export function buildContactSheetHtml(result: Pick<InteractiveExplorationResult,
       const after = path.relative(result.artifacts.traceDir, action.afterScreenshot).replace(/\\/g, "/");
       const findings = action.findingDetectors.length ? action.findingDetectors.join(", ") : "none";
       const status = action.skipped ? `skipped: ${action.skipReason ?? "unknown reason"}` : action.clicked ? "clicked" : "not clicked";
+      const clickDecision = action.clickDecision
+        ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
+        : "not recorded";
       return `<article>
   <h2>${escapeHtml(action.id)} - ${escapeHtml(action.actionType)} - ${escapeHtml(status)}</h2>
   <p><strong>Target:</strong> ${escapeHtml(action.target.role ?? action.target.tag)} ${escapeHtml(targetLabel(action.target))}</p>
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
+  <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
   <p><strong>URL:</strong> ${escapeHtml(action.urlBefore ?? "")}${action.urlAfter && action.urlAfter !== action.urlBefore ? ` -> ${escapeHtml(action.urlAfter)}` : ""}</p>
   <p><strong>Findings:</strong> ${escapeHtml(findings)}</p>
   <div class="shots">
@@ -974,6 +986,8 @@ async function skippedAction(
     clicked: false,
     focused: false,
     clickSkippedReason: reason,
+    clickDecision: "skipped",
+    clickDecisionReason: reason,
     skipped: true,
     skipReason: reason,
     urlBefore,
@@ -982,6 +996,23 @@ async function skippedAction(
     networkErrorCount: screenMap.networkErrors.length,
     findingDetectors: []
   };
+}
+
+function resolveClickDecision(
+  target: InteractiveTarget,
+  capabilities: InteractiveCapabilities,
+  blockage?: ClickBlockage
+): { decision: "allowed" | "skipped"; reason: string } {
+  if (!target.safeToClick) {
+    return { decision: "skipped", reason: target.skipClickReason ?? "target is not safe to click" };
+  }
+  if (!capabilities.safe_click) {
+    return { decision: "skipped", reason: "safe_click capability disabled" };
+  }
+  if (blockage) {
+    return { decision: "skipped", reason: "blocked by overlay" };
+  }
+  return { decision: "allowed", reason: "safe_click capability enabled and target passed safe-click filtering" };
 }
 
 async function performTargetAction(
@@ -1021,6 +1052,7 @@ async function performTargetAction(
   if (blockage) {
     findings.push(buildBlockedClickFinding(liveTarget, blockage, actionId));
   }
+  const clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, blockage);
 
   await page.mouse.move(liveTarget.center.x, liveTarget.center.y);
   await page.waitForTimeout(config.settleMs);
@@ -1032,7 +1064,7 @@ async function performTargetAction(
     await page.waitForTimeout(config.settleMs);
   }
 
-  if (config.clickAllSafeControls && liveTarget.safeToClick && !blockage) {
+  if (clickDecision.decision === "allowed") {
     await page.mouse.click(liveTarget.center.x, liveTarget.center.y).then(() => {
       clicked = true;
     }).catch((error: unknown) => {
@@ -1040,10 +1072,8 @@ async function performTargetAction(
     });
     await page.waitForLoadState("networkidle", { timeout: Math.max(500, config.settleMs * 2) }).catch(() => undefined);
     await page.waitForTimeout(config.settleMs);
-  } else if (blockage) {
-    clickSkippedReason = "blocked by overlay";
-  } else if (!config.clickAllSafeControls && liveTarget.safeToClick) {
-    clickSkippedReason = "safe clicks disabled";
+  } else {
+    clickSkippedReason = clickDecision.reason;
   }
 
   await page.screenshot({ path: afterScreenshot, fullPage: false });
@@ -1064,6 +1094,8 @@ async function performTargetAction(
     focused,
     clickBlockage: blockage,
     clickSkippedReason,
+    clickDecision: clickDecision.decision,
+    clickDecisionReason: clickDecision.reason,
     urlBefore,
     urlAfter: page.url(),
     consoleErrorCount: screenMap.consoleErrors.length,
@@ -1184,6 +1216,8 @@ async function performScrollAction(
       clicked: false,
       focused: false,
       clickSkippedReason: "scroll only",
+      clickDecision: "not_applicable",
+      clickDecisionReason: "scroll action does not perform safe clicks",
       urlBefore,
       urlAfter: page.url(),
       consoleErrorCount: screenMap.consoleErrors.length,
@@ -1311,7 +1345,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       summary
     };
 
-    await writeJson(actionTracePath, { summary, actions });
+    await writeJson(actionTracePath, { summary, capabilityPolicy: config.capabilityPolicy, actions });
     await writeJson(anomaliesPath, numberedFindings);
     await writeText(contactSheetPath, buildContactSheetHtml(result));
 

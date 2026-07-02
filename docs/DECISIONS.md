@@ -25,6 +25,7 @@ This file records product and technical decisions made during implementation.
 | 2026-07-01 | Prepare `v0.1.0` as a GitHub-only release. | A tag and GitHub Release give users a stable `npm exec` target while keeping npm publishing deferred until more external-project feedback is collected. | Accepted |
 | 2026-07-03 | Add interactive audit as a deterministic local extension. | Complex UIs can pass static screenshots while hover panels, overlays, cards, and graph/DAG geometry still fail human perception; Playwright action traces and contact sheets keep the evidence inspectable without requiring LLM or vision APIs. | Accepted |
 | 2026-07-03 | Keep interactive audit click-safe by default. | Real frontend projects may have navigation, destructive controls, forms, and metadata-only graph elements; standalone `explore` should hover/focus/scroll only unless `--click-safe` is passed, and scenario clicks require explicit opt-in. | Accepted |
+| 2026-07-03 | Introduce capability-based safety before agentic planning. | The next agentic layer needs explicit permissions for observe, hover, focus, scroll, safe_click, navigation, typing, form_submit, and destructive_action so planning cannot silently weaken click safety. | Accepted |
 
 ## Pending Decisions
 

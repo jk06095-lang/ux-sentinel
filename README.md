@@ -196,6 +196,7 @@ node dist/cli.js codex-brief .ux-sentinel/reports/<report>.md
 Interactive audit docs:
 
 - [docs/INTERACTIVE_AUDIT.md](docs/INTERACTIVE_AUDIT.md)
+- [docs/SAFETY_POLICY.md](docs/SAFETY_POLICY.md)
 - [docs/prompts/04-interactive-visual-audit.md](docs/prompts/04-interactive-visual-audit.md)
 
 ## Sample Scenario
@@ -397,7 +398,7 @@ Interactive exploration writes:
 - `actions/a001-after.png`
 - `actions/a001-screen-map.json`
 
-Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason. The contact sheet is the primary human review surface for interactive audit.
+Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.html` with a skip reason. The action trace also records the resolved capability policy and each action's safe-click decision. The contact sheet is the primary human review surface for interactive audit.
 
 Scenario reports are written under `.ux-sentinel/reports/`. Codex patch briefs are written under `.ux-sentinel/briefs/`.
 
@@ -446,6 +447,7 @@ Interactive visual anomaly detectors:
 ## Roadmap
 
 - More visual-contract detectors for disabled recovery, confusing hierarchy, and copy/consequence mismatch.
+- Agentic action planning on top of the current capability-based safety model.
 - Richer scenario action steps that remain deterministic and local-first.
 - Optional vision review behind an explicit disabled-by-default flag.
 - Optional provider hooks for teams that want LLM-assisted feedback distillation.

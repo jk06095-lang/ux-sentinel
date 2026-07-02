@@ -53,6 +53,9 @@ describe("interactive exploration helpers", () => {
         <div data-ux-role="dag-node" data-ux-action="open-detail">Node B</div>
         <div data-ux-role="dag-node" data-ux-clickable="true">Node C</div>
         <div data-ux-role="dag-canvas">Canvas</div>
+        <button disabled>Disabled action</button>
+        <form><button>Save profile</button><input type="submit" value="Submit profile" /></form>
+        <input type="button" value="Delete from input" />
         <button>Delete project</button>
       `);
 
@@ -67,6 +70,10 @@ describe("interactive exploration helpers", () => {
       expect(targets.find((target) => target.visibleText === "Node B")?.safeToClick).toBe(true);
       expect(targets.find((target) => target.visibleText === "Node C")?.safeToClick).toBe(true);
       expect(targets.find((target) => target.visibleText === "Canvas")?.safeToClick).toBe(false);
+      expect(targets.find((target) => target.visibleText === "Disabled action")?.skipClickReason).toBe("disabled");
+      expect(targets.find((target) => target.visibleText === "Save profile")?.skipClickReason).toBe("inside form");
+      expect(targets.find((target) => target.visibleText === "Submit profile")?.skipClickReason).toBe("inside form");
+      expect(targets.find((target) => target.visibleText === "Delete from input")?.skipClickReason).toBe("dangerous label");
     } finally {
       await browser.close();
     }
@@ -213,6 +220,7 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("a001-before.png");
     expect(html).toContain("a001-after.png");
     expect(html).toContain("tooltip_partially_offscreen");
+    expect(html).toContain("Safe click decision:");
   });
 
   it("skips stale targets instead of clicking old coordinates", async () => {
@@ -242,10 +250,12 @@ describe("interactive exploration helpers", () => {
       expect(result.actions[1].clicked).toBe(false);
 
       const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
-        actions: Array<{ skipped?: boolean; skipReason?: string }>;
+        actions: Array<{ skipped?: boolean; skipReason?: string; clickDecision?: string; clickDecisionReason?: string }>;
       };
       expect(actionTrace.actions[1].skipped).toBe(true);
       expect(actionTrace.actions[1].skipReason).toContain("no longer exists");
+      expect(actionTrace.actions[1].clickDecision).toBe("skipped");
+      expect(actionTrace.actions[1].clickDecisionReason).toContain("no longer exists");
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("skipped:");
       expect(contactSheet).toContain("no longer exists");
@@ -311,7 +321,8 @@ describe("interactive exploration helpers", () => {
       });
 
       expect(result.actions[0].clicked).toBe(false);
-      expect(result.actions[0].clickSkippedReason).toBe("safe clicks disabled");
+      expect(result.actions[0].clickSkippedReason).toBe("safe_click capability disabled");
+      expect(result.actions[0].clickDecision).toBe("skipped");
       expect(result.actions[0].target.visibleText).toBe("Increment");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
@@ -331,6 +342,27 @@ describe("interactive exploration helpers", () => {
       });
 
       expect(result.actions[0].clicked).toBe(true);
+      expect(result.actions[0].clickDecision).toBe("allowed");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not click dangerous labels even when safe-click capability is enabled", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`<button onclick="document.body.dataset.deleted='true'">Delete project</button>`),
+        traceRoot,
+        commandMode: "explore",
+        clickSafeOverride: true,
+        maxActions: 1,
+        settleMs: 0
+      });
+
+      expect(result.actions[0].clicked).toBe(false);
+      expect(result.actions[0].clickDecision).toBe("skipped");
+      expect(result.actions[0].clickDecisionReason).toBe("dangerous label");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

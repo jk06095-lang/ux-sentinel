@@ -1,5 +1,26 @@
 export type Severity = "P0" | "P1" | "P2" | "P3";
 export type Verdict = "pass" | "fail" | "ambiguous";
+export type InteractiveCommandMode = "explore" | "run";
+export type InteractiveCapability =
+  | "observe"
+  | "hover"
+  | "focus"
+  | "scroll"
+  | "safe_click"
+  | "navigation"
+  | "typing"
+  | "form_submit"
+  | "destructive_action";
+export type InteractiveCapabilities = Record<InteractiveCapability, boolean>;
+export type ClickDecision = "allowed" | "skipped" | "not_applicable";
+
+export interface InteractiveCapabilityPolicy {
+  commandMode: InteractiveCommandMode;
+  capabilities: InteractiveCapabilities;
+  reasons: Record<InteractiveCapability, string>;
+  enabled: InteractiveCapability[];
+  disabled: InteractiveCapability[];
+}
 
 export interface Scenario {
   id: string;
@@ -25,7 +46,11 @@ export interface Scenario {
   };
   interactive_exploration?: {
     enabled?: boolean;
+    mode?: "linear" | "agentic" | string;
     max_actions?: number;
+    max_depth?: number;
+    max_clicks?: number;
+    max_state_changes?: number;
     hover_all_clickables?: boolean;
     click_all_safe_controls?: boolean;
     focus_all_keyboard_targets?: boolean;
@@ -207,6 +232,8 @@ export interface InteractiveActionRecord {
   focused: boolean;
   clickBlockage?: ClickBlockage;
   clickSkippedReason?: string;
+  clickDecision?: ClickDecision;
+  clickDecisionReason?: string;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;

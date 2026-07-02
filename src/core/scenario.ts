@@ -53,7 +53,11 @@ export function parseScenarioText(source: string): Scenario {
     interactive_exploration: parsed.interactive_exploration
       ? {
           enabled: parsed.interactive_exploration.enabled ?? false,
+          mode: parsed.interactive_exploration.mode,
           max_actions: parsed.interactive_exploration.max_actions ?? 40,
+          max_depth: parsed.interactive_exploration.max_depth,
+          max_clicks: parsed.interactive_exploration.max_clicks,
+          max_state_changes: parsed.interactive_exploration.max_state_changes,
           hover_all_clickables: parsed.interactive_exploration.hover_all_clickables ?? true,
           click_all_safe_controls: parsed.interactive_exploration.click_all_safe_controls ?? false,
           focus_all_keyboard_targets: parsed.interactive_exploration.focus_all_keyboard_targets ?? true,
