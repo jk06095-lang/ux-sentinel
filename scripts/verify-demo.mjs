@@ -241,6 +241,12 @@ function assertInteractiveArtifacts({
       if (trace.enabled !== true || !Array.isArray(trace.normal) || trace.normal.length === 0) {
         throw new Error(`${action.animationTrace} did not record enabled normal-motion evidence`);
       }
+      if (
+        trace.normalMotionEnvironment?.mediaEmulation !== "no-preference" ||
+        trace.normalMotionEnvironment?.prefersReducedMotionMatches !== false
+      ) {
+        throw new Error(`${action.animationTrace} did not record expected normal-motion environment evidence`);
+      }
       if (trace.actionId !== action.id) {
         throw new Error(`${action.animationTrace} action id ${trace.actionId ?? "unknown"} did not match ${action.id}`);
       }
@@ -259,6 +265,12 @@ function assertInteractiveArtifacts({
         }
         if (!Array.isArray(trace.reducedMotion)) {
           throw new Error(`${action.animationTrace} did not record reduced-motion target evidence`);
+        }
+        if (
+          trace.reducedMotionEnvironment?.mediaEmulation !== "reduce" ||
+          trace.reducedMotionEnvironment?.prefersReducedMotionMatches !== true
+        ) {
+          throw new Error(`${action.animationTrace} did not record expected reduced-motion environment evidence`);
         }
         if (trace.longTaskApiAvailable === true && !trace.longTasks.some((task) => Number(task.durationMs) >= 50)) {
           throw new Error(`${action.animationTrace} did not record expected long task marker evidence`);

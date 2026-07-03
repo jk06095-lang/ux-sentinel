@@ -24,7 +24,9 @@ actions/a001-animation-trace.json
 The trace records:
 
 - action id
+- normal-motion media environment (`prefers-reduced-motion: no-preference`)
 - normal-motion animation and transition evidence
+- optional reduced-motion media environment (`prefers-reduced-motion: reduce`)
 - optional reduced-motion comparison evidence
 - animated properties
 - duration, delay, and easing
@@ -47,7 +49,7 @@ The current deterministic motion batch includes:
 - `animation_jank_detected`
 - `inconsistent_motion_tokens`
 
-Reduced-motion comparison is optional and only runs when `compare_reduced_motion: true`. It emulates `prefers-reduced-motion: reduce` and compares whether elements that animate normally still report animation or transition evidence under the reduced-motion preference.
+Reduced-motion comparison is optional and only runs when `compare_reduced_motion: true`. Normal evidence is collected under explicit `prefers-reduced-motion: no-preference`; the comparison emulates `prefers-reduced-motion: reduce` and records `reducedMotionEnvironment` so the trace proves the browser media query matched the reduced-motion preference before comparing whether elements that animate normally still report animation or transition evidence.
 Critical-action hiding findings only fire for targets classified as `primary_cta`, and only when the primary action itself has visibility-affecting transition evidence such as `opacity`, `filter`, or `all` lasting more than 150ms.
 Jank and token-consistency findings are deterministic trace heuristics: they use visible animated element counts, risky property evidence, target bbox movement, long-task markers when available, duration spread, and easing spread from `actions/aNNN-animation-trace.json`.
 

@@ -177,6 +177,14 @@ describe("animation audit", () => {
       await stat(result.actions[0].animationTrace!);
 
       const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
+      expect(trace.normalMotionEnvironment).toEqual({
+        mediaEmulation: "no-preference",
+        prefersReducedMotionMatches: false
+      });
+      expect(trace.reducedMotionEnvironment).toEqual({
+        mediaEmulation: "reduce",
+        prefersReducedMotionMatches: true
+      });
       expect(trace.normal.some((item) => item.id === result.actions[0].target.id)).toBe(true);
       expect(trace.riskyProperties).toContain("left");
       expect(trace.reducedMotionStillAnimating).toBe(true);
@@ -327,6 +335,11 @@ describe("animation audit", () => {
       const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
 
       expect(trace.compareReducedMotion).toBe(false);
+      expect(trace.normalMotionEnvironment).toEqual({
+        mediaEmulation: "no-preference",
+        prefersReducedMotionMatches: false
+      });
+      expect(trace.reducedMotionEnvironment).toBeUndefined();
       expect(trace.reducedMotion).toBeUndefined();
       expect(trace.reducedMotionStillAnimating).toBe(false);
       expect(result.findings.map((finding) => finding.detector)).not.toContain("animation_ignores_reduced_motion");

@@ -411,6 +411,11 @@ export interface AnimationLongTaskMarker {
   }>;
 }
 
+export interface AnimationMotionEnvironment {
+  mediaEmulation: "no-preference" | "reduce";
+  prefersReducedMotionMatches: boolean;
+}
+
 export interface AnimationTrace {
   actionId: string;
   enabled: boolean;
@@ -420,7 +425,9 @@ export interface AnimationTrace {
   afterTargetBbox?: ElementBox;
   layoutShiftApproximationPx: number;
   riskyProperties: string[];
+  normalMotionEnvironment?: AnimationMotionEnvironment;
   normal: AnimationTargetTrace[];
+  reducedMotionEnvironment?: AnimationMotionEnvironment;
   reducedMotion?: AnimationTargetTrace[];
   reducedMotionStillAnimating: boolean;
   longTaskApiAvailable?: boolean;

@@ -648,3 +648,11 @@ Extended DOM-derived screen-map evidence for popup controls:
 - `collectScreenMap` now preserves `aria-haspopup` on visible elements.
 - `role=combobox` is treated as a focusable/clickable ARIA interaction role in screen maps.
 - Added browser coverage proving popup metadata is recorded without turning metadata-only elements into click targets.
+
+### Checkpoint: Motion Environment Trace Evidence
+
+Made normal/reduced motion comparison evidence explicit:
+
+- Animation traces now record `normalMotionEnvironment` with `prefers-reduced-motion: no-preference` evidence.
+- Reduced-motion comparisons now record `reducedMotionEnvironment` with `prefers-reduced-motion: reduce` evidence.
+- The demo verifier checks both environment records so `actions/aNNN-animation-trace.json` proves which browser motion preference was active for each trace section.

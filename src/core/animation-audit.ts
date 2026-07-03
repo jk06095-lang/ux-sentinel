@@ -5,6 +5,7 @@ import { withReducedMotion } from "./reduced-motion.js";
 import type {
   AnimationAuditOptions,
   AnimationLongTaskMarker,
+  AnimationMotionEnvironment,
   AnimationTargetTrace,
   AnimationTrace,
   ElementBox,
@@ -332,6 +333,20 @@ function normalReducedStillAnimating(normal: AnimationTargetTrace[], reduced: An
   });
 }
 
+async function collectMotionEnvironment(
+  page: Page,
+  mediaEmulation: AnimationMotionEnvironment["mediaEmulation"]
+): Promise<AnimationMotionEnvironment> {
+  const prefersReducedMotionMatches = await page
+    .evaluate(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    .catch(() => false);
+
+  return {
+    mediaEmulation,
+    prefersReducedMotionMatches
+  };
+}
+
 export function resolveAnimationAuditOptions(scenarioOptions?: {
   enabled?: boolean;
   compare_reduced_motion?: boolean;
@@ -360,10 +375,17 @@ export async function recordAnimationTrace(
     return undefined;
   }
 
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const normalMotionEnvironment = await collectMotionEnvironment(page, "no-preference");
   const normal = addRiskyProperties(await collectAnimationTargets(page, target.id));
-  const reducedMotion = options.compareReducedMotion
-    ? await withReducedMotion(page, async () => addRiskyProperties(await collectAnimationTargets(page, target.id)))
+  const reducedMotionRun = options.compareReducedMotion
+    ? await withReducedMotion(page, async () => ({
+        environment: await collectMotionEnvironment(page, "reduce"),
+        targets: addRiskyProperties(await collectAnimationTargets(page, target.id))
+      }))
     : undefined;
+  const reducedMotion = reducedMotionRun?.targets;
+  const reducedMotionEnvironment = reducedMotionRun?.environment;
   const afterTargetBbox = normal.find((item) => item.id === target.id)?.bbox ?? roundBox(target.bbox);
   const riskyProperties = Array.from(new Set(normal.flatMap((item) => item.riskyProperties)));
   const longTaskCollection = await collectLongTaskMarkers(page, actionId);
@@ -376,7 +398,9 @@ export async function recordAnimationTrace(
     afterTargetBbox,
     layoutShiftApproximationPx: layoutShift(beforeTargetBbox, afterTargetBbox),
     riskyProperties,
+    normalMotionEnvironment,
     normal,
+    reducedMotionEnvironment,
     reducedMotion,
     reducedMotionStillAnimating: reducedMotion ? normalReducedStillAnimating(normal, reducedMotion) : false,
     longTaskApiAvailable: longTaskCollection.apiAvailable,
