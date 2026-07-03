@@ -283,6 +283,7 @@ Verification:
 - `node dist/cli.js explore --url http://127.0.0.1:4173/fixed --max-actions 10 --settle-ms 100 --click-safe` passed and action trace showed `clicked: true`.
 - `node dist/cli.js run demo/scenarios/interactive-dag-clarity.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 10 --settle-ms 100` passed with verdict `pass`.
 - `node dist/cli.js codex-brief .ux-sentinel/reports/interactive-dag-clarity-2026-07-02T16-17-40-263Z.md` generated a brief with interactive evidence paths.
+- `codex-brief` now keeps interactive source reports interactive-aware by adding `--interactive` to the suggested regression command and reminding reviewers to inspect the newly generated contact sheet, action trace, and state graph.
 
 ### Checkpoint: Capability-Based Interactive Safety
 

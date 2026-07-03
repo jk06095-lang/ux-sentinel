@@ -22,6 +22,7 @@ Fix evidence-backed perception mismatches from an agentic interactive audit with
 - Severity: P2
 - Detector: `secondary_action_overpowers_primary`
 - UX rule: `interaction_law.visual_hierarchy`
+- Evidence status: evidence-backed finding
 - Evidence: The secondary command has higher `visualWeight` than the scenario's intended primary CTA.
 - User impact: The visible screen may guide a first-time user toward a lower-priority action.
 - Likely cause: CTA styling and layout do not establish one dominant next action.
@@ -37,6 +38,7 @@ Acceptance criteria:
 - Severity: P2
 - Detector: `same_label_different_actions`
 - UX rule: `nielsen.consistency_standards`
+- Evidence status: evidence-backed finding
 - Evidence: Two controls share visible label `Open` but expose different `data-ux-action` values.
 - User impact: Users cannot predict which action a repeated label will perform.
 - Likely cause: Generic command copy reused across different destinations.
@@ -61,4 +63,4 @@ Acceptance criteria:
 node dist/cli.js run demo/scenarios/professional-agentic-ui-audit.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20 --settle-ms 250
 ```
 
-Review the generated report and `contact-sheet.html` before claiming the UX issue is fixed.
+Review the newly generated report, `contact-sheet.html`, `action-trace.json`, and `state-graph.json` before claiming the UX issue is fixed. Confirm the same action-linked visual anomaly or evidence-backed finding is gone rather than hidden by a scenario change.

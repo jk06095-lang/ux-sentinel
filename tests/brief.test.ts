@@ -45,6 +45,9 @@ describe("codex brief generation", () => {
     expect(brief).toContain("contact-sheet.html");
     expect(brief).toContain("a001-before.png");
     expect(brief).toContain("a001-diff.png");
+    expect(brief).toContain("ux-sentinel run <scenario.yaml> --url <patched-url> --interactive");
+    expect(brief).toContain("inspect the newly generated contact sheet, action trace, and state graph");
+    expect(brief).toContain("same action-linked visual anomaly");
     expect(brief).toContain("Do not change scenarios");
     expect(brief).toContain("Do not rely on aria-label alone");
   });
@@ -82,6 +85,9 @@ Inline source brief.
     expect(brief).toContain("UX-042");
     expect(brief).toContain("before screenshot: .ux-sentinel/traces/test/actions/a001-before.png");
     expect(brief).toContain("after screenshot: .ux-sentinel/traces/test/actions/a001-after.png");
+    expect(brief).toContain("ux-sentinel run <scenario.yaml> --url <patched-url>");
+    expect(brief).not.toContain("ux-sentinel run <scenario.yaml> --url <patched-url> --interactive");
+    expect(brief).not.toContain("inspect the newly generated contact sheet");
     expect(brief).not.toContain("Inline source brief.");
   });
 });

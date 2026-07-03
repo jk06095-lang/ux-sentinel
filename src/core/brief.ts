@@ -38,11 +38,36 @@ function formatEvidenceArtifacts(report: string): string {
   return lines.length ? lines.join("\n") : "- No artifact paths were parsed from the source report.";
 }
 
+function hasInteractiveEvidence(report: string): boolean {
+  return (
+    matchLine(report, "interactive action trace") !== "unknown" ||
+    matchLine(report, "interactive state graph") !== "unknown" ||
+    matchLine(report, "interactive contact sheet") !== "unknown" ||
+    /^## Interactive Exploration\s*$/m.test(report)
+  );
+}
+
+function formatRegressionCommand(interactive: boolean): string {
+  return `ux-sentinel run <scenario.yaml> --url <patched-url>${interactive ? " --interactive" : ""}`;
+}
+
+function formatInteractiveRegressionCheck(interactive: boolean): string {
+  if (!interactive) {
+    return "";
+  }
+
+  return [
+    "",
+    "For interactive source reports, inspect the newly generated contact sheet, action trace, and state graph after the rerun. Confirm the same action-linked visual anomaly, skip reason, pointer trace issue, or motion finding is gone rather than hidden by a scenario change."
+  ].join("\n");
+}
+
 export function buildCodexBriefMarkdown(report: string, sourceReport: string): string {
   const scenario = matchLine(report, "id");
   const url = matchLine(report, "url");
   const result = matchLine(report, "result");
   const findings = extractFindings(report);
+  const interactive = hasInteractiveEvidence(report);
 
   return `# Codex Patch Brief
 
@@ -82,8 +107,9 @@ ${findings.length ? findings.join("\n\n") : "No findings were parsed from the so
 Run:
 
 \`\`\`bash
-ux-sentinel run <scenario.yaml> --url <patched-url>
+${formatRegressionCommand(interactive)}
 \`\`\`
+${formatInteractiveRegressionCheck(interactive)}
 `;
 }
 
