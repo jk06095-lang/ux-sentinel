@@ -141,6 +141,18 @@ demo verification passed
 
 `demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, navigation-stop, navigation-allow, hover-block, and motion-audit scenarios and checks that the local evidence bundle is reconstructable: `trace-manifest.json`, `action-trace.json`, `state-graph.json`, `contact-sheet.html`, per-action screenshots, visual diffs, DOM/a11y diffs, pointer traces, animation traces, click decisions, skip reasons, navigation stop/allow evidence, hover pointer-drift evidence, action-linked finding detectors, and planner metadata must all be present.
 
+## CI And Merge Readiness
+
+The GitHub Actions CI workflow runs on pushes to `main` and on pull requests. It installs Node 20 dependencies, installs Playwright Chromium with system dependencies, then runs the same local gate expected before merging:
+
+```bash
+npm run build
+npm test
+npm run demo:verify
+```
+
+CI does not publish packages, call external services, or require secrets.
+
 Initialize UX Sentinel config in a project:
 
 ```bash

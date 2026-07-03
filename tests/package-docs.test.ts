@@ -64,6 +64,25 @@ describe("package metadata for GitHub npm exec", () => {
       expect(sources).not.toContain(label);
     }
   });
+
+  it("ships a local-first CI workflow for build tests and demo verification", () => {
+    expect(existsSync(path.join(repoRoot, ".github/workflows/ci.yml"))).toBe(true);
+
+    const workflow = readText(".github/workflows/ci.yml");
+    expect(workflow).toContain("push:");
+    expect(workflow).toContain("- main");
+    expect(workflow).toContain("pull_request:");
+    expect(workflow).toContain("actions/checkout@v4");
+    expect(workflow).toContain("actions/setup-node@v4");
+    expect(workflow).toContain("node-version: 20");
+    expect(workflow).toContain("npm ci");
+    expect(workflow).toContain("npx playwright install --with-deps chromium");
+    expect(workflow).toContain("npm run build");
+    expect(workflow).toContain("npm test");
+    expect(workflow).toContain("npm run demo:verify");
+    expect(workflow).not.toContain("NPM_TOKEN");
+    expect(workflow).not.toContain("npm publish");
+  });
 });
 
 describe("Codex integration docs", () => {
@@ -259,6 +278,20 @@ describe("Codex integration docs", () => {
     expect(readText("docs/examples/agentic-audit-report.md")).toContain("contact-sheet.html");
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("trace-manifest.json");
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
+  });
+
+  it("documents click decision compatibility aliases for trace consumers", () => {
+    const docs = [
+      readText("docs/AGENTIC_INTERACTIVE_AUDIT.md"),
+      readText("docs/SAFETY_POLICY.md"),
+      readText("docs/examples/agentic-audit-report.md"),
+      readText("docs/examples/agentic-codex-brief.md")
+    ].join("\n");
+
+    expect(docs).toContain("compatibility aliases for the runtime decision");
+    expect(docs).toContain("compatibility aliases for the planner decision");
+    expect(docs).toContain("Prefer runtimeClickDecision");
+    expect(docs).toContain("Prefer plannerClickDecision");
   });
 
   it("documents intentional fail_conditions empty-array behavior", () => {

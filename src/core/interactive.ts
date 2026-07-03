@@ -316,7 +316,7 @@ function isBenignLabelChange(plannedLabel: string, liveLabel: string): boolean {
   return false;
 }
 
-function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarget): LiveTargetIdentityCheck {
+export function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarget): LiveTargetIdentityCheck {
   const plannedSignature = targetIdentitySignature(planned);
   const liveSignature = targetIdentitySignature(live);
   const structuralPlannedSignature = structuralTargetIdentitySignature(planned);
@@ -324,14 +324,18 @@ function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarg
   const structuralSignatureMatches = structuralPlannedSignature === structuralLiveSignature;
   const plannedLabel = targetLabel(planned) || planned.href || planned.tag;
   const liveLabel = targetLabel(live) || live.href || live.tag;
-  const labelChanged = normalizeText(plannedLabel).toLowerCase() !== normalizeText(liveLabel).toLowerCase();
+  const rawLabelChanged = normalizeText(plannedLabel).toLowerCase() !== normalizeText(liveLabel).toLowerCase();
+  const normalizedLabelChanged = normalizedLabelForIdentity(plannedLabel) !== normalizedLabelForIdentity(liveLabel);
   const common = {
     liveLabel,
     plannedLabel,
     liveSignature,
     plannedSignature,
     structuralSignatureMatches,
-    labelChanged
+    labelChanged: rawLabelChanged,
+    rawLabelChanged,
+    normalizedLabelChanged,
+    benignLabelChange: false
   };
 
   if (!structuralSignatureMatches) {
@@ -352,7 +356,7 @@ function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarg
     };
   }
 
-  if (labelChanged && !isBenignLabelChange(plannedLabel, liveLabel)) {
+  if (rawLabelChanged && !isBenignLabelChange(plannedLabel, liveLabel)) {
     return {
       ...common,
       matches: false,
@@ -364,8 +368,9 @@ function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarg
   return {
     ...common,
     matches: true,
-    status: labelChanged ? "benign_label_change" : "match",
-    reason: labelChanged ? `benign label change: planned "${plannedLabel}", live "${liveLabel}"` : undefined
+    status: rawLabelChanged ? "benign_label_change" : "match",
+    benignLabelChange: rawLabelChanged,
+    reason: rawLabelChanged ? `benign label change: planned "${plannedLabel}", live "${liveLabel}"` : undefined
   };
 }
 
@@ -2040,6 +2045,30 @@ function animationTraceSummaryText(summary: AnimationTraceSummary | undefined): 
   ].join(", ");
 }
 
+function identityStatusHumanText(identity: LiveTargetIdentityCheck): string {
+  switch (identity.status) {
+    case "match":
+      return "Target identity: match";
+    case "benign_label_change":
+      return "Target identity: benign label change; raw label changed but semantic action remained stable";
+    case "dangerous_label_change":
+      return "Target identity: dangerous label change; runtime skipped before interaction";
+    case "identity_mismatch":
+      return "Target identity: mismatch; structural or semantic action changed";
+  }
+}
+
+function identityStatusDetailsHtml(action: InteractiveActionRecord): string {
+  const status = action.targetIdentity?.status ?? "not_recorded";
+  const plannedLabel = action.targetIdentity?.plannedLabel ?? "not recorded";
+  const liveLabel = action.targetIdentity?.liveLabel ?? "not recorded";
+  const checkedBeforeScroll = action.targetIdentityCheckedBeforeScroll === true;
+  const skippedBeforeScroll = action.targetIdentityMismatchBeforeScroll === true;
+  const summary = action.targetIdentity ? identityStatusHumanText(action.targetIdentity) : "Target identity: not recorded";
+
+  return `<div class="identity-details"><p><strong>Target identity:</strong> ${escapeHtml(summary)}</p><ul><li>Status: ${escapeHtml(status)}</li><li>Planned label: ${escapeHtml(plannedLabel)}</li><li>Live label: ${escapeHtml(liveLabel)}</li><li>Checked before scroll: ${escapeHtml(String(checkedBeforeScroll))}</li><li>Skipped before scroll: ${escapeHtml(String(skippedBeforeScroll))}</li></ul></div>`;
+}
+
 function buildClickCandidateDecisions(
   targets: InteractiveTarget[],
   plannedActions: PlannedInteractiveAction[],
@@ -2292,6 +2321,8 @@ export function buildContactSheetHtml(
         return `<div class="state-graph-scroll"><svg class="state-graph-map" role="img" aria-label="State graph overview" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><marker id="state-arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs>${edges}${nodes}</svg></div>`;
       })()
     : "<p>No state graph map was captured.</p>";
+  const actionsById = new Map(result.actions.map((action) => [action.id, action]));
+  const actionsByTargetId = new Map(result.actions.map((action) => [action.target.id, action]));
   const safetyLog = result.actions.length
     ? result.actions
         .map((action) => {
@@ -2303,11 +2334,7 @@ export function buildContactSheetHtml(
             : action.clickDecision
               ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
               : "not recorded";
-          const identity = action.targetIdentity
-            ? `${action.targetIdentity.status}; ${action.targetIdentity.matches ? "matched" : "mismatch"}; planned=${action.targetIdentity.plannedLabel}; live=${action.targetIdentity.liveLabel}; checkedBeforeScroll=${action.targetIdentityCheckedBeforeScroll === true}; mismatchBeforeScroll=${action.targetIdentityMismatchBeforeScroll === true}`
-            : action.targetIdentityCheckedBeforeScroll
-              ? `checked before scroll; mismatchBeforeScroll=${action.targetIdentityMismatchBeforeScroll === true}`
-              : "not checked or matched";
+          const identity = action.targetIdentity ? identityStatusHumanText(action.targetIdentity) : "Target identity: not checked or matched";
           const beforeScrollSkip =
             action.targetIdentityMismatchBeforeScroll === true ? "; skipped before scroll due to identity mismatch" : "";
           const skipped = action.skipped ? `; skipped: ${action.skipReason ?? "unknown reason"}` : "";
@@ -2320,7 +2347,7 @@ export function buildContactSheetHtml(
           const evidenceSummary = action.evidenceSummary
             ? `${action.evidenceSummary.completeForReview ? "complete" : "incomplete"}; required=${action.evidenceSummary.required.join(",")}; missing=${action.evidenceSummary.missing.length ? action.evidenceSummary.missing.join(",") : "none"}`
             : "not summarized";
-          return `<li><strong>${escapeHtml(action.id)}</strong> Planner click decision: ${escapeHtml(plannerDecision)}; Runtime click decision: ${escapeHtml(runtimeDecision)}${escapeHtml(skipped)}${escapeHtml(beforeScrollSkip)}<br /><span>Target identity status: ${escapeHtml(identity)}</span><br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
+          return `<li><strong>${escapeHtml(action.id)}</strong> Planner click decision: ${escapeHtml(plannerDecision)}; Runtime click decision: ${escapeHtml(runtimeDecision)}${escapeHtml(skipped)}${escapeHtml(beforeScrollSkip)}<br /><span>${escapeHtml(identity)}</span>${identityStatusDetailsHtml(action)}<br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
@@ -2344,22 +2371,23 @@ export function buildContactSheetHtml(
               candidate.originalIdentitySignature !== candidate.latestIdentitySignature);
           const latestDangerous =
             latestChanged && !isDangerousClickLabel(originalLabel) && Boolean(latestLabel) && isDangerousClickLabel(latestLabel);
+          const relatedAction = (candidate.runtimeActionId ? actionsById.get(candidate.runtimeActionId) : undefined) ?? actionsByTargetId.get(candidate.id);
+          const identityStatus = relatedAction?.targetIdentity?.status;
           const planned = candidate.planned ? `planned ${candidate.plannedActionId ?? ""}` : "not planned";
           const plannerDecision = candidate.plannerClickDecision ?? candidate.clickDecision;
           const plannerReason = candidate.plannerClickDecisionReason ?? candidate.clickDecisionReason;
           const runtime = candidate.runtimeClickDecision
             ? `; runtime ${candidate.runtimeClickDecision}: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
             : "; runtime not attempted";
-          const latestText = latestChanged ? `<br /><span>Latest candidate: ${escapeHtml(latestLabel)}</span>` : "";
+          const latestTargetText = latestChanged ? latestLabel : "unchanged";
+          const interpretation =
+            identityStatus === "benign_label_change"
+              ? "Label changed, but semantic action remained stable."
+              : candidate.runtimeClickDecision === "skipped" && latestChanged
+                ? "Planner allowed the original safe target; Runtime refused the changed live target."
+                : "Planner and runtime decisions refer to the same original target.";
           const dangerText = latestDangerous ? `<br /><span>Latest live label became dangerous.</span>` : "";
-          const plannerPhrase =
-            plannerDecision === "allowed" ? `Planner allowed original target: ${originalLabel}` : `Planner ${plannerDecision} original target: ${originalLabel}`;
-          const runtimePhrase = candidate.runtimeClickDecision
-            ? candidate.runtimeClickDecision === "skipped"
-              ? `Runtime skipped live target: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
-              : `Runtime ${candidate.runtimeClickDecision} live target: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
-            : "Runtime not attempted";
-          return `<li><strong>${escapeHtml(candidate.id)}</strong> planner ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}${escapeHtml(runtime)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})<br /><span>Original candidate: ${escapeHtml(originalLabel)}</span>${latestText}<br /><span>Planner click decision: ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}</span><br /><span>Runtime click decision: ${escapeHtml(candidate.runtimeClickDecision ?? "not_attempted")}${candidate.runtimeClickDecision ? `: ${escapeHtml(candidate.runtimeClickDecisionReason ?? "no reason recorded")}` : ""}</span><br /><span>${escapeHtml(plannerPhrase)}</span><br /><span>${escapeHtml(runtimePhrase)}</span>${dangerText}</li>`;
+          return `<li><strong>Candidate ${escapeHtml(candidate.id)}</strong> planner ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}${escapeHtml(runtime)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})<br /><span>Original target: ${escapeHtml(originalLabel)}</span><br /><span>Latest live target: ${escapeHtml(latestTargetText)}</span><br /><span>Identity status: ${escapeHtml(identityStatus ?? "not_recorded")}</span><br /><span>Planner decision: ${escapeHtml(plannerDecision)}</span><br /><span>Runtime decision: ${escapeHtml(candidate.runtimeClickDecision ?? "not_attempted")}</span><br /><span>Runtime reason: ${escapeHtml(candidate.runtimeClickDecisionReason ?? "not attempted")}</span><br /><span>Interpretation: ${escapeHtml(interpretation)}</span>${dangerText}</li>`;
         })
         .join("\n")
     : "<li>No click candidates were captured.</li>";
@@ -2458,11 +2486,7 @@ export function buildContactSheetHtml(
       const runtimeClickDecision = action.runtimeClickDecision
         ? `${action.runtimeClickDecision}: ${action.runtimeClickDecisionReason ?? "no reason recorded"}`
         : clickDecision;
-      const targetIdentity = action.targetIdentity
-        ? `${action.targetIdentity.status}; ${action.targetIdentity.matches ? "matched" : "mismatch"}; planned label "${action.targetIdentity.plannedLabel}"; live label "${action.targetIdentity.liveLabel}"; checked before scroll=${action.targetIdentityCheckedBeforeScroll === true}; mismatch before scroll=${action.targetIdentityMismatchBeforeScroll === true}${action.targetIdentityMismatchBeforeScroll === true ? "; skipped before scroll due to identity mismatch" : ""}`
-        : action.targetIdentityCheckedBeforeScroll
-          ? `checked before scroll; mismatch before scroll=${action.targetIdentityMismatchBeforeScroll === true}`
-          : "not recorded";
+      const targetIdentityDetails = identityStatusDetailsHtml(action);
       const planned = action.plannedReason
         ? `${action.targetCategory ?? "unknown"} / ${action.riskLevel ?? "unknown"} risk: ${action.plannedReason}`
         : "not recorded";
@@ -2499,7 +2523,7 @@ export function buildContactSheetHtml(
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
   <p><strong>Planner click decision:</strong> ${escapeHtml(plannerClickDecision)}</p>
   <p><strong>Runtime click decision:</strong> ${escapeHtml(runtimeClickDecision)}</p>
-  <p><strong>Target identity status:</strong> ${escapeHtml(targetIdentity)}</p>
+  ${targetIdentityDetails}
   <p><strong>Pointer trace:</strong> ${pointerTraceLink}</p>
   <p><strong>Pointer metadata:</strong> ${escapeHtml(pointerTraceSummary)}</p>
   <p><strong>Animation trace:</strong> ${animationTraceLink}</p>

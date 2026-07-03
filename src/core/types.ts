@@ -286,6 +286,9 @@ export interface LiveTargetIdentityCheck {
   plannedSignature: string;
   structuralSignatureMatches: boolean;
   labelChanged: boolean;
+  rawLabelChanged: boolean;
+  normalizedLabelChanged: boolean;
+  benignLabelChange: boolean;
 }
 
 export interface InteractiveClickCandidateDecision {

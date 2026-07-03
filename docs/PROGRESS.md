@@ -687,3 +687,12 @@ Made per-action evidence completeness machine-readable:
 - `trace-manifest.json` indexes the same summary so a verifier can audit skipped and performed actions without opening every artifact first.
 - `contact-sheet.html` safety log shows evidence completeness beside safe-click and skip decisions.
 - `npm run demo:verify` now fails if any action lacks complete required evidence.
+
+### Checkpoint: CI Gate For Agentic Audit Evidence
+
+Added a minimal GitHub Actions CI workflow for future pushes and pull requests:
+
+- `.github/workflows/ci.yml` runs on push to `main` and on pull requests.
+- The workflow installs Node 20 dependencies, installs Playwright Chromium with system dependencies, and runs `npm run build`, `npm test`, and `npm run demo:verify`.
+- The gate stays local-first: it does not publish packages, call external services, or require secrets.
+- Merge readiness means the same local commands pass before relying on CI.

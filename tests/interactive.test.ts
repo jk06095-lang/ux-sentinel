@@ -8,15 +8,19 @@ import {
   clickBlockageFromHitTest,
   collectScrollableTargets,
   collectVisibleInteractiveTargets,
+  compareTargetIdentity,
   detectVisualAnomalies,
   hasClippedTextMetric,
   interactiveExplorePage,
   intersectionRatio,
   isDangerousClickLabel,
-  resolveInteractiveConfig
+  normalizedLabelForIdentity,
+  resolveInteractiveConfig,
+  structuralTargetIdentitySignature,
+  targetIdentitySignature
 } from "../src/core/interactive.js";
 import { collectScreenMap } from "../src/core/observe-page.js";
-import type { ClickBlockage, InteractiveExplorationResult, Scenario } from "../src/core/types.js";
+import type { ClickBlockage, InteractiveExplorationResult, InteractiveTarget, Scenario } from "../src/core/types.js";
 
 function emptyAnalysis() {
   return {
@@ -42,6 +46,27 @@ function dataUrl(html: string): string {
 
 async function tempTraceRoot(): Promise<string> {
   return mkdtemp(path.join(os.tmpdir(), "ux-sentinel-interactive-test-"));
+}
+
+function identityTarget(overrides: Partial<InteractiveTarget> = {}): InteractiveTarget {
+  return {
+    id: "t0001",
+    tag: "button",
+    role: null,
+    dataUxRole: null,
+    dataUxAction: "open-details",
+    dataUxClickable: true,
+    visibleText: "Open details",
+    ariaLabel: null,
+    title: null,
+    bbox: { x: 0, y: 0, width: 120, height: 40 },
+    center: { x: 60, y: 20 },
+    disabled: false,
+    focusable: true,
+    href: null,
+    safeToClick: true,
+    ...overrides
+  };
 }
 
 describe("interactive exploration helpers", () => {
@@ -239,6 +264,89 @@ describe("interactive exploration helpers", () => {
     for (const label of oldMojibakeLabels) {
       expect(isDangerousClickLabel(label)).toBe(false);
     }
+  });
+
+  it("normalizes identity labels without dropping Korean text", () => {
+    const koreanProject = String.fromCodePoint(0xd504, 0xb85c, 0xc81d, 0xd2b8);
+
+    expect(normalizedLabelForIdentity("Notifications 2")).toBe("notifications");
+    expect(normalizedLabelForIdentity("Open details!")).toBe("open details");
+    expect(normalizedLabelForIdentity("  Open   details  ")).toBe("open details");
+    expect(normalizedLabelForIdentity(koreanProject)).toBe(koreanProject);
+  });
+
+  it("keeps structural target identity separate from label identity", () => {
+    const planned = identityTarget({
+      role: "button",
+      href: "https://example.test/details",
+      dataUxAction: "open-details"
+    });
+
+    expect(structuralTargetIdentitySignature(planned)).toBe(
+      structuralTargetIdentitySignature({ ...planned, visibleText: "Open details expanded" })
+    );
+    expect(structuralTargetIdentitySignature(planned)).not.toBe(
+      structuralTargetIdentitySignature({ ...planned, href: "https://example.test/billing" })
+    );
+    expect(structuralTargetIdentitySignature(planned)).not.toBe(
+      structuralTargetIdentitySignature({ ...planned, dataUxAction: "delete-project" })
+    );
+    expect(structuralTargetIdentitySignature(planned)).not.toBe(structuralTargetIdentitySignature({ ...planned, role: "link" }));
+    expect(targetIdentitySignature(planned)).not.toBe(targetIdentitySignature({ ...planned, visibleText: "Open details expanded" }));
+  });
+
+  it("classifies target identity with explicit raw normalized and benign label fields", () => {
+    expect(compareTargetIdentity(identityTarget(), identityTarget())).toMatchObject({
+      matches: true,
+      status: "match",
+      rawLabelChanged: false,
+      normalizedLabelChanged: false,
+      benignLabelChange: false,
+      labelChanged: false
+    });
+
+    expect(
+      compareTargetIdentity(
+        identityTarget({ visibleText: "Notifications", dataUxAction: "open-notifications" }),
+        identityTarget({ visibleText: "Notifications 2", dataUxAction: "open-notifications" })
+      )
+    ).toMatchObject({
+      matches: true,
+      status: "benign_label_change",
+      rawLabelChanged: true,
+      normalizedLabelChanged: false,
+      benignLabelChange: true,
+      labelChanged: true
+    });
+
+    expect(compareTargetIdentity(identityTarget(), identityTarget({ visibleText: "Open details expanded" }))).toMatchObject({
+      matches: true,
+      status: "benign_label_change",
+      rawLabelChanged: true,
+      normalizedLabelChanged: true,
+      benignLabelChange: true
+    });
+
+    expect(compareTargetIdentity(identityTarget(), identityTarget({ visibleText: "Delete project" }))).toMatchObject({
+      matches: false,
+      status: "dangerous_label_change",
+      rawLabelChanged: true,
+      normalizedLabelChanged: true,
+      benignLabelChange: false,
+      structuralSignatureMatches: true
+    });
+
+    expect(compareTargetIdentity(identityTarget(), identityTarget({ href: "https://example.test/billing" }))).toMatchObject({
+      matches: false,
+      status: "identity_mismatch",
+      structuralSignatureMatches: false
+    });
+
+    expect(compareTargetIdentity(identityTarget(), identityTarget({ dataUxAction: "delete-project" }))).toMatchObject({
+      matches: false,
+      status: "identity_mismatch",
+      structuralSignatureMatches: false
+    });
   });
 
   it("defaults explore and scenario interactive runs to no safe clicks", () => {
@@ -1278,9 +1386,9 @@ describe("interactive exploration helpers", () => {
       );
 
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
-      expect(contactSheet).toContain("Target identity status: identity_mismatch");
-      expect(contactSheet).toContain("planned label &quot;Open details&quot;");
-      expect(contactSheet).toContain("live label &quot;Delete project&quot;");
+      expect(contactSheet).toContain("Status: identity_mismatch");
+      expect(contactSheet).toContain("Planned label: Open details");
+      expect(contactSheet).toContain("Live label: Delete project");
       expect(contactSheet).toContain("Runtime click decision: skipped: pre-scroll identity check failed: target identity mismatch");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
@@ -1392,10 +1500,12 @@ describe("interactive exploration helpers", () => {
       });
 
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
-      expect(contactSheet).toContain("Original candidate: Open details");
-      expect(contactSheet).toContain("Latest candidate: Delete project");
-      expect(contactSheet).toContain("Planner click decision: allowed");
-      expect(contactSheet).toContain("Runtime click decision: skipped");
+      expect(contactSheet).toContain("Original target: Open details");
+      expect(contactSheet).toContain("Latest live target: Delete project");
+      expect(contactSheet).toContain("Planner decision: allowed");
+      expect(contactSheet).toContain("Runtime decision: skipped");
+      expect(contactSheet).toContain("Planner allowed the original safe target");
+      expect(contactSheet).toContain("Runtime refused the changed live target");
       expect(contactSheet).toContain("Latest live label became dangerous");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
@@ -1443,11 +1553,18 @@ describe("interactive exploration helpers", () => {
           matches: true,
           status: "benign_label_change",
           plannedLabel: "Notifications",
-          liveLabel: "Notifications 2"
+          liveLabel: "Notifications 2",
+          rawLabelChanged: true,
+          normalizedLabelChanged: false,
+          benignLabelChange: true
         },
         targetIdentityCheckedBeforeScroll: true,
         targetIdentityMismatchBeforeScroll: false
       });
+
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("Identity status: benign_label_change");
+      expect(contactSheet).toContain("semantic action remained stable");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
@@ -1487,13 +1604,20 @@ describe("interactive exploration helpers", () => {
           status: "dangerous_label_change",
           plannedLabel: "Open details",
           liveLabel: "Delete project",
-          structuralSignatureMatches: true
+          structuralSignatureMatches: true,
+          rawLabelChanged: true,
+          normalizedLabelChanged: true,
+          benignLabelChange: false
         },
         targetIdentityCheckedBeforeScroll: true,
         targetIdentityMismatchBeforeScroll: true
       });
       expect(result.actions[1].runtimeClickDecisionReason).toContain("target label became dangerous");
       expect(result.actions[1].pointerTrace).toBeUndefined();
+
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("Skipped before scroll: true");
+      expect(contactSheet).toContain("dangerous label change");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
@@ -1641,6 +1765,17 @@ describe("interactive exploration helpers", () => {
       });
       expect(result.actions[1].pointerTrace).toBeUndefined();
       expect(result.actions[1].skipReason).toContain("pre-scroll identity check failed");
+      expect(result.actions[1].evidenceSummary).toMatchObject({
+        pointerTrace: false,
+        required: ["beforeScreenshot", "afterScreenshot", "visualDiff", "screenMap", "domDiff", "accessibilityDiff"],
+        missing: [],
+        completeForReview: true
+      });
+      expect(result.actions[0].evidenceSummary).toMatchObject({
+        pointerTrace: true,
+        completeForReview: true
+      });
+      expect(result.actions[0].evidenceSummary?.required).toContain("pointerTrace");
 
       const domDiff = JSON.parse(await readFile(result.actions[1].domDiff!, "utf8")) as {
         visibleTextAdded: string[];
