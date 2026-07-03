@@ -572,3 +572,11 @@ Tightened the local demo verifier so generated artifacts prove more of the agent
 - `npm run demo:verify` now fails if a `state-graph.json` edge points at a target id that does not match the corresponding `action-trace.json` action target.
 - The motion audit demo gate now requires opt-in reduced-motion comparison evidence, including `compareReducedMotion: true` and a `reducedMotion` target trace array.
 - Added package-doc coverage so these verifier checks remain part of the documented local gate.
+
+### Checkpoint: Data UX Actionability Screen Map
+
+Aligned static screen-map actionability evidence with the hardened interactive target policy:
+
+- `data-ux-role` remains metadata-only in observed screen maps.
+- `data-ux-clickable="true"` and `data-ux-action` now opt non-native elements into `clickable` screen-map evidence, matching the interactive safe-click filtering model.
+- Added a browser regression proving metadata-only graph nodes stay non-clickable while explicit data-UX action opt-ins are not reported as fake clickable controls.

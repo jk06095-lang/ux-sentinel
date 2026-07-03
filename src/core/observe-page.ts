@@ -82,11 +82,13 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           style.display !== "none" &&
           style.visibility !== "hidden" &&
           Number(style.opacity || "1") > 0;
+        const explicitDataUxAction = dataUxClickable || Boolean(dataUxAction);
         const clickable =
           interactiveTags.has(tag) ||
           (role ? interactiveRoles.has(role) : false) ||
           typeof element.onclick === "function" ||
-          element.hasAttribute("tabindex");
+          element.hasAttribute("tabindex") ||
+          explicitDataUxAction;
         const disabled =
           element.hasAttribute("disabled") ||
           element.getAttribute("aria-disabled") === "true" ||
