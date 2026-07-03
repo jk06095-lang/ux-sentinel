@@ -111,9 +111,11 @@ function assertInteractiveArtifacts({
   const actionTracePath = path.join(tracePath, "action-trace.json");
   const stateGraphPath = path.join(tracePath, "state-graph.json");
   const anomaliesPath = path.join(tracePath, "anomalies.json");
+  const traceManifestPath = path.join(tracePath, "trace-manifest.json");
   const actionTrace = readJson(actionTracePath, "interactive action trace");
   const stateGraph = readJson(stateGraphPath, "interactive state graph");
-  readJson(anomaliesPath, "interactive anomalies");
+  const anomalies = readJson(anomaliesPath, "interactive anomalies");
+  const traceManifest = readJson(traceManifestPath, "interactive trace manifest");
 
   if (!actionTrace.capabilityPolicy?.capabilities) {
     throw new Error(`${actionTracePath} is missing capability policy evidence`);
@@ -131,6 +133,30 @@ function assertInteractiveArtifacts({
   }
   if (!Array.isArray(actionTrace.actions) || actionTrace.actions.length === 0) {
     throw new Error(`${actionTracePath} did not record interactive actions`);
+  }
+  if (traceManifest.version !== 1) {
+    throw new Error(`${traceManifestPath} did not record trace manifest version 1`);
+  }
+  if (traceManifest.artifacts?.actionTrace !== "action-trace.json") {
+    throw new Error(`${traceManifestPath} did not link action-trace.json`);
+  }
+  if (traceManifest.artifacts?.stateGraph !== "state-graph.json") {
+    throw new Error(`${traceManifestPath} did not link state-graph.json`);
+  }
+  if (traceManifest.artifacts?.contactSheet !== "contact-sheet.html") {
+    throw new Error(`${traceManifestPath} did not link contact-sheet.html`);
+  }
+  if (traceManifest.artifacts?.traceManifest !== "trace-manifest.json") {
+    throw new Error(`${traceManifestPath} did not self-link trace-manifest.json`);
+  }
+  if (traceManifest.counts?.actions !== actionTrace.actions.length) {
+    throw new Error(`${traceManifestPath} action count does not match action trace`);
+  }
+  if (traceManifest.counts?.states !== stateGraph.nodes.length || traceManifest.counts?.edges !== stateGraph.edges.length) {
+    throw new Error(`${traceManifestPath} state graph counts do not match state-graph.json`);
+  }
+  if (traceManifest.counts?.findings !== anomalies.length) {
+    throw new Error(`${traceManifestPath} finding count does not match anomalies.json`);
   }
   if (expectedPlannerMode && actionTrace.planner?.mode !== expectedPlannerMode) {
     throw new Error(`${actionTracePath} expected planner mode ${expectedPlannerMode}, got ${actionTrace.planner?.mode ?? "unknown"}`);

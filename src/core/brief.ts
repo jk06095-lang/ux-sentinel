@@ -32,7 +32,8 @@ function formatEvidenceArtifacts(report: string): string {
     artifactLine("interactive action trace", matchLine(report, "interactive action trace")),
     artifactLine("interactive state graph", matchLine(report, "interactive state graph")),
     artifactLine("interactive contact sheet", matchLine(report, "interactive contact sheet")),
-    artifactLine("interactive anomalies", matchLine(report, "interactive anomalies"))
+    artifactLine("interactive anomalies", matchLine(report, "interactive anomalies")),
+    artifactLine("interactive trace manifest", matchLine(report, "interactive trace manifest"))
   ].filter(Boolean);
 
   return lines.length ? lines.join("\n") : "- No artifact paths were parsed from the source report.";
@@ -43,6 +44,7 @@ function hasInteractiveEvidence(report: string): boolean {
     matchLine(report, "interactive action trace") !== "unknown" ||
     matchLine(report, "interactive state graph") !== "unknown" ||
     matchLine(report, "interactive contact sheet") !== "unknown" ||
+    matchLine(report, "interactive trace manifest") !== "unknown" ||
     /^## Interactive Exploration\s*$/m.test(report)
   );
 }

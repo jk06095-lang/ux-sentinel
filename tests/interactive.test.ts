@@ -305,9 +305,24 @@ describe("interactive exploration helpers", () => {
       });
 
       const finding = result.findings.find((item) => item.detector === "sticky_layer_hides_content");
+      const manifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
+        artifacts: Record<string, string>;
+        counts: { actions: number; findings: number; states: number; edges: number };
+        actions: Array<{ id: string; evidence: Record<string, string> }>;
+      };
 
       expect(finding?.evidence).toContain("Create first project");
       expect(finding?.ruleIds).toContain("gestalt.common_region");
+      expect(manifest.artifacts.actionTrace).toBe("action-trace.json");
+      expect(manifest.artifacts.stateGraph).toBe("state-graph.json");
+      expect(manifest.artifacts.contactSheet).toBe("contact-sheet.html");
+      expect(manifest.artifacts.traceManifest).toBe("trace-manifest.json");
+      expect(manifest.counts.actions).toBe(result.actions.length);
+      expect(manifest.counts.findings).toBe(result.findings.length);
+      expect(manifest.counts.states).toBeGreaterThanOrEqual(1);
+      expect(manifest.counts.edges).toBe(result.actions.length);
+      expect(manifest.actions[0]?.evidence.beforeScreenshot).toBe("actions/a001-before.png");
+      expect(manifest.actions[0]?.evidence.screenMap).toBe("actions/a001-screen-map.json");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
@@ -432,7 +447,8 @@ describe("interactive exploration helpers", () => {
         actionTrace: "trace/action-trace.json",
         stateGraph: "trace/state-graph.json",
         anomalies: "trace/anomalies.json",
-        contactSheet: "trace/contact-sheet.html"
+        contactSheet: "trace/contact-sheet.html",
+        traceManifest: "trace/trace-manifest.json"
       }
     };
 
@@ -472,6 +488,7 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("safe_click capability enabled and target passed planner budget checks");
     expect(html).toContain('Action trace: <a href="action-trace.json">action-trace.json</a>');
     expect(html).toContain('state graph: <a href="state-graph.json">state-graph.json</a>');
+    expect(html).toContain('trace manifest: <a href="trace-manifest.json">trace-manifest.json</a>');
     expect(html).toContain('before=<a href="actions/a001-before.png">actions/a001-before.png</a>');
     expect(html).toContain('after=<a href="actions/a001-after.png">actions/a001-after.png</a>');
     expect(html).toContain('diff=<a href="actions/a001-diff.png">actions/a001-diff.png</a>');
@@ -590,7 +607,8 @@ describe("interactive exploration helpers", () => {
         actionTrace: "trace/action-trace.json",
         stateGraph: "trace/state-graph.json",
         anomalies: "trace/anomalies.json",
-        contactSheet: "trace/contact-sheet.html"
+        contactSheet: "trace/contact-sheet.html",
+        traceManifest: "trace/trace-manifest.json"
       }
     };
 

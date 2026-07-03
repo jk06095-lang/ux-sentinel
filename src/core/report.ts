@@ -69,7 +69,8 @@ ${formatUxRuleProfile(scenario)}
 ${interactive ? `- interactive action trace: ${displayPath(interactive.artifacts.actionTrace)}
 - interactive state graph: ${displayPath(interactive.artifacts.stateGraph)}
 - interactive contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
-- interactive anomalies: ${displayPath(interactive.artifacts.anomalies)}` : ""}
+- interactive anomalies: ${displayPath(interactive.artifacts.anomalies)}
+- interactive trace manifest: ${displayPath(interactive.artifacts.traceManifest)}` : ""}
 
 ${interactive ? formatInteractiveSection(interactive) : ""}
 
@@ -94,6 +95,7 @@ function formatInteractiveSection(interactive: NonNullable<RunResult["observatio
 - baseline screenshot: ${displayPath(interactive.artifacts.baseline)}
 - state graph: ${displayPath(interactive.artifacts.stateGraph)}
 - contact sheet: ${displayPath(interactive.artifacts.contactSheet)}
+- trace manifest: ${displayPath(interactive.artifacts.traceManifest)}
 ${notes}
 `;
 }

@@ -10,6 +10,7 @@ Fix evidence-backed perception mismatches from an agentic interactive audit with
 - contact sheet: `.ux-sentinel/traces/<timestamp>/contact-sheet.html`
 - action trace: `.ux-sentinel/traces/<timestamp>/action-trace.json`
 - state graph: `.ux-sentinel/traces/<timestamp>/state-graph.json`
+- trace manifest: `.ux-sentinel/traces/<timestamp>/trace-manifest.json`
 - screen map: `.ux-sentinel/traces/<timestamp>/screen-map.json`
 - visual diff: `.ux-sentinel/traces/<timestamp>/actions/a001-diff.png`
 - DOM diff: `.ux-sentinel/traces/<timestamp>/actions/a001-dom-diff.json`
@@ -63,4 +64,4 @@ Acceptance criteria:
 node dist/cli.js run demo/scenarios/professional-agentic-ui-audit.yaml --url http://127.0.0.1:4173/fixed --interactive --max-actions 20 --settle-ms 250
 ```
 
-Review the newly generated report, `contact-sheet.html`, `action-trace.json`, and `state-graph.json` before claiming the UX issue is fixed. Confirm the same action-linked visual anomaly or evidence-backed finding is gone rather than hidden by a scenario change.
+Review the newly generated report, `contact-sheet.html`, `trace-manifest.json`, `action-trace.json`, and `state-graph.json` before claiming the UX issue is fixed. Confirm the same action-linked visual anomaly or evidence-backed finding is gone rather than hidden by a scenario change.

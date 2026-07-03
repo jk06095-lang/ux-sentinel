@@ -24,6 +24,7 @@ import {
   collectStateSnapshot,
   diffAccessibilitySnapshots,
   diffStateSnapshots,
+  type StateGraph,
   type StateGraphEdge,
   type StateGraphFindingSummary,
   type StateGraphNode,
@@ -1642,6 +1643,83 @@ function attachFindingsToActionTrace(
   }));
 }
 
+function relativeEvidencePaths(traceDir: string, evidencePaths: Record<string, string> | undefined): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(evidencePaths ?? {}).map(([label, filePath]) => [label, relativeArtifact(traceDir, filePath)])
+  );
+}
+
+function buildTraceManifest(
+  result: InteractiveExplorationResult,
+  actionTrace: {
+    capabilityPolicy: InteractiveCapabilityPolicy;
+    planner: Record<string, unknown>;
+  },
+  stateGraph: StateGraph
+) {
+  const traceDir = result.artifacts.traceDir;
+  return {
+    version: 1,
+    summary: result.summary,
+    artifacts: {
+      baseline: relativeArtifact(traceDir, result.artifacts.baseline),
+      screenMap: relativeArtifact(traceDir, result.artifacts.screenMap),
+      overlay: relativeArtifact(traceDir, result.artifacts.overlay),
+      accessibility: relativeArtifact(traceDir, result.artifacts.accessibility),
+      actionTrace: relativeArtifact(traceDir, result.artifacts.actionTrace),
+      stateGraph: relativeArtifact(traceDir, result.artifacts.stateGraph),
+      anomalies: relativeArtifact(traceDir, result.artifacts.anomalies),
+      contactSheet: relativeArtifact(traceDir, result.artifacts.contactSheet),
+      traceManifest: relativeArtifact(traceDir, result.artifacts.traceManifest),
+      actionsDir: relativeArtifact(traceDir, result.artifacts.actionsDir)
+    },
+    capabilityPolicy: actionTrace.capabilityPolicy,
+    planner: actionTrace.planner,
+    counts: {
+      actions: result.actions.length,
+      clickCandidates: result.clickCandidates.length,
+      findings: result.findings.length,
+      states: stateGraph.nodes.length,
+      edges: stateGraph.edges.length
+    },
+    actions: result.actions.map((action) => ({
+      id: action.id,
+      sequence: action.sequence,
+      actionType: action.actionType,
+      targetId: action.target.id,
+      targetText: action.target.visibleText || action.target.ariaLabel || action.target.title || "",
+      targetCategory: action.targetCategory,
+      riskLevel: action.riskLevel,
+      clicked: action.clicked,
+      skipped: action.skipped === true,
+      skipReason: action.skipReason,
+      clickDecision: action.clickDecision,
+      clickDecisionReason: action.clickDecisionReason,
+      beforeStateId: action.beforeStateId,
+      afterStateId: action.afterStateId,
+      findingDetectors: action.findingDetectors,
+      evidence: {
+        beforeScreenshot: relativeArtifact(traceDir, action.beforeScreenshot),
+        afterScreenshot: relativeArtifact(traceDir, action.afterScreenshot),
+        visualDiff: relativeArtifact(traceDir, action.visualDiff),
+        screenMap: relativeArtifact(traceDir, action.screenMap),
+        domDiff: relativeArtifact(traceDir, action.domDiff),
+        accessibilityDiff: relativeArtifact(traceDir, action.accessibilityDiff),
+        pointerTrace: relativeArtifact(traceDir, action.pointerTrace),
+        animationTrace: relativeArtifact(traceDir, action.animationTrace)
+      }
+    })),
+    findings: result.findings.map((findingItem) => ({
+      id: findingItem.id,
+      detector: findingItem.detector,
+      severity: findingItem.severity,
+      confidence: findingItem.confidence,
+      ruleIds: findingItem.ruleIds ?? [],
+      evidencePaths: relativeEvidencePaths(traceDir, findingItem.evidencePaths)
+    }))
+  };
+}
+
 function summarizePointerTrace(trace: PointerTrace): PointerTraceSummary {
   return {
     from: trace.from,
@@ -1790,6 +1868,7 @@ export function buildContactSheetHtml(
   const detectorOptions = uniqueValues(result.findings.map((findingItem) => findingItem.detector));
   const actionTrace = relativeArtifact(result.artifacts.traceDir, result.artifacts.actionTrace);
   const stateGraph = relativeArtifact(result.artifacts.traceDir, result.artifacts.stateGraph);
+  const traceManifest = relativeArtifact(result.artifacts.traceDir, result.artifacts.traceManifest);
   const stateIds = uniqueValues(result.actions.flatMap((action) => [action.beforeStateId, action.afterStateId]));
   const filterOptions = (items: string[]) => items.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
   const timeline = result.actions.length
@@ -2076,7 +2155,7 @@ export function buildContactSheetHtml(
   <header>
     <h1>ux-sentinel interactive contact sheet</h1>
     <p>Actions: ${result.summary.actionCount} - screenshots: ${result.summary.screenshotCount} - anomalies: ${result.summary.anomalyCount}</p>
-    <p>Action trace: ${artifactLink(result.artifacts.traceDir, result.artifacts.actionTrace, actionTrace)} - state graph: ${artifactLink(result.artifacts.traceDir, result.artifacts.stateGraph, stateGraph)}</p>
+    <p>Action trace: ${artifactLink(result.artifacts.traceDir, result.artifacts.actionTrace, actionTrace)} - state graph: ${artifactLink(result.artifacts.traceDir, result.artifacts.stateGraph, stateGraph)} - trace manifest: ${artifactLink(result.artifacts.traceDir, result.artifacts.traceManifest, traceManifest)}</p>
     <div class="filters" aria-label="Contact sheet filters">
       <label>Severity filter<select id="severity-filter"><option value="">All severities</option>${filterOptions(severityOptions)}</select></label>
       <label>Rule-family filter<select id="rule-family-filter"><option value="">All rule families</option>${filterOptions(ruleFamilyOptions)}</select></label>
@@ -2709,10 +2788,11 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
   const screenMapPath = path.join(traceDir, "screen-map.json");
   const overlayPath = path.join(traceDir, "screen-map.html");
   const accessibilityPath = path.join(traceDir, "accessibility.json");
-  const stateGraphPath = path.join(traceDir, "state-graph.json");
-  const actionTracePath = path.join(traceDir, "action-trace.json");
-  const anomaliesPath = path.join(traceDir, "anomalies.json");
-  const contactSheetPath = path.join(traceDir, "contact-sheet.html");
+    const stateGraphPath = path.join(traceDir, "state-graph.json");
+    const actionTracePath = path.join(traceDir, "action-trace.json");
+    const anomaliesPath = path.join(traceDir, "anomalies.json");
+    const contactSheetPath = path.join(traceDir, "contact-sheet.html");
+    const traceManifestPath = path.join(traceDir, "trace-manifest.json");
   const consoleErrors: ConsoleIssue[] = [];
   const networkErrors: NetworkIssue[] = [];
   const actions: InteractiveActionRecord[] = [];
@@ -2920,12 +3000,13 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         actionTrace: actionTracePath,
         stateGraph: stateGraphPath,
         anomalies: anomaliesPath,
-        contactSheet: contactSheetPath
+        contactSheet: contactSheetPath,
+        traceManifest: traceManifestPath
       },
       summary
     };
 
-    await writeJson(actionTracePath, {
+    const actionTracePayload = {
       summary,
       capabilityPolicy: config.capabilityPolicy,
       planner: {
@@ -2939,9 +3020,12 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       },
       clickCandidates: Array.from(clickCandidatesById.values()),
       actions: attachFindingsToActionTrace(actions, numberedFindings)
-    });
-    await writeJson(stateGraphPath, buildStateGraph(stateNodes, attachFindingsToStateEdges(stateEdges, numberedFindings)));
+    };
+    const stateGraphPayload = buildStateGraph(stateNodes, attachFindingsToStateEdges(stateEdges, numberedFindings));
+    await writeJson(actionTracePath, actionTracePayload);
+    await writeJson(stateGraphPath, stateGraphPayload);
     await writeJson(anomaliesPath, numberedFindings);
+    await writeJson(traceManifestPath, buildTraceManifest(result, actionTracePayload, stateGraphPayload));
     await writeText(contactSheetPath, buildContactSheetHtml(result));
 
     return result;
@@ -2960,6 +3044,7 @@ export function formatInteractiveSummary(result: InteractiveExplorationResult): 
     `Action trace: ${displayPath(result.artifacts.actionTrace)}`,
     `State graph: ${displayPath(result.artifacts.stateGraph)}`,
     `Anomalies: ${displayPath(result.artifacts.anomalies)}`,
-    `Contact sheet: ${displayPath(result.artifacts.contactSheet)}`
+    `Contact sheet: ${displayPath(result.artifacts.contactSheet)}`,
+    `Trace manifest: ${displayPath(result.artifacts.traceManifest)}`
   ].join("\n");
 }

@@ -246,7 +246,9 @@ describe("Codex integration docs", () => {
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("dialog_without_accessible_name");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("modal_trap_without_escape");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("selected_path_not_traceable");
+    expect(readText("docs/examples/agentic-audit-report.md")).toContain("trace-manifest.json");
     expect(readText("docs/examples/agentic-audit-report.md")).toContain("contact-sheet.html");
+    expect(readText("docs/examples/agentic-codex-brief.md")).toContain("trace-manifest.json");
     expect(readText("docs/examples/agentic-codex-brief.md")).toContain("Forbidden Fixes");
   });
 
@@ -334,6 +336,8 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("action-trace.json");
     expect(verifier).toContain("state-graph.json");
     expect(verifier).toContain("contact-sheet.html");
+    expect(verifier).toContain("trace-manifest.json");
+    expect(verifier).toContain("action count does not match action trace");
     expect(verifier).toContain("Reviewer Answer Matrix");
     expect(verifier).toContain("What did it click or avoid?");
     expect(verifier).toContain("visualDiff");
@@ -343,6 +347,7 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("plannedReason");
     expect(verifier).toContain("targetId did not match action trace target id");
     expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, navigation-stop, navigation-allow, hover-block, and motion-audit scenarios");
+    expect(readme).toContain("trace-manifest.json");
     expect(readme).toContain("demo/scenarios/interactive-agentic-states.yaml");
     expect(readme).toContain("depth-1 replanning");
     expect(readme).toContain("demo/scenarios/interactive-skip.yaml");

@@ -82,7 +82,8 @@ describe("report generation", () => {
           actionTrace: ".ux-sentinel/traces/test/action-trace.json",
           stateGraph: ".ux-sentinel/traces/test/state-graph.json",
           anomalies: ".ux-sentinel/traces/test/anomalies.json",
-          contactSheet: ".ux-sentinel/traces/test/contact-sheet.html"
+          contactSheet: ".ux-sentinel/traces/test/contact-sheet.html",
+          traceManifest: ".ux-sentinel/traces/test/trace-manifest.json"
         },
         summary: {
           actionCount: 0,
@@ -109,6 +110,7 @@ describe("report generation", () => {
     expect(report).toContain("require rule mapping: true");
     expect(report).toContain("state-graph.json");
     expect(report).toContain("contact-sheet.html");
+    expect(report).toContain("trace-manifest.json");
     expect(report).toContain("UX rules:");
     expect(report).toContain("Why this matters:");
     expect(report).toContain("- Evidence status: evidence-backed finding");

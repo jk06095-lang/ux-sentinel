@@ -21,6 +21,7 @@ describe("codex brief generation", () => {
 - interactive state graph: .ux-sentinel/traces/test/state-graph.json
 - interactive contact sheet: .ux-sentinel/traces/test/contact-sheet.html
 - interactive anomalies: .ux-sentinel/traces/test/anomalies.json
+- interactive trace manifest: .ux-sentinel/traces/test/trace-manifest.json
 
 ## Findings
 
@@ -43,6 +44,7 @@ describe("codex brief generation", () => {
     expect(brief).toContain("screen-map.json");
     expect(brief).toContain("state-graph.json");
     expect(brief).toContain("contact-sheet.html");
+    expect(brief).toContain("trace-manifest.json");
     expect(brief).toContain("a001-before.png");
     expect(brief).toContain("a001-diff.png");
     expect(brief).toContain("ux-sentinel run <scenario.yaml> --url <patched-url> --interactive");

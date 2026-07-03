@@ -456,6 +456,7 @@ export interface InteractiveArtifacts {
   stateGraph: string;
   anomalies: string;
   contactSheet: string;
+  traceManifest: string;
 }
 
 export interface InteractiveExplorationResult {

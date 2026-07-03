@@ -17,6 +17,7 @@ This example shows the intended shape of an evidence-backed interactive report. 
 - anomalies: 3
 - contact sheet: `.ux-sentinel/traces/<timestamp>/contact-sheet.html`
 - state graph: `.ux-sentinel/traces/<timestamp>/state-graph.json`
+- trace manifest: `.ux-sentinel/traces/<timestamp>/trace-manifest.json`
 
 ## Interactive Evidence
 
@@ -24,6 +25,7 @@ This example shows the intended shape of an evidence-backed interactive report. 
 - baseline screen map: `.ux-sentinel/traces/<timestamp>/screen-map.json`
 - accessibility snapshot: `.ux-sentinel/traces/<timestamp>/accessibility.json`
 - action trace: `.ux-sentinel/traces/<timestamp>/action-trace.json`
+- trace manifest: `.ux-sentinel/traces/<timestamp>/trace-manifest.json`
 - action visual diff: `.ux-sentinel/traces/<timestamp>/actions/a001-diff.png`
 - DOM diff: `.ux-sentinel/traces/<timestamp>/actions/a001-dom-diff.json`
 - accessibility diff: `.ux-sentinel/traces/<timestamp>/actions/a001-a11y-diff.json`
@@ -71,4 +73,4 @@ This example shows the intended shape of an evidence-backed interactive report. 
 
 ## Review Guidance
 
-Treat a finding as actionable only when the report links to concrete evidence: screenshot, bbox, screen map, DOM diff, accessibility diff, hit-test, pointer trace, visual diff, or animation trace. Use the contact sheet first, then inspect the machine-readable artifacts for the exact element ids and action ids.
+Treat a finding as actionable only when the report links to concrete evidence: screenshot, bbox, screen map, DOM diff, accessibility diff, hit-test, pointer trace, visual diff, or animation trace. Use the contact sheet first, then inspect `trace-manifest.json` and the linked machine-readable artifacts for the exact element ids and action ids.

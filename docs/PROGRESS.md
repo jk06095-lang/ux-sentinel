@@ -598,3 +598,11 @@ Aligned real link target collection with the interactive navigation capability:
 - Kept `a[href]` navigation links skipped by default with the `navigation link` reason.
 - Allowed real `a[href]` links to become safe-click candidates only when the scenario resolves `interactive_exploration.allow_navigation: true` and the rest of the safe-click filters pass.
 - Changed the navigation-allow demo from a button-driven URL change to a real link so `npm run demo:verify` proves the documented navigation capability boundary.
+
+### Checkpoint: Interactive Trace Manifest
+
+Added a machine-readable bundle index for interactive audit evidence:
+
+- Interactive runs now write `trace-manifest.json` beside `action-trace.json`, `state-graph.json`, `anomalies.json`, and `contact-sheet.html`.
+- The manifest records root artifacts, action evidence files, state/finding counts, planner metadata, and resolved capability policy so reviewers can verify bundle completeness before opening each artifact.
+- Reports, CLI summaries, contact sheets, README/docs, and `npm run demo:verify` now surface and validate the trace manifest.
