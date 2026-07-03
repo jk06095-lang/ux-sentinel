@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import type { Page } from "playwright";
 import type {
   AnimationTraceSummary,
+  ClickDecision,
   ElementBox,
   FindingConfidence,
+  LiveTargetIdentityCheck,
   PointerTraceSummary,
   ScreenMap,
   Severity,
@@ -51,6 +53,15 @@ export interface StateGraphEdge {
   riskLevel?: string;
   planDepth?: number;
   planPriority?: number;
+  skipped?: boolean;
+  skipReason?: string;
+  clickDecision?: ClickDecision;
+  clickDecisionReason?: string;
+  plannerClickDecision?: ClickDecision;
+  plannerClickDecisionReason?: string;
+  runtimeClickDecision?: ClickDecision;
+  runtimeClickDecisionReason?: string;
+  targetIdentity?: LiveTargetIdentityCheck;
   beforeStateId: string;
   afterStateId: string;
   beforeScreenshot: string;

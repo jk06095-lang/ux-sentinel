@@ -121,6 +121,7 @@ Useful patterns:
 - For geometry detectors, report the exact bbox, overlap ratio, fold position, or target size.
 - For interaction detectors, link the action id plus before/after screenshots, pointer trace, DOM diff, or accessibility diff.
 - For motion detectors, link the animation trace and summarize affected properties, duration, reduced-motion behavior, and long-task markers when available.
+- For interactive motion detectors, prefer phased animation samples (`before_interaction`, immediate hover/focus/click, after-settle, and reduced-motion comparison) over after-settle-only evidence.
 - For accessibility detectors, include the visible label, accessible name or snapshot evidence, and the expected user-facing correction.
 - For graph/DAG detectors, require the graph contract or graph-like DOM evidence before emitting layout findings.
 

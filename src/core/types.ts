@@ -274,12 +274,22 @@ export interface InteractiveTarget {
   skipClickReason?: string;
 }
 
+export interface LiveTargetIdentityCheck {
+  matches: boolean;
+  reason?: string;
+  liveLabel: string;
+  plannedLabel: string;
+  liveSignature: string;
+  plannedSignature: string;
+}
+
 export interface InteractiveClickCandidateDecision {
   id: string;
   tag: string;
   role: string | null;
   dataUxRole: string | null;
   dataUxAction?: string | null;
+  dataUxClickable?: boolean;
   visibleText: string;
   ariaLabel: string | null;
   ariaHasPopup?: string | null;
@@ -291,6 +301,11 @@ export interface InteractiveClickCandidateDecision {
   safeToClick: boolean;
   clickDecision: ClickDecision;
   clickDecisionReason: string;
+  plannerClickDecision: ClickDecision;
+  plannerClickDecisionReason: string;
+  runtimeClickDecision?: ClickDecision;
+  runtimeClickDecisionReason?: string;
+  runtimeActionId?: string;
   planned: boolean;
   plannedActionId?: string;
   plannedReason?: string;
@@ -416,11 +431,27 @@ export interface AnimationMotionEnvironment {
   prefersReducedMotionMatches: boolean;
 }
 
+export type AnimationTracePhase =
+  | "before_interaction"
+  | "after_hover_immediate"
+  | "after_focus_immediate"
+  | "after_click_immediate"
+  | "after_settle"
+  | "reduced_motion_comparison";
+
+export interface AnimationTraceSample {
+  phase: AnimationTracePhase;
+  timestampMs: number;
+  targets: AnimationTargetTrace[];
+  motionEnvironment?: AnimationMotionEnvironment;
+}
+
 export interface AnimationTrace {
   actionId: string;
   enabled: boolean;
   maxAnimationMs: number;
   compareReducedMotion: boolean;
+  samples: AnimationTraceSample[];
   beforeTargetBbox?: ElementBox;
   afterTargetBbox?: ElementBox;
   layoutShiftApproximationPx: number;
@@ -438,6 +469,7 @@ export interface AnimationTrace {
 export interface AnimationTraceSummary {
   targetCount: number;
   riskyProperties: string[];
+  samplePhases: AnimationTracePhase[];
   normalMotionEnvironment?: AnimationMotionEnvironment;
   reducedMotionEnvironment?: AnimationMotionEnvironment;
   reducedMotionStillAnimating: boolean;
@@ -476,6 +508,11 @@ export interface InteractiveActionRecord {
   clickSkippedReason?: string;
   clickDecision?: ClickDecision;
   clickDecisionReason?: string;
+  plannerClickDecision?: ClickDecision;
+  plannerClickDecisionReason?: string;
+  runtimeClickDecision?: ClickDecision;
+  runtimeClickDecisionReason?: string;
+  targetIdentity?: LiveTargetIdentityCheck;
   plannedReason?: string;
   targetCategory?: InteractiveTargetCategory;
   riskLevel?: InteractiveRiskLevel;

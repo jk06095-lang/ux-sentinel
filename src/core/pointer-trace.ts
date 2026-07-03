@@ -8,6 +8,7 @@ export interface RecordPointerTraceOptions {
   movementDurationMs?: number;
   hoverDurationMs?: number;
   steps?: number;
+  onHoverImmediate?: () => Promise<void>;
 }
 
 export interface RecordedPointerTrace {
@@ -50,6 +51,10 @@ function blockerKey(hitTest: PointerTraceHitTest): string {
     return "";
   }
   return [blocker.tag, blocker.role ?? "", blocker.text, blocker.ariaLabel ?? "", blocker.bbox.x, blocker.bbox.y].join("|");
+}
+
+function pointInsideBox(point: PointerPoint, box: ElementBox): boolean {
+  return point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
 }
 
 export function buildPointerPath(
@@ -126,15 +131,24 @@ export async function recordPointerTrace(
   const to = roundPoint(target.center);
   const points = buildPointerPath(options.from, to, movementDurationMs, options.steps ?? 4);
   const initialHitTest = await collectPointerHitTest(page, target, to);
+  let hoverImmediateCaptured = false;
 
   for (let index = 0; index < points.length; index += 1) {
     const point = points[index];
     await page.mouse.move(point.x, point.y);
+    if (!hoverImmediateCaptured && pointInsideBox(point, target.bbox)) {
+      hoverImmediateCaptured = true;
+      await options.onHoverImmediate?.();
+    }
     const previous = points[index - 1];
     const waitMs = previous ? Math.max(0, point.t - previous.t) : 0;
     if (waitMs > 0) {
       await page.waitForTimeout(waitMs);
     }
+  }
+
+  if (!hoverImmediateCaptured) {
+    await options.onHoverImmediate?.();
   }
 
   if (hoverDurationMs > 0) {

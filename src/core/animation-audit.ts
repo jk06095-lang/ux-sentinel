@@ -8,6 +8,8 @@ import type {
   AnimationMotionEnvironment,
   AnimationTargetTrace,
   AnimationTrace,
+  AnimationTracePhase,
+  AnimationTraceSample,
   ElementBox,
   InteractiveTarget
 } from "./types.js";
@@ -347,6 +349,20 @@ async function collectMotionEnvironment(
   };
 }
 
+export async function collectAnimationTraceSample(
+  page: Page,
+  target: InteractiveTarget,
+  phase: AnimationTracePhase,
+  mediaEmulation: AnimationMotionEnvironment["mediaEmulation"] = phase === "reduced_motion_comparison" ? "reduce" : "no-preference"
+): Promise<AnimationTraceSample> {
+  return {
+    phase,
+    timestampMs: Date.now(),
+    targets: addRiskyProperties(await collectAnimationTargets(page, target.id)),
+    motionEnvironment: await collectMotionEnvironment(page, mediaEmulation)
+  };
+}
+
 export function resolveAnimationAuditOptions(scenarioOptions?: {
   enabled?: boolean;
   compare_reduced_motion?: boolean;
@@ -369,7 +385,8 @@ export async function recordAnimationTrace(
   actionId: string,
   actionsDir: string,
   options: AnimationAuditOptions,
-  beforeTargetBbox?: ElementBox
+  beforeTargetBbox?: ElementBox,
+  phaseSamples: AnimationTraceSample[] = []
 ): Promise<RecordedAnimationTrace | undefined> {
   if (!options.enabled) {
     return undefined;
@@ -377,23 +394,26 @@ export async function recordAnimationTrace(
 
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const normalMotionEnvironment = await collectMotionEnvironment(page, "no-preference");
-  const normal = addRiskyProperties(await collectAnimationTargets(page, target.id));
+  const afterSettleSample = await collectAnimationTraceSample(page, target, "after_settle", "no-preference");
+  const normal = afterSettleSample.targets;
   const reducedMotionRun = options.compareReducedMotion
     ? await withReducedMotion(page, async () => ({
         environment: await collectMotionEnvironment(page, "reduce"),
-        targets: addRiskyProperties(await collectAnimationTargets(page, target.id))
+        sample: await collectAnimationTraceSample(page, target, "reduced_motion_comparison", "reduce")
       }))
     : undefined;
-  const reducedMotion = reducedMotionRun?.targets;
+  const reducedMotion = reducedMotionRun?.sample.targets;
   const reducedMotionEnvironment = reducedMotionRun?.environment;
+  const samples = [...phaseSamples, afterSettleSample, ...(reducedMotionRun?.sample ? [reducedMotionRun.sample] : [])];
   const afterTargetBbox = normal.find((item) => item.id === target.id)?.bbox ?? roundBox(target.bbox);
-  const riskyProperties = Array.from(new Set(normal.flatMap((item) => item.riskyProperties)));
+  const riskyProperties = Array.from(new Set(normalAnimationTargets({ normal, samples } as AnimationTrace).flatMap((item) => item.riskyProperties)));
   const longTaskCollection = await collectLongTaskMarkers(page, actionId);
   const trace: AnimationTrace = {
     actionId,
     enabled: true,
     maxAnimationMs: options.maxAnimationMs,
     compareReducedMotion: options.compareReducedMotion,
+    samples,
     beforeTargetBbox: beforeTargetBbox ? roundBox(beforeTargetBbox) : undefined,
     afterTargetBbox,
     layoutShiftApproximationPx: layoutShift(beforeTargetBbox, afterTargetBbox),
@@ -402,7 +422,9 @@ export async function recordAnimationTrace(
     normal,
     reducedMotionEnvironment,
     reducedMotion,
-    reducedMotionStillAnimating: reducedMotion ? normalReducedStillAnimating(normal, reducedMotion) : false,
+    reducedMotionStillAnimating: reducedMotion
+      ? normalReducedStillAnimating(normalAnimationTargets({ normal, samples } as AnimationTrace), reducedMotion)
+      : false,
     longTaskApiAvailable: longTaskCollection.apiAvailable,
     longTaskObserverInstalled: longTaskCollection.observerInstalled,
     longTasks: longTaskCollection.longTasks
@@ -416,8 +438,22 @@ export async function recordAnimationTrace(
   };
 }
 
+function normalAnimationTargets(trace: Pick<AnimationTrace, "normal"> & Partial<Pick<AnimationTrace, "samples">>): AnimationTargetTrace[] {
+  const sampleTargets =
+    trace.samples
+      ?.filter((sample) => sample.phase !== "reduced_motion_comparison")
+      .flatMap((sample) => sample.targets) ?? [];
+
+  return sampleTargets.length ? sampleTargets : trace.normal;
+}
+
+function normalRiskyProperties(trace: Pick<AnimationTrace, "normal" | "riskyProperties"> & Partial<Pick<AnimationTrace, "samples">>): string[] {
+  const fromSamples = Array.from(new Set(normalAnimationTargets(trace).flatMap((target) => target.riskyProperties)));
+  return fromSamples.length ? fromSamples : trace.riskyProperties;
+}
+
 export function animationTraceHasLongDuration(trace: AnimationTrace): boolean {
-  return trace.normal.some(
+  return normalAnimationTargets(trace).some(
     (target) =>
       target.transitionDurationMs + target.transitionDelayMs > trace.maxAnimationMs ||
       target.animationDurationMs + target.animationDelayMs > trace.maxAnimationMs ||
@@ -426,7 +462,7 @@ export function animationTraceHasLongDuration(trace: AnimationTrace): boolean {
 }
 
 export function animationTraceHasRiskyProperties(trace: AnimationTrace): boolean {
-  return trace.riskyProperties.length > 0;
+  return normalRiskyProperties(trace).length > 0;
 }
 
 function activeMotionDuration(target: AnimationTargetTrace): number {
@@ -438,7 +474,7 @@ function activeMotionDuration(target: AnimationTargetTrace): number {
 }
 
 function motionDurations(trace: AnimationTrace): number[] {
-  return trace.normal
+  return normalAnimationTargets(trace)
     .flatMap((target) => [
       target.transitionDurationMs,
       target.animationDurationMs,
@@ -448,7 +484,7 @@ function motionDurations(trace: AnimationTrace): number[] {
 }
 
 function motionEasings(trace: AnimationTrace): string[] {
-  return trace.normal
+  return normalAnimationTargets(trace)
     .flatMap((target) => [
       ...splitProperties(target.transitionTimingFunction),
       ...splitProperties(target.animationTimingFunction),
@@ -459,14 +495,15 @@ function motionEasings(trace: AnimationTrace): string[] {
 
 export function animationTraceJankIndicators(trace: AnimationTrace): string[] {
   const indicators: string[] = [];
-  const activeTargets = trace.normal.filter(traceIsAnimating);
+  const riskyProperties = normalRiskyProperties(trace);
+  const activeTargets = normalAnimationTargets(trace).filter(traceIsAnimating);
   const riskyAnimatedTargets = activeTargets.filter((target) => target.riskyProperties.length > 0);
 
   if (riskyAnimatedTargets.some((target) => activeMotionDuration(target) > 150)) {
     indicators.push("layout or paint-heavy properties animate for more than 150ms");
   }
 
-  if (trace.riskyProperties.includes("all")) {
+  if (riskyProperties.includes("all")) {
     indicators.push("transition-property: all can animate layout or paint unexpectedly");
   }
 
@@ -478,7 +515,7 @@ export function animationTraceJankIndicators(trace: AnimationTrace): string[] {
     indicators.push(`${trace.longTasks.length} long task marker(s) recorded during the action`);
   }
 
-  if (trace.layoutShiftApproximationPx > 8 && trace.riskyProperties.length > 0) {
+  if (trace.layoutShiftApproximationPx > 8 && riskyProperties.length > 0) {
     indicators.push(`target layout moved ${trace.layoutShiftApproximationPx}px while risky properties were present`);
   }
 
@@ -506,7 +543,7 @@ export function animationTraceInconsistentMotionTokens(trace: AnimationTrace): s
 }
 
 export function animationTraceCriticalActionHideIndicators(trace: AnimationTrace, targetId: string): string[] {
-  const target = trace.normal.find((item) => item.id === targetId);
+  const target = normalAnimationTargets(trace).find((item) => item.id === targetId);
   if (!target) {
     return [];
   }

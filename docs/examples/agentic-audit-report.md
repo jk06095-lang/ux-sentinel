@@ -36,9 +36,21 @@ This example shows the intended shape of an evidence-backed interactive report. 
 
 | Action | Type | Target | Decision | Evidence |
 | --- | --- | --- | --- | --- |
-| a001 | hover_click | Create first project | allowed | before/after/diff, pointer trace, state diff |
-| a002 | focus | Help | skipped | safe_click capability disabled |
+| a001 | hover_click | Create first project | planner allowed; runtime allowed | before/after/diff, pointer trace, state diff |
+| a002 | focus | Help | planner skipped; runtime skipped | safe_click capability disabled |
 | a003 | scroll | dashboard list | not_applicable | before/after/diff |
+| a004 | hover | Open details | planner allowed; runtime skipped | target identity mismatch, before/after/diff, DOM diff, accessibility diff |
+
+`action-trace.json`, `state-graph.json`, and `trace-manifest.json` expose both `plannerClickDecision` and `runtimeClickDecision`. If an old planned id resolves to a different semantic element, the action keeps `targetIdentity.plannedLabel`, `targetIdentity.liveLabel`, `skipReason`, and local evidence links instead of acting on the live element.
+
+Animation traces expose phased samples:
+
+- `before_interaction`
+- `after_hover_immediate`
+- `after_focus_immediate`
+- `after_click_immediate`
+- `after_settle`
+- `reduced_motion_comparison` when comparison is enabled
 
 ## Findings
 

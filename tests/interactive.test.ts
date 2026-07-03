@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildContactSheetHtml,
   clickBlockageFromHitTest,
+  collectScrollableTargets,
   collectVisibleInteractiveTargets,
   detectVisualAnomalies,
   hasClippedTextMetric,
@@ -116,6 +117,81 @@ describe("interactive exploration helpers", () => {
         expect(targets.find((target) => target.visibleText === label)?.safeToClick).toBe(false);
         expect(targets.find((target) => target.visibleText === label)?.skipClickReason).toBe("dangerous label");
       }
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it("keeps target ids stable across repeated interactive target collection", async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.setContent(`
+        <button id="first">First action</button>
+        <button id="second">Second action</button>
+      `);
+
+      const initial = await collectVisibleInteractiveTargets(page);
+      const firstId = initial.find((target) => target.visibleText === "First action")?.id;
+      const secondId = initial.find((target) => target.visibleText === "Second action")?.id;
+
+      await page.evaluate(() => {
+        const button = document.createElement("button");
+        button.id = "inserted";
+        button.textContent = "Inserted action";
+        document.body.prepend(button);
+      });
+
+      const recollected = await collectVisibleInteractiveTargets(page);
+      const ids = recollected.map((target) => target.id);
+
+      expect(recollected.find((target) => target.visibleText === "First action")?.id).toBe(firstId);
+      expect(recollected.find((target) => target.visibleText === "Second action")?.id).toBe(secondId);
+      expect(recollected.find((target) => target.visibleText === "Inserted action")?.id).toMatch(/^t\d{4}$/);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(recollected.find((target) => target.visibleText === "Inserted action")?.id).not.toBe(firstId);
+      expect(recollected.find((target) => target.visibleText === "Inserted action")?.id).not.toBe(secondId);
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it("keeps scroll target ids unique and stable alongside interactive target ids", async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.setContent(`
+        <button id="first">First action</button>
+        <div id="scroll-one" style="height: 80px; width: 220px; overflow-y: auto;">
+          <div style="height: 260px;">Scrollable content one</div>
+        </div>
+      `);
+
+      const interactive = await collectVisibleInteractiveTargets(page);
+      const scroll = await collectScrollableTargets(page, []);
+      const firstButtonId = interactive.find((target) => target.visibleText === "First action")?.id;
+      const firstScrollId = scroll.find((target) => target.visibleText.includes("Scrollable content one"))?.id;
+
+      await page.evaluate(() => {
+        const button = document.createElement("button");
+        button.textContent = "Inserted action";
+        document.body.prepend(button);
+        const scroller = document.createElement("div");
+        scroller.id = "scroll-two";
+        scroller.setAttribute("style", "height: 80px; width: 220px; overflow-y: auto;");
+        scroller.innerHTML = '<div style="height: 260px;">Scrollable content two</div>';
+        document.body.append(scroller);
+      });
+
+      const nextInteractive = await collectVisibleInteractiveTargets(page);
+      const nextScroll = await collectScrollableTargets(page, []);
+      const allIds = [...nextInteractive, ...nextScroll].map((target) => target.id);
+
+      expect(nextInteractive.find((target) => target.visibleText === "First action")?.id).toBe(firstButtonId);
+      expect(nextScroll.find((target) => target.visibleText.includes("Scrollable content one"))?.id).toBe(firstScrollId);
+      expect(nextInteractive.find((target) => target.visibleText === "Inserted action")?.id).toMatch(/^t\d{4}$/);
+      expect(nextScroll.find((target) => target.visibleText.includes("Scrollable content two"))?.id).toMatch(/^s\d{4}$/);
+      expect(new Set(allIds).size).toBe(allIds.length);
     } finally {
       await browser.close();
     }
@@ -1051,6 +1127,166 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("does not retarget a planned action to a newly inserted element after DOM order changes", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="open" onclick="
+            const inserted = document.createElement('button');
+            inserted.textContent = 'Inserted action';
+            inserted.setAttribute('data-ux-action', 'inserted-action');
+            inserted.onclick = () => document.getElementById('status').textContent += ' inserted';
+            document.body.prepend(inserted);
+            document.getElementById('status').textContent += ' open';
+          ">Open panel</button>
+          <button id="second" onclick="document.getElementById('status').textContent += ' second'">Second action</button>
+          <p id="status">Status:</p>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 3,
+        settleMs: 0,
+        scenario: {
+          id: "stable-target-replan",
+          title: "Stable target replan",
+          persona: "tester",
+          interactive_exploration: {
+            enabled: true,
+            mode: "agentic",
+            click_all_safe_controls: true,
+            max_actions: 3,
+            max_depth: 1,
+            max_clicks: 3,
+            max_state_changes: 3
+          }
+        }
+      });
+
+      expect(result.actions.map((action) => action.target.visibleText)).toEqual([
+        "Open panel",
+        "Second action",
+        "Inserted action"
+      ]);
+      expect(result.actions[1]).toMatchObject({
+        clicked: true,
+        runtimeClickDecision: "allowed"
+      });
+      expect(result.actions[2].planDepth).toBe(1);
+
+      const secondDomDiff = JSON.parse(await readFile(result.actions[1].domDiff!, "utf8")) as {
+        visibleTextAdded: string[];
+        visibleTextRemoved: string[];
+      };
+      expect([...secondDomDiff.visibleTextAdded, ...secondDomDiff.visibleTextRemoved].join(" ")).toContain("second");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("skips a planned action when the live target identity changes before execution", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="prepare" onclick="
+            const details = document.getElementById('details');
+            details.textContent = 'Delete project';
+            details.setAttribute('data-ux-action', 'delete-project');
+            details.onclick = () => {
+              const deleted = document.createElement('p');
+              deleted.textContent = 'Deleted project';
+              document.body.append(deleted);
+            };
+          ">Prepare mutation</button>
+          <button id="details" data-ux-action="open-details" onclick="document.body.append('Opened details')">Open details</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "identity-mismatch",
+          title: "Identity mismatch",
+          persona: "tester",
+          interactive_exploration: { enabled: true, click_all_safe_controls: true, max_actions: 2, max_clicks: 2, max_state_changes: 2 }
+        }
+      });
+
+      expect(result.actions).toHaveLength(2);
+      expect(result.actions[0].clicked).toBe(true);
+      expect(result.actions[1].clicked).toBe(false);
+      expect(result.actions[1].skipped).toBe(true);
+      expect(result.actions[1].skipReason).toContain("identity changed");
+      expect(result.actions[1].runtimeClickDecision).toBe("skipped");
+      expect(result.actions[1].runtimeClickDecisionReason).toContain("target identity mismatch");
+      expect(result.actions[1].targetIdentity).toMatchObject({
+        matches: false,
+        plannedLabel: "Open details",
+        liveLabel: "Delete project"
+      });
+
+      const domDiff = JSON.parse(await readFile(result.actions[1].domDiff!, "utf8")) as {
+        visibleTextAdded: string[];
+      };
+      expect(domDiff.visibleTextAdded).not.toContain("Deleted project");
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        actions: Array<{
+          skipped?: boolean;
+          runtimeClickDecision?: string;
+          runtimeClickDecisionReason?: string;
+          targetIdentity?: { matches: boolean; plannedLabel: string; liveLabel: string };
+        }>;
+        clickCandidates: Array<{
+          visibleText: string;
+          plannerClickDecision: string;
+          runtimeClickDecision?: string;
+          runtimeClickDecisionReason?: string;
+        }>;
+      };
+      expect(actionTrace.actions[1]).toMatchObject({
+        skipped: true,
+        runtimeClickDecision: "skipped",
+        targetIdentity: {
+          matches: false,
+          plannedLabel: "Open details",
+          liveLabel: "Delete project"
+        }
+      });
+      expect(actionTrace.clickCandidates.find((candidate) => candidate.visibleText === "Open details")).toMatchObject({
+        plannerClickDecision: "allowed",
+        runtimeClickDecision: "skipped",
+        runtimeClickDecisionReason: expect.stringContaining("target identity mismatch")
+      });
+
+      const stateGraph = JSON.parse(await readFile(result.artifacts.stateGraph, "utf8")) as {
+        edges: Array<{ skipReason?: string; targetIdentity?: { liveLabel: string }; runtimeClickDecisionReason?: string }>;
+      };
+      expect(stateGraph.edges[1].skipReason).toContain("identity changed");
+      expect(stateGraph.edges[1].targetIdentity?.liveLabel).toBe("Delete project");
+      expect(stateGraph.edges[1].runtimeClickDecisionReason).toContain("target identity mismatch");
+
+      const traceManifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
+        actions: Array<{ targetIdentity?: { liveLabel: string }; runtimeClickDecisionReason?: string }>;
+        clickCandidates: Array<{ visibleText: string; runtimeClickDecisionReason?: string }>;
+      };
+      expect(traceManifest.actions[1].targetIdentity?.liveLabel).toBe("Delete project");
+      expect(traceManifest.actions[1].runtimeClickDecisionReason).toContain("target identity mismatch");
+      expect(traceManifest.clickCandidates.find((candidate) => candidate.visibleText === "Open details")?.runtimeClickDecisionReason).toContain(
+        "target identity mismatch"
+      );
+
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("Target identity status: mismatch");
+      expect(contactSheet).toContain("planned label &quot;Open details&quot;");
+      expect(contactSheet).toContain("live label &quot;Delete project&quot;");
+      expect(contactSheet).toContain("Runtime click decision: skipped: target identity mismatch");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("records every baseline click candidate decision in action trace and contact sheet", async () => {
     const traceRoot = await tempTraceRoot();
     try {
@@ -1408,6 +1644,34 @@ describe("interactive exploration helpers", () => {
       };
       expect(pointerTrace.overlayAppearedDuringApproach).toBe(true);
       expect(pointerTrace.finalHitTestMatchedTarget).toBe(false);
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        clickCandidates: Array<{
+          visibleText: string;
+          plannerClickDecision: string;
+          runtimeClickDecision?: string;
+          runtimeClickDecisionReason?: string;
+          runtimeActionId?: string;
+        }>;
+      };
+      expect(actionTrace.clickCandidates.find((candidate) => candidate.visibleText === "Open panel")).toMatchObject({
+        plannerClickDecision: "allowed",
+        runtimeClickDecision: "skipped",
+        runtimeClickDecisionReason: "cursor target drift",
+        runtimeActionId: "a001"
+      });
+
+      const traceManifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
+        clickCandidates: Array<{ visibleText: string; plannerClickDecision: string; runtimeClickDecision?: string }>;
+      };
+      expect(traceManifest.clickCandidates.find((candidate) => candidate.visibleText === "Open panel")).toMatchObject({
+        plannerClickDecision: "allowed",
+        runtimeClickDecision: "skipped"
+      });
+
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("planner allowed");
+      expect(contactSheet).toContain("runtime skipped: cursor target drift");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

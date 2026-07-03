@@ -24,6 +24,7 @@ actions/a001-animation-trace.json
 The trace records:
 
 - action id
+- phased samples: `before_interaction`, `after_hover_immediate`, `after_focus_immediate`, `after_click_immediate`, `after_settle`, and optional `reduced_motion_comparison`
 - normal-motion media environment (`prefers-reduced-motion: no-preference`)
 - normal-motion animation and transition evidence
 - optional reduced-motion media environment (`prefers-reduced-motion: reduce`)
@@ -35,7 +36,7 @@ The trace records:
 - risky properties such as `top`, `left`, `width`, `height`, `margin`, `padding`, `font-size`, `box-shadow`, and `filter`
 - `longTasks` markers from `PerformanceObserver` / `performance.getEntriesByType("longtask")` when the browser exposes them
 
-The contact sheet links the animation trace beside pointer trace and focus evidence, and also shows a compact per-action animation summary: animated target count, risky properties, approximate layout shift, normal/reduced motion media environment, reduced-motion status, long-task count, max long-task duration, and Long Task API availability. Findings include the action id, target id, trace path, affected properties, and a regression check.
+The contact sheet links the animation trace beside pointer trace and focus evidence, and also shows a compact per-action animation summary: animated target count, risky properties, sampled phases, approximate layout shift, normal/reduced motion media environment, reduced-motion status, long-task count, max long-task duration, and Long Task API availability. Findings include the action id, target id, trace path, affected properties, and a regression check.
 
 ## Detectors
 
@@ -51,6 +52,7 @@ The current deterministic motion batch includes:
 
 Reduced-motion comparison is optional and only runs when `compare_reduced_motion: true`. Normal evidence is collected under explicit `prefers-reduced-motion: no-preference`; the comparison emulates `prefers-reduced-motion: reduce` and records `reducedMotionEnvironment` so the trace proves the browser media query matched the reduced-motion preference before comparing whether elements that animate normally still report animation or transition evidence.
 Critical-action hiding findings only fire for targets classified as `primary_cta`, and only when the primary action itself has visibility-affecting transition evidence such as `opacity`, `filter`, or `all` lasting more than 150ms.
+Motion detectors scan the phased `samples` array first, with the legacy `normal` and `reducedMotion` fields kept for compatibility. `animation_uses_layout_paint_properties`, `animation_duration_blocks_task`, `animation_hides_critical_action`, `animation_jank_detected`, and `inconsistent_motion_tokens` use normal-motion samples across hover, focus, click, and settle phases. `animation_ignores_reduced_motion` compares normal-motion samples with the `reduced_motion_comparison` sample when `compare_reduced_motion: true`.
 Jank and token-consistency findings are deterministic trace heuristics: they use visible animated element counts, risky property evidence, target bbox movement, long-task markers when available, duration spread, and easing spread from `actions/aNNN-animation-trace.json`.
 
 ## Demo Gate
@@ -58,7 +60,7 @@ Jank and token-consistency findings are deterministic trace heuristics: they use
 `demo/scenarios/interactive-motion.yaml` runs against `demo/interactive-motion.html` and intentionally fails. It enables `animation_audit`, safe scenario clicking, reduced-motion comparison, and a low `max_animation_ms` threshold so the demo verifier can prove:
 
 - `actions/a001-animation-trace.json` is written.
-- the trace records normal-motion, reduced-motion, and available long-task marker evidence.
+- the trace records phased normal-motion, reduced-motion, and available long-task marker evidence.
 - motion detector ids are attached to the interactive action.
 - `state-graph.json` links the animation trace.
 - `contact-sheet.html` exposes the animation audit evidence.

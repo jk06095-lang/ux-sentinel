@@ -64,6 +64,7 @@ describe("animation audit", () => {
       enabled: true,
       maxAnimationMs: 1200,
       compareReducedMotion: false,
+      samples: [],
       beforeTargetBbox: { x: 0, y: 0, width: 100, height: 40 },
       afterTargetBbox: { x: 18, y: 0, width: 100, height: 40 },
       layoutShiftApproximationPx: 18,
@@ -100,6 +101,7 @@ describe("animation audit", () => {
       enabled: true,
       maxAnimationMs: 1200,
       compareReducedMotion: false,
+      samples: [],
       layoutShiftApproximationPx: 0,
       riskyProperties: [],
       normal: [
@@ -177,6 +179,15 @@ describe("animation audit", () => {
       await stat(result.actions[0].animationTrace!);
 
       const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
+      expect(trace.samples.map((sample) => sample.phase)).toEqual(
+        expect.arrayContaining([
+          "before_interaction",
+          "after_hover_immediate",
+          "after_focus_immediate",
+          "after_settle",
+          "reduced_motion_comparison"
+        ])
+      );
       expect(trace.normalMotionEnvironment).toEqual({
         mediaEmulation: "no-preference",
         prefersReducedMotionMatches: false
@@ -241,6 +252,7 @@ describe("animation audit", () => {
       expect(contactSheet).toContain("normalMotion=no-preference/matches=false");
       expect(contactSheet).toContain("reducedMotion=reduce/matches=true");
       expect(contactSheet).toContain("reducedMotionStillAnimating=true");
+      expect(contactSheet).toContain("phases=before_interaction|after_hover_immediate|after_focus_immediate|after_settle|reduced_motion_comparison");
       expect(contactSheet).toContain("a001-animation-trace.json");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
@@ -301,6 +313,120 @@ describe("animation audit", () => {
           longTaskApiAvailable: trace.longTaskApiAvailable === true,
           longTaskCount: trace.longTasks?.length ?? 0
         })
+      );
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("captures short hover motion before it disappears after settle", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button {
+              position: absolute;
+              left: 40px;
+              top: 60px;
+              width: 180px;
+              height: 44px;
+              opacity: 1;
+            }
+          </style>
+          <button onmouseenter="
+            this.style.transitionProperty = 'opacity';
+            this.style.transitionDuration = '160ms';
+            this.style.transitionTimingFunction = 'ease-out';
+            this.style.opacity = '0.88';
+            setTimeout(() => {
+              this.style.transitionProperty = 'none';
+              this.style.transitionDuration = '0ms';
+              this.style.opacity = '1';
+            }, 180);
+          ">Create first project</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 320,
+        scenario: {
+          id: "short-hover-motion",
+          title: "Short hover motion",
+          persona: "tester",
+          interactive_exploration: { enabled: true },
+          animation_audit: {
+            enabled: true,
+            max_animation_ms: 1000
+          }
+        }
+      });
+
+      const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
+      const hoverTarget = trace.samples
+        .find((sample) => sample.phase === "after_hover_immediate")
+        ?.targets.find((target) => target.id === result.actions[0].target.id);
+      const settledTarget = trace.samples
+        .find((sample) => sample.phase === "after_settle")
+        ?.targets.find((target) => target.id === result.actions[0].target.id);
+
+      expect(hoverTarget?.transitionDurationMs).toBeGreaterThan(0);
+      expect(settledTarget?.transitionDurationMs ?? 0).toBe(0);
+      expect(trace.samples.map((sample) => sample.phase)).toContain("after_hover_immediate");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("captures click-triggered risky layout motion in the immediate click phase", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button {
+              position: absolute;
+              left: 40px;
+              top: 60px;
+              width: 180px;
+              height: 44px;
+              transition-property: left;
+              transition-duration: 180ms;
+              transition-timing-function: ease;
+            }
+            button.shifted {
+              left: 120px;
+            }
+          </style>
+          <button onclick="this.classList.add('shifted')">Create first project</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 320,
+        scenario: {
+          id: "short-click-motion",
+          title: "Short click motion",
+          persona: "tester",
+          interactive_exploration: { enabled: true, click_all_safe_controls: true },
+          animation_audit: {
+            enabled: true,
+            detect_risky_properties: true,
+            max_animation_ms: 1000
+          }
+        }
+      });
+
+      expect(result.actions[0].clicked).toBe(true);
+      const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
+      const clickTarget = trace.samples
+        .find((sample) => sample.phase === "after_click_immediate")
+        ?.targets.find((target) => target.id === result.actions[0].target.id);
+
+      expect(clickTarget?.riskyProperties).toContain("left");
+      expect(clickTarget?.webAnimationCount).toBeGreaterThan(0);
+      expect(result.findings.find((finding) => finding.detector === "animation_uses_layout_paint_properties")?.evidencePaths?.animationTrace).toContain(
+        "a001-animation-trace.json"
       );
     } finally {
       await rm(traceRoot, { recursive: true, force: true });

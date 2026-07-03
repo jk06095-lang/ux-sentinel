@@ -49,13 +49,18 @@ The runner does not click:
 - metadata-only `data-ux-role` elements
 - targets with dangerous labels such as Delete, Remove, Pay, Purchase, Logout, Sign out, Account deletion, Deletion, Irreversible, 삭제, 제거, 결제, or 로그아웃
 - safe-click candidates whose pointer trace shows the final hit-test drifted away from the intended target
+- planned targets whose live DOM identity no longer matches the originally planned target
 
 ## Evidence Policy
 
-Every action record in `action-trace.json` includes a safe-click decision:
+Every action record in `action-trace.json` includes planner and runtime safe-click decisions:
 
 - `allowed` when `safe_click` is enabled and the target passes filtering
 - `skipped` when the target or policy blocks clicking
 - `not_applicable` for actions such as scroll
 
-Skipped actions must keep before/after screenshots, a visual diff, a screen map, and a clear skip reason. Hover, focus, and click-capable actions also write `actions/aNNN-pointer-trace.json` so a reviewer can inspect cursor movement, hover-triggered overlays, target movement, and final hit-test drift. The contact sheet shows the safe-click decision, visual diff path, and pointer trace path so a reviewer can see what the runner did and what it refused to do.
+Planner decisions are written as `plannerClickDecision` and `plannerClickDecisionReason`; runtime decisions are written as `runtimeClickDecision` and `runtimeClickDecisionReason`. The legacy `clickDecision` fields remain for compatibility and represent the runtime action decision on action records. `clickCandidates` in the action trace and trace manifest keep both planner and runtime fields so reports can show cases where the planner allowed a click but runtime skipped it because of cursor target drift, overlay blockage, stale target, identity mismatch, or navigation safety.
+
+Target ids are stable during replanning. Existing `data-ux-sentinel-target-id` values are not overwritten; new interactive targets receive `t0001`, `t0002`, ... and new scroll targets receive `s0001`, `s0002`, .... Before any live action, ux-sentinel verifies that the live element still matches the planned target's semantic signature. If the id now points at a different label, role, href, or `data-ux-*` action, the action is skipped with `target identity mismatch`.
+
+Skipped actions must keep before/after screenshots, a visual diff, a screen map, DOM diff, accessibility diff when available, and a clear skip reason. Hover, focus, and click-capable actions also write `actions/aNNN-pointer-trace.json` so a reviewer can inspect cursor movement, hover-triggered overlays, target movement, and final hit-test drift. The contact sheet shows planned click decision, runtime click decision, runtime reason, target identity status, visual diff path, and pointer trace path so a reviewer can see what the runner did and what it refused to do.

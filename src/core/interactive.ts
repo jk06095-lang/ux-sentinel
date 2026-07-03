@@ -16,6 +16,7 @@ import {
   animationTraceHasLongDuration,
   animationTraceHasRiskyProperties,
   beginAnimationLongTaskCollection,
+  collectAnimationTraceSample,
   recordAnimationTrace,
   resolveAnimationAuditOptions
 } from "./animation-audit.js";
@@ -35,8 +36,11 @@ import {
 import type {
   AnimationAuditOptions,
   AnimationTrace,
+  AnimationTracePhase,
+  AnimationTraceSample,
   AnimationTraceSummary,
   ClickBlockage,
+  ClickDecision,
   ConsoleIssue,
   ElementBox,
   Finding,
@@ -48,6 +52,7 @@ import type {
   InteractiveClickCandidateDecision,
   InteractiveCommandMode,
   InteractiveExplorationResult,
+  LiveTargetIdentityCheck,
   InteractiveTargetCategory,
   InteractiveTarget,
   NetworkIssue,
@@ -253,6 +258,42 @@ function targetLabel(target: Pick<InteractiveTarget, "visibleText" | "ariaLabel"
   return normalizeText([target.visibleText, target.ariaLabel, target.title].filter(Boolean).join(" "));
 }
 
+export function targetIdentitySignature(
+  target: Pick<
+    InteractiveTarget,
+    "tag" | "role" | "visibleText" | "ariaLabel" | "title" | "href" | "dataUxRole" | "dataUxAction" | "dataUxClickable"
+  >
+): string {
+  return JSON.stringify({
+    tag: normalizeText(target.tag).toLowerCase(),
+    role: normalizeText(target.role).toLowerCase(),
+    visibleText: normalizeText(target.visibleText).toLowerCase(),
+    ariaLabel: normalizeText(target.ariaLabel).toLowerCase(),
+    title: normalizeText(target.title).toLowerCase(),
+    href: normalizeText(target.href),
+    dataUxRole: normalizeText(target.dataUxRole).toLowerCase(),
+    dataUxAction: normalizeText(target.dataUxAction).toLowerCase(),
+    dataUxClickable: target.dataUxClickable === true
+  });
+}
+
+function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarget): LiveTargetIdentityCheck {
+  const plannedSignature = targetIdentitySignature(planned);
+  const liveSignature = targetIdentitySignature(live);
+  const plannedLabel = targetLabel(planned) || planned.href || planned.tag;
+  const liveLabel = targetLabel(live) || live.href || live.tag;
+  const matches = plannedSignature === liveSignature;
+
+  return {
+    matches,
+    reason: matches ? undefined : `target identity mismatch: planned "${plannedLabel}", live "${liveLabel}"`,
+    liveLabel,
+    plannedLabel,
+    liveSignature,
+    plannedSignature
+  };
+}
+
 export function resolveInteractiveConfig(scenario?: Scenario, options?: ResolveInteractiveConfigOptions): InteractiveConfig {
   const source = scenario?.interactive_exploration;
   const mode = source?.mode ?? "linear";
@@ -347,6 +388,29 @@ export async function collectVisibleInteractiveTargets(
   const targets = await page.evaluate(
     ({ selector, avoidText, allowNavigation }) => {
       const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();
+      const browserWindow = window as typeof window & {
+        __uxSentinelTargetSeq?: {
+          t?: number;
+          s?: number;
+        };
+      };
+      const allocateTargetId = (element: HTMLElement, prefix: "t" | "s") => {
+        const existing = element.getAttribute("data-ux-sentinel-target-id");
+        if (existing) {
+          return existing;
+        }
+
+        browserWindow.__uxSentinelTargetSeq ??= {};
+        let next = browserWindow.__uxSentinelTargetSeq[prefix] ?? 0;
+        let id = "";
+        do {
+          next += 1;
+          id = `${prefix}${String(next).padStart(4, "0")}`;
+        } while (document.querySelector(`[data-ux-sentinel-target-id="${id}"]`));
+        browserWindow.__uxSentinelTargetSeq[prefix] = next;
+        element.setAttribute("data-ux-sentinel-target-id", id);
+        return id;
+      };
       const dangerous = (label: string) => {
         const normalized = normalize(label).toLowerCase();
         return Boolean(normalized) && avoidText.some((item) => normalized.includes(normalize(item).toLowerCase()));
@@ -362,7 +426,7 @@ export async function collectVisibleInteractiveTargets(
           seen.add(element);
           return true;
         })
-        .map((element, index) => {
+        .map((element) => {
           const rect = element.getBoundingClientRect();
           const style = window.getComputedStyle(element);
           const tag = element.tagName.toLowerCase();
@@ -436,9 +500,7 @@ export async function collectVisibleInteractiveTargets(
                       : !clickEligible
                         ? "not a click control"
                         : undefined;
-          const id = `t${String(index + 1).padStart(3, "0")}`;
-
-          element.setAttribute("data-ux-sentinel-target-id", id);
+          const id = allocateTargetId(element, "t");
 
           return {
             id,
@@ -1573,8 +1635,8 @@ function attachActionEvidencePathsToFindings(findings: Finding[], actions: Inter
   });
 }
 
-function escapeHtml(value: string): string {
-  return value
+function escapeHtml(value: string | number | boolean | null | undefined): string {
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -1721,6 +1783,22 @@ function buildTraceManifest(
       states: stateGraph.nodes.length,
       edges: stateGraph.edges.length
     },
+    clickCandidates: result.clickCandidates.map((candidate) => ({
+      id: candidate.id,
+      visibleText: candidate.visibleText,
+      ariaLabel: candidate.ariaLabel,
+      targetText: candidate.visibleText || candidate.ariaLabel || candidate.title || "",
+      targetCategory: candidate.targetCategory,
+      riskLevel: candidate.riskLevel,
+      safeToClick: candidate.safeToClick,
+      planned: candidate.planned,
+      plannedActionId: candidate.plannedActionId,
+      plannerClickDecision: candidate.plannerClickDecision,
+      plannerClickDecisionReason: candidate.plannerClickDecisionReason,
+      runtimeClickDecision: candidate.runtimeClickDecision,
+      runtimeClickDecisionReason: candidate.runtimeClickDecisionReason,
+      runtimeActionId: candidate.runtimeActionId
+    })),
     actions: result.actions.map((action) => ({
       id: action.id,
       sequence: action.sequence,
@@ -1734,6 +1812,11 @@ function buildTraceManifest(
       skipReason: action.skipReason,
       clickDecision: action.clickDecision,
       clickDecisionReason: action.clickDecisionReason,
+      plannerClickDecision: action.plannerClickDecision,
+      plannerClickDecisionReason: action.plannerClickDecisionReason,
+      runtimeClickDecision: action.runtimeClickDecision,
+      runtimeClickDecisionReason: action.runtimeClickDecisionReason,
+      targetIdentity: action.targetIdentity,
       evidenceSummary: action.evidenceSummary,
       beforeStateId: action.beforeStateId,
       afterStateId: action.afterStateId,
@@ -1777,9 +1860,13 @@ function summarizePointerTrace(trace: PointerTrace): PointerTraceSummary {
 
 function summarizeAnimationTrace(trace: AnimationTrace): AnimationTraceSummary {
   const longTasks = trace.longTasks ?? [];
+  const samplePhases = Array.from(new Set((trace.samples ?? []).map((sample) => sample.phase)));
   return {
-    targetCount: trace.normal.length,
+    targetCount: (trace.samples ?? []).length
+      ? Math.max(0, ...(trace.samples ?? []).map((sample) => sample.targets.length))
+      : trace.normal.length,
     riskyProperties: trace.riskyProperties,
+    samplePhases,
     normalMotionEnvironment: trace.normalMotionEnvironment,
     reducedMotionEnvironment: trace.reducedMotionEnvironment,
     reducedMotionStillAnimating: trace.reducedMotionStillAnimating,
@@ -1844,7 +1931,8 @@ function animationTraceSummaryText(summary: AnimationTraceSummary | undefined): 
     `reducedMotionStillAnimating=${summary.reducedMotionStillAnimating}`,
     `longTasks=${summary.longTaskCount}`,
     `maxLongTask=${summary.maxLongTaskDurationMs}ms`,
-    `longTaskApi=${summary.longTaskApiAvailable}`
+    `longTaskApi=${summary.longTaskApiAvailable}`,
+    `phases=${summary.samplePhases?.length ? summary.samplePhases.join("|") : "none"}`
   ].join(", ");
 }
 
@@ -1862,17 +1950,7 @@ function buildClickCandidateDecisions(
     const fallbackClassification = planned ? undefined : classifyInteractiveTarget(target, scenario);
     const targetCategory = planned?.targetCategory ?? fallbackClassification!.category;
     const riskLevel = planned?.riskLevel ?? fallbackClassification!.riskLevel;
-    const clickDecision: InteractiveClickCandidateDecision["clickDecision"] =
-      target.safeToClick && capabilities.safe_click && planned?.plannedSafeClick ? "allowed" : "skipped";
-    const clickDecisionReason = !target.safeToClick
-      ? target.skipClickReason ?? "target is not safe to click"
-      : !capabilities.safe_click
-        ? "safe_click capability disabled"
-        : !planned
-          ? "not selected by planner within max_actions budget"
-          : planned.plannedSafeClick
-            ? "safe_click capability enabled and target passed planner budget checks"
-            : planned.plannedClickSkipReason ?? "planner did not allocate a safe click";
+    const plannerClick = resolvePlannerClickDecision(target, capabilities, planned);
 
     return {
       id: target.id,
@@ -1880,6 +1958,7 @@ function buildClickCandidateDecisions(
       role: target.role,
       dataUxRole: target.dataUxRole,
       dataUxAction: target.dataUxAction,
+      dataUxClickable: target.dataUxClickable,
       visibleText: target.visibleText,
       ariaLabel: target.ariaLabel,
       ariaHasPopup: target.ariaHasPopup,
@@ -1889,8 +1968,10 @@ function buildClickCandidateDecisions(
       targetCategory,
       riskLevel,
       safeToClick: target.safeToClick,
-      clickDecision,
-      clickDecisionReason,
+      clickDecision: plannerClick.decision,
+      clickDecisionReason: plannerClick.reason,
+      plannerClickDecision: plannerClick.decision,
+      plannerClickDecisionReason: plannerClick.reason,
       planned: Boolean(planned),
       plannedActionId: plannedEntry ? `a${String(plannedEntry.index + 1).padStart(3, "0")}` : undefined,
       plannedReason: planned?.plannedReason,
@@ -1904,8 +1985,28 @@ function upsertClickCandidateDecisions(
   decisions: InteractiveClickCandidateDecision[]
 ): void {
   for (const decision of decisions) {
-    candidatesById.set(decision.id, decision);
+    const existing = candidatesById.get(decision.id);
+    candidatesById.set(decision.id, {
+      ...decision,
+      runtimeClickDecision: existing?.runtimeClickDecision ?? decision.runtimeClickDecision,
+      runtimeClickDecisionReason: existing?.runtimeClickDecisionReason ?? decision.runtimeClickDecisionReason,
+      runtimeActionId: existing?.runtimeActionId ?? decision.runtimeActionId
+    });
   }
+}
+
+function updateClickCandidateRuntimeDecision(
+  candidatesById: Map<string, InteractiveClickCandidateDecision>,
+  action: InteractiveActionRecord
+): void {
+  const candidate = candidatesById.get(action.target.id);
+  if (!candidate) {
+    return;
+  }
+
+  candidate.runtimeClickDecision = action.runtimeClickDecision ?? action.clickDecision;
+  candidate.runtimeClickDecisionReason = action.runtimeClickDecisionReason ?? action.clickDecisionReason;
+  candidate.runtimeActionId = action.id;
 }
 
 function snapshotFingerprint(snapshot: StateSnapshot): string {
@@ -2016,7 +2117,17 @@ export function buildContactSheetHtml(
   const safetyLog = result.actions.length
     ? result.actions
         .map((action) => {
-          const decision = action.clickDecision ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}` : "not recorded";
+          const plannerDecision = action.plannerClickDecision
+            ? `${action.plannerClickDecision}: ${action.plannerClickDecisionReason ?? "no reason recorded"}`
+            : "not recorded";
+          const runtimeDecision = action.runtimeClickDecision
+            ? `${action.runtimeClickDecision}: ${action.runtimeClickDecisionReason ?? "no reason recorded"}`
+            : action.clickDecision
+              ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
+              : "not recorded";
+          const identity = action.targetIdentity
+            ? `${action.targetIdentity.matches ? "matched" : "mismatch"}; planned=${action.targetIdentity.plannedLabel}; live=${action.targetIdentity.liveLabel}`
+            : "not checked or matched";
           const skipped = action.skipped ? `; skipped: ${action.skipReason ?? "unknown reason"}` : "";
           const evidence = [
             `before=${artifactLink(result.artifacts.traceDir, action.beforeScreenshot)}`,
@@ -2027,7 +2138,7 @@ export function buildContactSheetHtml(
           const evidenceSummary = action.evidenceSummary
             ? `${action.evidenceSummary.completeForReview ? "complete" : "incomplete"}; required=${action.evidenceSummary.required.join(",")}; missing=${action.evidenceSummary.missing.length ? action.evidenceSummary.missing.join(",") : "none"}`
             : "not summarized";
-          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}<br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
+          return `<li><strong>${escapeHtml(action.id)}</strong> Planner click decision: ${escapeHtml(plannerDecision)}; Runtime click decision: ${escapeHtml(runtimeDecision)}${escapeHtml(skipped)}<br /><span>Target identity status: ${escapeHtml(identity)}</span><br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
@@ -2036,7 +2147,12 @@ export function buildContactSheetHtml(
         .map((candidate) => {
           const label = targetLabel(candidate);
           const planned = candidate.planned ? `planned ${candidate.plannedActionId ?? ""}` : "not planned";
-          return `<li><strong>${escapeHtml(candidate.id)}</strong> ${escapeHtml(candidate.clickDecision)}: ${escapeHtml(candidate.clickDecisionReason)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})</li>`;
+          const plannerDecision = candidate.plannerClickDecision ?? candidate.clickDecision;
+          const plannerReason = candidate.plannerClickDecisionReason ?? candidate.clickDecisionReason;
+          const runtime = candidate.runtimeClickDecision
+            ? `; runtime ${candidate.runtimeClickDecision}: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
+            : "; runtime not attempted";
+          return `<li><strong>${escapeHtml(candidate.id)}</strong> planner ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}${escapeHtml(runtime)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})</li>`;
         })
         .join("\n")
     : "<li>No click candidates were captured.</li>";
@@ -2067,12 +2183,17 @@ export function buildContactSheetHtml(
           const category = action.targetCategory ?? "unclassified";
           const risk = action.riskLevel ?? "unknown";
           const actionSummary = `${action.actionType} on ${target} (${category}, ${risk} risk)`;
+          const runtimeDecision = action.runtimeClickDecision
+            ? `${action.runtimeClickDecision}: ${action.runtimeClickDecisionReason ?? "no reason recorded"}`
+            : action.clickDecision
+              ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
+              : "not recorded";
           const clickSummary = action.skipped
-            ? `Skipped: ${action.skipReason ?? "unknown reason"}`
+            ? `Skipped: ${action.skipReason ?? "unknown reason"}; Runtime click decision: ${runtimeDecision}`
             : action.clicked
-              ? `Clicked: ${action.clickDecisionReason ?? "safe click decision recorded"}`
+              ? `Clicked: ${action.runtimeClickDecisionReason ?? action.clickDecisionReason ?? "safe click decision recorded"}; Runtime click decision: ${runtimeDecision}`
               : action.clickDecision === "skipped"
-                ? `Avoided click: ${action.clickDecisionReason ?? "no click reason recorded"}`
+                ? `Avoided click: ${runtimeDecision}`
                 : action.focused
                   ? "Focused without clicking"
                   : "Observed without clicking";
@@ -2124,6 +2245,15 @@ export function buildContactSheetHtml(
       const clickDecision = action.clickDecision
         ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
         : "not recorded";
+      const plannerClickDecision = action.plannerClickDecision
+        ? `${action.plannerClickDecision}: ${action.plannerClickDecisionReason ?? "no reason recorded"}`
+        : "not recorded";
+      const runtimeClickDecision = action.runtimeClickDecision
+        ? `${action.runtimeClickDecision}: ${action.runtimeClickDecisionReason ?? "no reason recorded"}`
+        : clickDecision;
+      const targetIdentity = action.targetIdentity
+        ? `${action.targetIdentity.matches ? "matched" : "mismatch"}; planned label "${action.targetIdentity.plannedLabel}"; live label "${action.targetIdentity.liveLabel}"`
+        : "not recorded";
       const planned = action.plannedReason
         ? `${action.targetCategory ?? "unknown"} / ${action.riskLevel ?? "unknown"} risk: ${action.plannedReason}`
         : "not recorded";
@@ -2158,6 +2288,9 @@ export function buildContactSheetHtml(
   <p><strong>BBox:</strong> ${action.target.bbox.x}, ${action.target.bbox.y}, ${action.target.bbox.width}x${action.target.bbox.height}</p>
   <p><strong>Plan:</strong> ${escapeHtml(planned)}</p>
   <p><strong>Safe click decision:</strong> ${escapeHtml(clickDecision)}</p>
+  <p><strong>Planner click decision:</strong> ${escapeHtml(plannerClickDecision)}</p>
+  <p><strong>Runtime click decision:</strong> ${escapeHtml(runtimeClickDecision)}</p>
+  <p><strong>Target identity status:</strong> ${escapeHtml(targetIdentity)}</p>
   <p><strong>Pointer trace:</strong> ${pointerTraceLink}</p>
   <p><strong>Pointer metadata:</strong> ${escapeHtml(pointerTraceSummary)}</p>
   <p><strong>Animation trace:</strong> ${animationTraceLink}</p>
@@ -2442,6 +2575,15 @@ async function recordActionStateEvidence(options: {
       riskLevel: options.action.riskLevel,
       planDepth: options.action.planDepth,
       planPriority: options.action.planPriority,
+      skipped: options.action.skipped === true,
+      skipReason: options.action.skipReason,
+      clickDecision: options.action.clickDecision,
+      clickDecisionReason: options.action.clickDecisionReason,
+      plannerClickDecision: options.action.plannerClickDecision,
+      plannerClickDecisionReason: options.action.plannerClickDecisionReason,
+      runtimeClickDecision: options.action.runtimeClickDecision,
+      runtimeClickDecisionReason: options.action.runtimeClickDecisionReason,
+      targetIdentity: options.action.targetIdentity,
       beforeStateId: options.beforeState.node.id,
       afterStateId: afterState.node.id,
       beforeScreenshot: options.action.beforeScreenshot,
@@ -2461,11 +2603,13 @@ async function recordActionStateEvidence(options: {
 
 export type LiveTargetResult =
   | { status: "ok"; target: InteractiveTarget }
-  | { status: "missing" | "invisible" | "offscreen" | "detached"; reason: string };
+  | { status: "missing" | "invisible" | "offscreen" | "detached"; reason: string }
+  | { status: "identity_mismatch"; reason: string; identity: LiveTargetIdentityCheck };
 
 export async function resolveLiveTarget(page: Page, target: InteractiveTarget): Promise<LiveTargetResult> {
   return page
     .evaluate((currentTarget) => {
+      const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();
       const element = document.querySelector<HTMLElement>(`[data-ux-sentinel-target-id="${currentTarget.id}"]`);
       if (!element) {
         return { status: "missing" as const, reason: `Target ${currentTarget.id} no longer exists in the DOM.` };
@@ -2500,6 +2644,23 @@ export async function resolveLiveTarget(page: Page, target: InteractiveTarget): 
         status: "ok" as const,
         target: {
           ...currentTarget,
+          tag: element.tagName.toLowerCase(),
+          role: element.getAttribute("role"),
+          dataUxRole: element.getAttribute("data-ux-role"),
+          dataUxAction: element.getAttribute("data-ux-action"),
+          dataUxClickable: element.getAttribute("data-ux-clickable") === "true",
+          visibleText: normalize(element.innerText || element.textContent || (element instanceof HTMLInputElement ? element.value : "") || "").slice(
+            0,
+            240
+          ),
+          ariaLabel: element.getAttribute("aria-label"),
+          ariaHasPopup: element.getAttribute("aria-haspopup"),
+          title: element.getAttribute("title"),
+          disabled:
+            element.hasAttribute("disabled") ||
+            element.getAttribute("aria-disabled") === "true" ||
+            (element as HTMLButtonElement).disabled === true,
+          href: element instanceof HTMLAnchorElement ? element.href : null,
           bbox: {
             x: Math.round(rect.x),
             y: Math.round(rect.y),
@@ -2513,6 +2674,22 @@ export async function resolveLiveTarget(page: Page, target: InteractiveTarget): 
         }
       };
     }, target)
+    .then((result) => {
+      if (result.status !== "ok") {
+        return result;
+      }
+
+      const identity = compareTargetIdentity(target, result.target);
+      if (!identity.matches) {
+        return {
+          status: "identity_mismatch" as const,
+          reason: `Target ${target.id} identity changed: planned "${identity.plannedLabel}", live "${identity.liveLabel}".`,
+          identity
+        };
+      }
+
+      return result;
+    })
     .catch((error: unknown) => ({
       status: "missing" as const,
       reason: error instanceof Error ? error.message : String(error)
@@ -2527,7 +2704,14 @@ async function skippedAction(
   reason: string,
   urlBefore: string,
   consoleErrors: ConsoleIssue[],
-  networkErrors: NetworkIssue[]
+  networkErrors: NetworkIssue[],
+  decisions?: {
+    plannerClickDecision?: ClickDecision;
+    plannerClickDecisionReason?: string;
+    runtimeClickDecision?: ClickDecision;
+    runtimeClickDecisionReason?: string;
+    targetIdentity?: LiveTargetIdentityCheck;
+  }
 ): Promise<{ action: InteractiveActionRecord; screenMap: ScreenMap }> {
   const actionId = `a${String(sequence).padStart(3, "0")}`;
   const target = planned.target;
@@ -2554,8 +2738,13 @@ async function skippedAction(
       clicked: false,
       focused: false,
       clickSkippedReason: reason,
-      clickDecision: "skipped",
-      clickDecisionReason: reason,
+      clickDecision: decisions?.runtimeClickDecision ?? "skipped",
+      clickDecisionReason: decisions?.runtimeClickDecisionReason ?? reason,
+      plannerClickDecision: decisions?.plannerClickDecision,
+      plannerClickDecisionReason: decisions?.plannerClickDecisionReason,
+      runtimeClickDecision: decisions?.runtimeClickDecision ?? "skipped",
+      runtimeClickDecisionReason: decisions?.runtimeClickDecisionReason ?? reason,
+      targetIdentity: decisions?.targetIdentity,
       plannedReason: planned.plannedReason,
       targetCategory: planned.targetCategory,
       riskLevel: planned.riskLevel,
@@ -2574,7 +2763,28 @@ async function skippedAction(
   };
 }
 
-function resolveClickDecision(
+function resolvePlannerClickDecision(
+  target: InteractiveTarget,
+  capabilities: InteractiveCapabilities,
+  planned: PlannedInteractiveAction | undefined
+): { decision: ClickDecision; reason: string } {
+  if (!target.safeToClick) {
+    return { decision: "skipped", reason: target.skipClickReason ?? "target is not safe to click" };
+  }
+  if (!capabilities.safe_click) {
+    return { decision: "skipped", reason: "safe_click capability disabled" };
+  }
+  if (!planned) {
+    return { decision: "skipped", reason: "not selected by planner within max_actions budget" };
+  }
+  if (!planned.plannedSafeClick) {
+    return { decision: "skipped", reason: planned.plannedClickSkipReason ?? "planner did not allocate a safe click" };
+  }
+
+  return { decision: "allowed", reason: "safe_click capability enabled and target passed planner budget checks" };
+}
+
+function resolveRuntimeClickDecision(
   target: InteractiveTarget,
   capabilities: InteractiveCapabilities,
   planned: PlannedInteractiveAction,
@@ -2624,50 +2834,81 @@ async function performTargetAction(
   let pointerEnd: PointerPoint | undefined;
   let focusEvidence: FocusEvidence | undefined;
   const urlBefore = page.url();
+  const plannerClickDecision = resolvePlannerClickDecision(target, config.capabilityPolicy.capabilities, planned);
 
   await locator.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
-    const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors);
+    const runtimeReason =
+      live.status === "identity_mismatch"
+        ? live.identity.reason ?? `target identity mismatch: planned "${live.identity.plannedLabel}", live "${live.identity.liveLabel}"`
+        : live.reason;
+    const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors, {
+      plannerClickDecision: plannerClickDecision.decision,
+      plannerClickDecisionReason: plannerClickDecision.reason,
+      runtimeClickDecision: "skipped",
+      runtimeClickDecisionReason: runtimeReason,
+      targetIdentity: live.status === "identity_mismatch" ? live.identity : undefined
+    });
     return {
       ...skipped,
       findings
     };
   }
   const liveTarget = live.target;
+  const animationSamples: AnimationTraceSample[] = [];
+  const captureAnimationSample = async (phase: AnimationTracePhase) => {
+    if (!config.animationAudit.enabled) {
+      return;
+    }
+
+    await collectAnimationTraceSample(page, liveTarget, phase)
+      .then((sample) => {
+        animationSamples.push(sample);
+      })
+      .catch(() => undefined);
+  };
 
   await page.screenshot({ path: beforeScreenshot, fullPage: false });
+  await beginAnimationLongTaskCollection(page, actionId, config.animationAudit);
+  await captureAnimationSample("before_interaction");
 
   const blockage = await collectClickBlockage(page, liveTarget);
   if (blockage) {
     findings.push(buildBlockedClickFinding(liveTarget, blockage, actionId));
   }
   const livePlanned = { ...planned, target: liveTarget };
-  let clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, livePlanned, blockage);
-  await beginAnimationLongTaskCollection(page, actionId, config.animationAudit);
+  let runtimeClickDecision = resolveRuntimeClickDecision(liveTarget, config.capabilityPolicy.capabilities, livePlanned, blockage);
 
   const pointerTrace = await recordPointerTrace(page, liveTarget, actionId, actionsDir, {
     from: pointerStart,
     movementDurationMs: Math.min(240, Math.max(0, config.settleMs)),
-    hoverDurationMs: config.settleMs
+    hoverDurationMs: config.settleMs,
+    onHoverImmediate: async () => {
+      await page.waitForTimeout(50);
+      await captureAnimationSample("after_hover_immediate");
+    }
   });
   pointerTracePath = pointerTrace.path;
   pointerTraceSummaryValue = summarizePointerTrace(pointerTrace.trace);
   pointerEnd = pointerTrace.trace.to;
   findings.push(...buildPointerTraceFindings(pointerTrace.trace, pointerTrace.path, liveTarget, actionId));
 
-  if (clickDecision.decision === "allowed" && !pointerTrace.trace.finalHitTestMatchedTarget) {
-    clickDecision = {
+  if (runtimeClickDecision.decision === "allowed" && !pointerTrace.trace.finalHitTestMatchedTarget) {
+    runtimeClickDecision = {
       decision: "skipped",
       reason: "cursor target drift"
     };
-    clickSkippedReason = clickDecision.reason;
+    clickSkippedReason = runtimeClickDecision.reason;
   }
 
   if (config.focusAllKeyboardTargets && liveTarget.focusable) {
     await locator.focus({ timeout: 500 }).then(() => {
       focused = true;
     }).catch(() => undefined);
+    if (focused) {
+      await captureAnimationSample("after_focus_immediate");
+    }
     await page.waitForTimeout(config.settleMs);
     if (focused) {
       focusEvidence = await collectFocusEvidence(page, liveTarget);
@@ -2675,20 +2916,36 @@ async function performTargetAction(
     }
   }
 
-  if (clickDecision.decision === "allowed") {
+  if (runtimeClickDecision.decision === "allowed") {
     const clickPoint = pointerEnd ?? liveTarget.center;
-    await page.mouse.click(clickPoint.x, clickPoint.y).then(() => {
-      clicked = true;
-    }).catch((error: unknown) => {
-      clickSkippedReason = error instanceof Error ? error.message : String(error);
-    });
+    await page.mouse
+      .click(clickPoint.x, clickPoint.y)
+      .then(async () => {
+        clicked = true;
+        await captureAnimationSample("after_click_immediate");
+      })
+      .catch((error: unknown) => {
+        clickSkippedReason = error instanceof Error ? error.message : String(error);
+        runtimeClickDecision = {
+          decision: "skipped",
+          reason: clickSkippedReason
+        };
+      });
     await page.waitForLoadState("networkidle", { timeout: Math.max(500, config.settleMs * 2) }).catch(() => undefined);
     await page.waitForTimeout(config.settleMs);
   } else {
-    clickSkippedReason = clickDecision.reason;
+    clickSkippedReason = runtimeClickDecision.reason;
   }
 
-  const animationTrace = await recordAnimationTrace(page, liveTarget, actionId, actionsDir, config.animationAudit, liveTarget.bbox);
+  const animationTrace = await recordAnimationTrace(
+    page,
+    liveTarget,
+    actionId,
+    actionsDir,
+    config.animationAudit,
+    liveTarget.bbox,
+    animationSamples
+  );
   if (animationTrace) {
     animationTracePath = animationTrace.path;
     animationTraceSummaryValue = summarizeAnimationTrace(animationTrace.trace);
@@ -2720,8 +2977,12 @@ async function performTargetAction(
     focused,
     clickBlockage: blockage,
     clickSkippedReason,
-    clickDecision: clickDecision.decision,
-    clickDecisionReason: clickDecision.reason,
+    clickDecision: runtimeClickDecision.decision,
+    clickDecisionReason: runtimeClickDecision.reason,
+    plannerClickDecision: plannerClickDecision.decision,
+    plannerClickDecisionReason: plannerClickDecision.reason,
+    runtimeClickDecision: runtimeClickDecision.decision,
+    runtimeClickDecisionReason: runtimeClickDecision.reason,
     plannedReason: planned.plannedReason,
     targetCategory: planned.targetCategory,
     riskLevel: planned.riskLevel,
@@ -2738,33 +2999,56 @@ async function performTargetAction(
   return { action, findings, screenMap, pointerEnd };
 }
 
-async function collectScrollableTargets(page: Page, avoidClickText: string[]): Promise<InteractiveTarget[]> {
+export async function collectScrollableTargets(page: Page, avoidClickText: string[]): Promise<InteractiveTarget[]> {
   const targets = await page.evaluate((avoidText) => {
     const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();
+    const browserWindow = window as typeof window & {
+      __uxSentinelTargetSeq?: {
+        t?: number;
+        s?: number;
+      };
+    };
+    const allocateTargetId = (element: HTMLElement, prefix: "t" | "s") => {
+      const existing = element.getAttribute("data-ux-sentinel-target-id");
+      if (existing) {
+        return existing;
+      }
+
+      browserWindow.__uxSentinelTargetSeq ??= {};
+      let next = browserWindow.__uxSentinelTargetSeq[prefix] ?? 0;
+      let id = "";
+      do {
+        next += 1;
+        id = `${prefix}${String(next).padStart(4, "0")}`;
+      } while (document.querySelector(`[data-ux-sentinel-target-id="${id}"]`));
+      browserWindow.__uxSentinelTargetSeq[prefix] = next;
+      element.setAttribute("data-ux-sentinel-target-id", id);
+      return id;
+    };
     const dangerous = (label: string) => {
       const normalized = normalize(label).toLowerCase();
       return Boolean(normalized) && avoidText.some((item) => normalized.includes(normalize(item).toLowerCase()));
     };
 
     return Array.from(document.querySelectorAll<HTMLElement>("body *"))
-      .map((element, index) => {
+      .map((element) => {
         const rect = element.getBoundingClientRect();
         const style = window.getComputedStyle(element);
         const scrollable =
           (element.scrollHeight > element.clientHeight + 24 && ["auto", "scroll"].includes(style.overflowY)) ||
           (element.scrollWidth > element.clientWidth + 24 && ["auto", "scroll"].includes(style.overflowX));
         const label = normalize(element.innerText || element.textContent || element.getAttribute("aria-label") || "");
-        const id = element.getAttribute("data-ux-sentinel-target-id") ?? `s${String(index + 1).padStart(3, "0")}`;
-        if (scrollable && !element.hasAttribute("data-ux-sentinel-target-id")) {
-          element.setAttribute("data-ux-sentinel-target-id", id);
-        }
+        const id = scrollable ? allocateTargetId(element, "s") : element.getAttribute("data-ux-sentinel-target-id") ?? "";
         return {
           id,
           tag: element.tagName.toLowerCase(),
           role: element.getAttribute("role"),
           dataUxRole: element.getAttribute("data-ux-role"),
+          dataUxAction: element.getAttribute("data-ux-action"),
+          dataUxClickable: element.getAttribute("data-ux-clickable") === "true",
           visibleText: label.slice(0, 240),
           ariaLabel: element.getAttribute("aria-label"),
+          ariaHasPopup: element.getAttribute("aria-haspopup"),
           title: element.getAttribute("title"),
           bbox: {
             x: Math.round(rect.x),
@@ -2820,7 +3104,17 @@ async function performScrollAction(
   await page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first().scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
-    const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors);
+    const runtimeReason =
+      live.status === "identity_mismatch"
+        ? live.identity.reason ?? `target identity mismatch: planned "${live.identity.plannedLabel}", live "${live.identity.liveLabel}"`
+        : live.reason;
+    const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors, {
+      plannerClickDecision: "not_applicable",
+      plannerClickDecisionReason: "scroll action does not perform safe clicks",
+      runtimeClickDecision: "skipped",
+      runtimeClickDecisionReason: runtimeReason,
+      targetIdentity: live.status === "identity_mismatch" ? live.identity : undefined
+    });
     return {
       ...skipped,
       findings: []
@@ -2855,6 +3149,10 @@ async function performScrollAction(
       clickSkippedReason: "scroll only",
       clickDecision: "not_applicable",
       clickDecisionReason: "scroll action does not perform safe clicks",
+      plannerClickDecision: "not_applicable",
+      plannerClickDecisionReason: "scroll action does not perform safe clicks",
+      runtimeClickDecision: "not_applicable",
+      runtimeClickDecisionReason: "scroll action does not perform safe clicks",
       plannedReason: planned.plannedReason,
       targetCategory: planned.targetCategory,
       riskLevel: planned.riskLevel,
@@ -2938,7 +3236,10 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
     const targets = config.hoverAllClickables
       ? await collectVisibleInteractiveTargets(page, config.avoidClickText, config.allowNavigation)
       : [];
-    const scrollTargets = config.scrollContainers ? await collectScrollableTargets(page, config.avoidClickText) : [];
+    const interactiveTargetIds = new Set(targets.map((target) => target.id));
+    const scrollTargets = config.scrollContainers
+      ? (await collectScrollableTargets(page, config.avoidClickText)).filter((target) => !interactiveTargetIds.has(target.id))
+      : [];
     const plannedActions = planInteractiveActions({
       targets,
       scrollTargets,
@@ -3006,6 +3307,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       stateEdges.push(evidence.edge);
       stateSequence += 1;
       actions.push(result.action);
+      updateClickCandidateRuntimeDecision(clickCandidatesById, result.action);
       findings.push(...result.findings);
       findings.push(...evidence.findings);
       sequence += 1;
@@ -3035,7 +3337,10 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
           const latestTargets = config.hoverAllClickables
             ? await collectVisibleInteractiveTargets(page, config.avoidClickText, config.allowNavigation)
             : [];
-          const latestScrollTargets = config.scrollContainers ? await collectScrollableTargets(page, config.avoidClickText) : [];
+          const latestInteractiveTargetIds = new Set(latestTargets.map((target) => target.id));
+          const latestScrollTargets = config.scrollContainers
+            ? (await collectScrollableTargets(page, config.avoidClickText)).filter((target) => !latestInteractiveTargetIds.has(target.id))
+            : [];
           const freshTargets = latestTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
           const freshScrollTargets = latestScrollTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
           const replannedActions = planInteractiveActions({

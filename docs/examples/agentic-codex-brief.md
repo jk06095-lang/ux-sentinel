@@ -15,6 +15,10 @@ Fix evidence-backed perception mismatches from an agentic interactive audit with
 - visual diff: `.ux-sentinel/traces/<timestamp>/actions/a001-diff.png`
 - DOM diff: `.ux-sentinel/traces/<timestamp>/actions/a001-dom-diff.json`
 - accessibility diff: `.ux-sentinel/traces/<timestamp>/actions/a001-a11y-diff.json`
+- pointer trace: `.ux-sentinel/traces/<timestamp>/actions/a001-pointer-trace.json`
+- animation trace: `.ux-sentinel/traces/<timestamp>/actions/a001-animation-trace.json`
+
+Before patching, compare `plannerClickDecision` with `runtimeClickDecision` in `action-trace.json` and `trace-manifest.json`. A planner-allowed candidate may still be runtime-skipped for cursor target drift, stale target, target identity mismatch, overlay blockage, or navigation safety. If `targetIdentity.matches` is false, preserve the skip behavior and fix the UI/state drift; do not force the audit to click the changed live element.
 
 ## Findings To Address
 
@@ -57,6 +61,9 @@ Acceptance criteria:
 - Do not remove `data-ux-action` metadata to avoid consistency findings.
 - Do not disable interactive exploration or contact sheet generation.
 - Do not enable `run --interactive --click-safe`; scenario-driven clicks must use `interactive_exploration.click_all_safe_controls: true`.
+- Do not weaken stable target identity checks or remove `target identity mismatch` skips.
+- Do not collapse planner and runtime click decisions into one ambiguous field.
+- Do not remove phased animation samples; short hover/focus/click motion must remain visible before after-settle evidence.
 
 ## Regression Command
 
