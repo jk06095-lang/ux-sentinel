@@ -173,6 +173,7 @@ describe("Codex integration docs", () => {
       readText("docs/INTERACTIVE_AUDIT.md"),
       readText("docs/AGENTIC_INTERACTIVE_AUDIT.md"),
       readText("docs/MOTION_AUDIT.md"),
+      readText("docs/UX_RULE_REGISTRY.md"),
       readText("docs/SAFETY_POLICY.md"),
       readText("docs/prompts/04-interactive-visual-audit.md")
     ].join("\n");
@@ -207,6 +208,12 @@ describe("Codex integration docs", () => {
     expect(docs).toContain("MOTION_AUDIT.md");
     expect(docs).toContain("ux_rule_profile");
     expect(docs).toContain("require_rule_mapping");
+    expect(docs).toContain("Adding A Detector Safely");
+    expect(docs).toContain("False Positive Control");
+    expect(docs).toContain("positive fixture and one non-firing fixture");
+    expect(docs).toContain("Scenario thresholds stay configurable");
+    expect(docs).toContain("Ambiguous heuristic findings stay `medium` or `low` confidence");
+    expect(docs).toContain("Treating aria-only intent as sufficient human-visible evidence");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("animation_audit:");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("ux_rule_profile:");
     expect(readText("demo/scenarios/professional-agentic-ui-audit.yaml")).toContain("graph_dag_readability");

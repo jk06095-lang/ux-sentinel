@@ -91,7 +91,7 @@ The registry currently maps the MVP detectors, interactive visual detectors, poi
 - layout, graph, and pointer traces: `text_truncated`, `card_overlap`, `card_content_clipped`, `responsive_layout_breakpoint_overlap`, `popover_blocks_primary_action`, `tooltip_blocks_trigger`, `sticky_layer_hides_content`, `edge_label_crosses_node`, `edge_crosses_critical_label`, `selected_path_not_traceable`, `graph_control_not_discoverable`, `node_label_truncated`, `text_occluded_by_graph_edge`, `cursor_target_drift`, `target_moved_during_cursor_approach`, `overlay_appeared_during_cursor_approach`, `hover_content_blocks_trigger`
 - motion audit: `animation_ignores_reduced_motion`, `animation_hides_critical_action`, `animation_duration_blocks_task`, `animation_causes_layout_shift`, `animation_uses_layout_paint_properties`, `animation_jank_detected`, `inconsistent_motion_tokens`
 
-## Adding A Detector
+## Adding A Detector Safely
 
 When adding a detector:
 
@@ -99,6 +99,35 @@ When adding a detector:
 2. Add the detector name to at least one rule in `src/core/rules/`.
 3. Pick the rule family that best explains the user impact.
 4. If the detector needs new evidence, include it in `evidenceRequired`.
-5. Add or update tests so `unmappedDetectors(...)` stays empty for implemented detectors.
+5. Add at least one positive fixture and one non-firing fixture so the detector proves both the mismatch and the safe path.
+6. Add or update tests so `unmappedDetectors(...)` stays empty for implemented detectors.
+7. Keep detector output actionable: include user impact, suggested fix, and a regression command or check.
 
 Findings without sufficient evidence are marked lower confidence by the enrichment layer. Do not raise confidence by weakening evidence requirements.
+
+## False Positive Control
+
+Detectors should avoid turning taste, density, or unusual styling into automatic failures. Before a detector can emit a high-confidence finding, it should satisfy all of these:
+
+- The finding is tied to observable evidence: screenshot, bbox, screen map, accessibility snapshot, hit-test, DOM diff, accessibility diff, pointer trace, animation trace, console/network evidence, or a scenario contract.
+- The evidence explains a user-facing consequence: unclear state, hidden primary action, blocked target, misleading label, unexpected state change, missing recovery path, inaccessible focus, or motion that can interrupt the task.
+- The detector has an explicit non-firing case that proves ordinary variants do not trigger it.
+- Scenario thresholds stay configurable when the detector uses geometry, timing, overlap ratios, token counts, or graph/DAG layout limits.
+- Ambiguous heuristic findings stay `medium` or `low` confidence unless the required evidence kinds are present.
+- `fail_conditions` should be used to make a detector fail a scenario only when the scenario intentionally treats that mismatch as blocking.
+
+Useful patterns:
+
+- For geometry detectors, report the exact bbox, overlap ratio, fold position, or target size.
+- For interaction detectors, link the action id plus before/after screenshots, pointer trace, DOM diff, or accessibility diff.
+- For motion detectors, link the animation trace and summarize affected properties, duration, reduced-motion behavior, and long-task markers when available.
+- For accessibility detectors, include the visible label, accessible name or snapshot evidence, and the expected user-facing correction.
+- For graph/DAG detectors, require the graph contract or graph-like DOM evidence before emitting layout findings.
+
+Avoid these anti-patterns:
+
+- Emitting a finding because a UI is merely unfamiliar.
+- Failing a page from text-only assumptions when required screenshot, screen-map, or runtime evidence is absent.
+- Hiding false positives by removing detector ids from reports, scenarios, or rule mappings.
+- Treating aria-only intent as sufficient human-visible evidence.
+- Downgrading safety checks to make interactive demos pass.
