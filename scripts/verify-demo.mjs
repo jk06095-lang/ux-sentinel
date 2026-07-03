@@ -293,6 +293,21 @@ function assertInteractiveArtifacts({
         throw new Error(`${edgeLabel} is missing ${key}`);
       }
     }
+    for (const key of ["targetId", "targetCategory", "plannedReason", "riskLevel"]) {
+      if (!edge[key]) {
+        throw new Error(`${edgeLabel} is missing planner reconstruction metadata: ${key}`);
+      }
+    }
+    if (typeof edge.planDepth !== "number" || typeof edge.planPriority !== "number") {
+      throw new Error(`${edgeLabel} is missing numeric planner depth or priority metadata`);
+    }
+    if (action) {
+      for (const key of ["targetCategory", "plannedReason", "riskLevel", "planDepth", "planPriority"]) {
+        if (edge[key] !== action[key]) {
+          throw new Error(`${edgeLabel} ${key} did not match action trace metadata`);
+        }
+      }
+    }
     artifactPath(edge.beforeScreenshot, `${edgeLabel} before screenshot`);
     artifactPath(edge.afterScreenshot, `${edgeLabel} after screenshot`);
     artifactPath(edge.visualDiff, `${edgeLabel} visual diff`);

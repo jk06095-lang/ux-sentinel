@@ -125,6 +125,10 @@ describe("state graph evidence", () => {
           actionType: "hover_click",
           targetId: "t001",
           targetCategory: "primary_cta",
+          plannedReason: "planned as primary_cta: matches the scenario primary CTA labels",
+          riskLevel: "low",
+          planDepth: 0,
+          planPriority: 10,
           beforeStateId: "s000",
           afterStateId: "s001",
           beforeScreenshot: "actions/a001-before.png",
@@ -166,6 +170,14 @@ describe("state graph evidence", () => {
     expect(graph.version).toBe(1);
     expect(graph.edges[0].beforeStateId).toBe("s000");
     expect(graph.edges[0].afterStateId).toBe("s001");
+    expect(graph.edges[0]).toMatchObject({
+      targetId: "t001",
+      targetCategory: "primary_cta",
+      plannedReason: "planned as primary_cta: matches the scenario primary CTA labels",
+      riskLevel: "low",
+      planDepth: 0,
+      planPriority: 10
+    });
     expect(graph.edges[0].cursorMovement?.pointCount).toBe(5);
     expect(graph.edges[0].cursorMovement?.finalHitTestMatchedTarget).toBe(true);
     expect(graph.edges[0].findings[0]).toMatchObject({

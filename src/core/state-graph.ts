@@ -39,6 +39,10 @@ export interface StateGraphEdge {
   actionType: string;
   targetId: string;
   targetCategory?: string;
+  plannedReason?: string;
+  riskLevel?: string;
+  planDepth?: number;
+  planPriority?: number;
   beforeStateId: string;
   afterStateId: string;
   beforeScreenshot: string;

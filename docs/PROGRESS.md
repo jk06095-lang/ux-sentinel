@@ -556,3 +556,11 @@ Added a runtime regression for the motion audit opt-in boundary:
 - Verified animation traces are still written when `animation_audit.enabled: true`.
 - Verified `compare_reduced_motion: false` leaves `reducedMotion` evidence absent and `reducedMotionStillAnimating: false`.
 - Verified `animation_ignores_reduced_motion` is not emitted unless reduced-motion comparison is explicitly enabled.
+
+### Checkpoint: State Graph Planner Metadata
+
+Strengthened state graph reconstruction evidence:
+
+- Added planner `plannedReason`, `riskLevel`, `planDepth`, and `planPriority` metadata to each state graph action edge.
+- Updated state graph tests to assert the planner metadata is preserved with target id/category and cursor evidence.
+- Extended `npm run demo:verify` so every state graph edge must include planner metadata matching the action trace.
