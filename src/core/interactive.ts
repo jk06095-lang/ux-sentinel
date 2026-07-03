@@ -338,21 +338,23 @@ export function compareTargetIdentity(planned: InteractiveTarget, live: Interact
     benignLabelChange: false
   };
 
+  if (!isDangerousClickLabel(plannedLabel) && isDangerousClickLabel(liveLabel)) {
+    return {
+      ...common,
+      matches: false,
+      status: "dangerous_label_change",
+      reason: structuralSignatureMatches
+        ? `target identity mismatch: target label became dangerous: planned "${plannedLabel}", live "${liveLabel}"`
+        : `target identity mismatch: target label became dangerous and structural identity changed: planned "${plannedLabel}", live "${liveLabel}"`
+    };
+  }
+
   if (!structuralSignatureMatches) {
     return {
       ...common,
       matches: false,
       status: "identity_mismatch",
       reason: `target identity mismatch: structural identity changed: planned "${plannedLabel}", live "${liveLabel}"`
-    };
-  }
-
-  if (!isDangerousClickLabel(plannedLabel) && isDangerousClickLabel(liveLabel)) {
-    return {
-      ...common,
-      matches: false,
-      status: "dangerous_label_change",
-      reason: `target identity mismatch: target label became dangerous: planned "${plannedLabel}", live "${liveLabel}"`
     };
   }
 

@@ -336,6 +336,16 @@ describe("interactive exploration helpers", () => {
       structuralSignatureMatches: true
     });
 
+    expect(compareTargetIdentity(identityTarget(), identityTarget({ visibleText: "Delete project", dataUxAction: "delete-project" }))).toMatchObject({
+      matches: false,
+      status: "dangerous_label_change",
+      rawLabelChanged: true,
+      normalizedLabelChanged: true,
+      benignLabelChange: false,
+      structuralSignatureMatches: false,
+      reason: expect.stringContaining("target label became dangerous and structural identity changed")
+    });
+
     expect(compareTargetIdentity(identityTarget(), identityTarget({ href: "https://example.test/billing" }))).toMatchObject({
       matches: false,
       status: "identity_mismatch",
@@ -1330,8 +1340,10 @@ describe("interactive exploration helpers", () => {
       expect(result.actions[1].runtimeClickDecisionReason).toContain("target identity mismatch");
       expect(result.actions[1].targetIdentity).toMatchObject({
         matches: false,
+        status: "dangerous_label_change",
         plannedLabel: "Open details",
-        liveLabel: "Delete project"
+        liveLabel: "Delete project",
+        structuralSignatureMatches: false
       });
 
       const domDiff = JSON.parse(await readFile(result.actions[1].domDiff!, "utf8")) as {
@@ -1344,7 +1356,7 @@ describe("interactive exploration helpers", () => {
           skipped?: boolean;
           runtimeClickDecision?: string;
           runtimeClickDecisionReason?: string;
-          targetIdentity?: { matches: boolean; plannedLabel: string; liveLabel: string };
+          targetIdentity?: { matches: boolean; status: string; plannedLabel: string; liveLabel: string; structuralSignatureMatches: boolean };
         }>;
         clickCandidates: Array<{
           visibleText: string;
@@ -1358,8 +1370,10 @@ describe("interactive exploration helpers", () => {
         runtimeClickDecision: "skipped",
         targetIdentity: {
           matches: false,
+          status: "dangerous_label_change",
           plannedLabel: "Open details",
-          liveLabel: "Delete project"
+          liveLabel: "Delete project",
+          structuralSignatureMatches: false
         }
       });
       expect(actionTrace.clickCandidates.find((candidate) => candidate.visibleText === "Open details")).toMatchObject({
@@ -1369,16 +1383,18 @@ describe("interactive exploration helpers", () => {
       });
 
       const stateGraph = JSON.parse(await readFile(result.artifacts.stateGraph, "utf8")) as {
-        edges: Array<{ skipReason?: string; targetIdentity?: { liveLabel: string }; runtimeClickDecisionReason?: string }>;
+        edges: Array<{ skipReason?: string; targetIdentity?: { status: string; liveLabel: string }; runtimeClickDecisionReason?: string }>;
       };
       expect(stateGraph.edges[1].skipReason).toContain("identity changed");
+      expect(stateGraph.edges[1].targetIdentity?.status).toBe("dangerous_label_change");
       expect(stateGraph.edges[1].targetIdentity?.liveLabel).toBe("Delete project");
       expect(stateGraph.edges[1].runtimeClickDecisionReason).toContain("target identity mismatch");
 
       const traceManifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
-        actions: Array<{ targetIdentity?: { liveLabel: string }; runtimeClickDecisionReason?: string }>;
+        actions: Array<{ targetIdentity?: { status: string; liveLabel: string }; runtimeClickDecisionReason?: string }>;
         clickCandidates: Array<{ visibleText: string; runtimeClickDecisionReason?: string }>;
       };
+      expect(traceManifest.actions[1].targetIdentity?.status).toBe("dangerous_label_change");
       expect(traceManifest.actions[1].targetIdentity?.liveLabel).toBe("Delete project");
       expect(traceManifest.actions[1].runtimeClickDecisionReason).toContain("target identity mismatch");
       expect(traceManifest.clickCandidates.find((candidate) => candidate.visibleText === "Open details")?.runtimeClickDecisionReason).toContain(
@@ -1386,9 +1402,10 @@ describe("interactive exploration helpers", () => {
       );
 
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
-      expect(contactSheet).toContain("Status: identity_mismatch");
+      expect(contactSheet).toContain("Status: dangerous_label_change");
       expect(contactSheet).toContain("Planned label: Open details");
       expect(contactSheet).toContain("Live label: Delete project");
+      expect(contactSheet).toContain("dangerous label change");
       expect(contactSheet).toContain("Runtime click decision: skipped: pre-scroll identity check failed: target identity mismatch");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
@@ -1446,9 +1463,10 @@ describe("interactive exploration helpers", () => {
         runtimeClickDecision: "skipped",
         targetIdentity: {
           matches: false,
-          status: "identity_mismatch",
+          status: "dangerous_label_change",
           plannedLabel: "Open details",
-          liveLabel: "Delete project"
+          liveLabel: "Delete project",
+          structuralSignatureMatches: false
         }
       });
 
