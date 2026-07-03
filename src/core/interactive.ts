@@ -25,6 +25,7 @@ import {
   diffAccessibilitySnapshots,
   diffStateSnapshots,
   type StateGraphEdge,
+  type StateGraphFindingSummary,
   type StateGraphNode,
   type StateDiff,
   type StateSnapshot
@@ -1581,7 +1582,24 @@ function actionIdFromFinding(findingItem: Finding): string | undefined {
   return match?.[1];
 }
 
-function attachFindingsToStateEdges(edges: StateGraphEdge[], findingsToAttach: Finding[]): StateGraphEdge[] {
+function summarizeActionFinding(findingItem: Finding): StateGraphFindingSummary {
+  return {
+    id: findingItem.id,
+    detector: findingItem.detector,
+    severity: findingItem.severity,
+    title: findingItem.title,
+    evidence: findingItem.evidence,
+    userImpact: findingItem.userImpact,
+    suggestedFix: findingItem.suggestedFix,
+    regressionCheck: findingItem.regressionCheck,
+    ruleIds: findingItem.ruleIds,
+    ruleFamily: findingItem.ruleFamily,
+    confidence: findingItem.confidence,
+    evidencePaths: findingItem.evidencePaths
+  };
+}
+
+function findingsByActionId(findingsToAttach: Finding[]): Map<string, Finding[]> {
   const findingsByAction = new Map<string, Finding[]>();
   for (const findingItem of findingsToAttach) {
     const actionId = actionIdFromFinding(findingItem);
@@ -1590,23 +1608,27 @@ function attachFindingsToStateEdges(edges: StateGraphEdge[], findingsToAttach: F
     }
     findingsByAction.set(actionId, [...(findingsByAction.get(actionId) ?? []), findingItem]);
   }
+  return findingsByAction;
+}
+
+function attachFindingsToStateEdges(edges: StateGraphEdge[], findingsToAttach: Finding[]): StateGraphEdge[] {
+  const findingsByAction = findingsByActionId(findingsToAttach);
 
   return edges.map((edge) => ({
     ...edge,
-    findings: (findingsByAction.get(edge.actionId) ?? []).map((findingItem) => ({
-      id: findingItem.id,
-      detector: findingItem.detector,
-      severity: findingItem.severity,
-      title: findingItem.title,
-      evidence: findingItem.evidence,
-      userImpact: findingItem.userImpact,
-      suggestedFix: findingItem.suggestedFix,
-      regressionCheck: findingItem.regressionCheck,
-      ruleIds: findingItem.ruleIds,
-      ruleFamily: findingItem.ruleFamily,
-      confidence: findingItem.confidence,
-      evidencePaths: findingItem.evidencePaths
-    }))
+    findings: (findingsByAction.get(edge.actionId) ?? []).map(summarizeActionFinding)
+  }));
+}
+
+function attachFindingsToActionTrace(
+  actionsToAttach: InteractiveActionRecord[],
+  findingsToAttach: Finding[]
+): Array<InteractiveActionRecord & { findings: StateGraphFindingSummary[] }> {
+  const findingsByAction = findingsByActionId(findingsToAttach);
+
+  return actionsToAttach.map((action) => ({
+    ...action,
+    findings: (findingsByAction.get(action.id) ?? []).map(summarizeActionFinding)
   }));
 }
 
@@ -2882,7 +2904,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         replannedActionCount
       },
       clickCandidates: Array.from(clickCandidatesById.values()),
-      actions
+      actions: attachFindingsToActionTrace(actions, numberedFindings)
     });
     await writeJson(stateGraphPath, buildStateGraph(stateNodes, attachFindingsToStateEdges(stateEdges, numberedFindings)));
     await writeJson(anomaliesPath, numberedFindings);

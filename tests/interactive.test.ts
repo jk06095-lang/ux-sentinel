@@ -662,6 +662,12 @@ describe("interactive exploration helpers", () => {
             hoverDurationMs: number;
             finalHitTestMatchedTarget: boolean;
           };
+          findings?: Array<{
+            detector: string;
+            ruleIds?: string[];
+            confidence?: string;
+            evidencePaths?: Record<string, string>;
+          }>;
         }>;
       };
       expect(actionTrace.planner.mode).toBe("agentic");
@@ -692,6 +698,23 @@ describe("interactive exploration helpers", () => {
         hoverDurationMs: 0,
         finalHitTestMatchedTarget: true
       });
+      expect(actionTrace.actions[0].findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            detector: "no_feedback_after_action",
+            ruleIds: expect.arrayContaining(["nielsen.visibility_of_system_status"]),
+            confidence: "high",
+            evidencePaths: expect.objectContaining({
+              beforeScreenshot: expect.stringContaining("a001-before.png"),
+              afterScreenshot: expect.stringContaining("a001-after.png"),
+              visualDiff: expect.stringContaining("a001-diff.png"),
+              domDiff: expect.stringContaining("a001-dom-diff.json"),
+              accessibilityDiff: expect.stringContaining("a001-a11y-diff.json"),
+              pointerTrace: expect.stringContaining("a001-pointer-trace.json")
+            })
+          })
+        ])
+      );
       const stateGraph = JSON.parse(await readFile(result.artifacts.stateGraph, "utf8")) as {
         nodes: Array<{ id: string; visibleTextHash: string; domStructureHash: string }>;
         edges: Array<{

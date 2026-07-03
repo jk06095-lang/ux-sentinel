@@ -191,6 +191,23 @@ function assertInteractiveArtifacts({
       for (const detector of action.findingDetectors) {
         actionFindingDetectors.add(detector);
       }
+      if (action.findingDetectors.length > 0) {
+        if (!Array.isArray(action.findings) || action.findings.length === 0) {
+          throw new Error(`${actionLabel} recorded finding detectors without action-level finding summaries`);
+        }
+        for (const detector of action.findingDetectors) {
+          const summary = action.findings.find((finding) => finding.detector === detector);
+          if (!summary?.evidence || !summary?.userImpact || !summary?.suggestedFix || !summary?.regressionCheck) {
+            throw new Error(`${actionLabel} finding summary for ${detector} is missing actionable evidence fields`);
+          }
+          if (!Array.isArray(summary.ruleIds) || summary.ruleIds.length === 0 || !summary.confidence) {
+            throw new Error(`${actionLabel} finding summary for ${detector} is missing rule/confidence metadata`);
+          }
+          if (!summary.evidencePaths?.beforeScreenshot || !summary.evidencePaths?.afterScreenshot || !summary.evidencePaths?.screenMap) {
+            throw new Error(`${actionLabel} finding summary for ${detector} is missing action evidence paths`);
+          }
+        }
+      }
     }
     if (action.animationTrace) {
       animationTracePaths.push(action.animationTrace);
