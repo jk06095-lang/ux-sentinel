@@ -325,7 +325,11 @@ describe("interactive exploration helpers", () => {
       const manifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
         artifacts: Record<string, string>;
         counts: { actions: number; findings: number; states: number; edges: number };
-        actions: Array<{ id: string; evidence: Record<string, string> }>;
+        actions: Array<{
+          id: string;
+          evidence: Record<string, string>;
+          evidenceSummary?: { completeForReview: boolean; missing: string[] };
+        }>;
       };
 
       expect(finding?.evidence).toContain("Create first project");
@@ -340,6 +344,7 @@ describe("interactive exploration helpers", () => {
       expect(manifest.counts.edges).toBe(result.actions.length);
       expect(manifest.actions[0]?.evidence.beforeScreenshot).toBe("actions/a001-before.png");
       expect(manifest.actions[0]?.evidence.screenMap).toBe("actions/a001-screen-map.json");
+      expect(manifest.actions[0]?.evidenceSummary).toMatchObject({ completeForReview: true, missing: [] });
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
@@ -371,6 +376,8 @@ describe("interactive exploration helpers", () => {
           afterScreenshot: "trace/actions/a001-after.png",
           visualDiff: "trace/actions/a001-diff.png",
           screenMap: "trace/actions/a001-screen-map.json",
+          domDiff: "trace/actions/a001-dom-diff.json",
+          accessibilityDiff: "trace/actions/a001-a11y-diff.json",
           beforeStateId: "s000",
           afterStateId: "s001",
           targetCategory: "tooltip_help_trigger",
@@ -386,6 +393,19 @@ describe("interactive exploration helpers", () => {
             targetMovedDuringApproach: false,
             overlayAppearedDuringApproach: false,
             finalHitTestMatchedTarget: true
+          },
+          evidenceSummary: {
+            beforeScreenshot: true,
+            afterScreenshot: true,
+            visualDiff: true,
+            screenMap: true,
+            domDiff: true,
+            accessibilityDiff: true,
+            pointerTrace: true,
+            animationTrace: true,
+            required: ["beforeScreenshot", "afterScreenshot", "visualDiff", "screenMap", "domDiff", "accessibilityDiff", "pointerTrace"],
+            missing: [],
+            completeForReview: true
           },
           animationTrace: "trace/actions/a001-animation-trace.json",
           animationTraceSummary: {
@@ -527,6 +547,7 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain('after=<a href="actions/a001-after.png">actions/a001-after.png</a>');
     expect(html).toContain('diff=<a href="actions/a001-diff.png">actions/a001-diff.png</a>');
     expect(html).toContain('screen-map=<a href="actions/a001-screen-map.json">actions/a001-screen-map.json</a>');
+    expect(html).toContain("Evidence completeness: complete; required=beforeScreenshot,afterScreenshot,visualDiff,screenMap,domDiff,accessibilityDiff,pointerTrace; missing=none");
     expect(html).toContain("Accessibility Cross-Check");
     expect(html).toContain("Finding Evidence And UX Principles");
     expect(html).toContain("data-action-card");
@@ -832,6 +853,11 @@ describe("interactive exploration helpers", () => {
             hoverDurationMs: number;
             finalHitTestMatchedTarget: boolean;
           };
+          evidenceSummary?: {
+            completeForReview: boolean;
+            missing: string[];
+            required: string[];
+          };
           findings?: Array<{
             detector: string;
             ruleIds?: string[];
@@ -867,6 +893,11 @@ describe("interactive exploration helpers", () => {
         movementDurationMs: 0,
         hoverDurationMs: 0,
         finalHitTestMatchedTarget: true
+      });
+      expect(actionTrace.actions[0].evidenceSummary).toMatchObject({
+        completeForReview: true,
+        missing: [],
+        required: expect.arrayContaining(["beforeScreenshot", "afterScreenshot", "visualDiff", "screenMap", "domDiff", "accessibilityDiff", "pointerTrace"])
       });
       expect(actionTrace.actions[0].findings).toEqual(
         expect.arrayContaining([

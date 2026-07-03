@@ -447,6 +447,20 @@ export interface AnimationTraceSummary {
   maxLongTaskDurationMs: number;
 }
 
+export interface InteractiveActionEvidenceSummary {
+  beforeScreenshot: boolean;
+  afterScreenshot: boolean;
+  visualDiff: boolean;
+  screenMap: boolean;
+  domDiff: boolean;
+  accessibilityDiff: boolean;
+  pointerTrace: boolean;
+  animationTrace: boolean;
+  required: string[];
+  missing: string[];
+  completeForReview: boolean;
+}
+
 export interface InteractiveActionRecord {
   id: string;
   sequence: number;
@@ -477,6 +491,7 @@ export interface InteractiveActionRecord {
   focusEvidence?: FocusEvidence;
   animationTrace?: string;
   animationTraceSummary?: AnimationTraceSummary;
+  evidenceSummary?: InteractiveActionEvidenceSummary;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;

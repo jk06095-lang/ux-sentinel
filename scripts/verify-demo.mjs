@@ -158,6 +158,14 @@ function assertInteractiveArtifacts({
   if (traceManifest.counts?.findings !== anomalies.length) {
     throw new Error(`${traceManifestPath} finding count does not match anomalies.json`);
   }
+  if (!Array.isArray(traceManifest.actions) || traceManifest.actions.length !== actionTrace.actions.length) {
+    throw new Error(`${traceManifestPath} action index does not match action trace length`);
+  }
+  for (const manifestAction of traceManifest.actions) {
+    if (!manifestAction.evidenceSummary || manifestAction.evidenceSummary.completeForReview !== true) {
+      throw new Error(`${traceManifestPath} action ${manifestAction.id ?? "unknown"} is missing complete evidence summary`);
+    }
+  }
   if (expectedPlannerMode && actionTrace.planner?.mode !== expectedPlannerMode) {
     throw new Error(`${actionTracePath} expected planner mode ${expectedPlannerMode}, got ${actionTrace.planner?.mode ?? "unknown"}`);
   }
@@ -194,6 +202,12 @@ function assertInteractiveArtifacts({
     }
     if (!action.clickDecision || !action.clickDecisionReason) {
       throw new Error(`${actionLabel} is missing safe-click decision evidence`);
+    }
+    if (!action.evidenceSummary || action.evidenceSummary.completeForReview !== true || !Array.isArray(action.evidenceSummary.missing)) {
+      throw new Error(`${actionLabel} is missing complete action evidence summary`);
+    }
+    if (action.evidenceSummary.missing.length > 0) {
+      throw new Error(`${actionLabel} action evidence summary is missing ${action.evidenceSummary.missing.join(", ")}`);
     }
     artifactPath(action.beforeScreenshot, `${actionLabel} before screenshot`);
     artifactPath(action.afterScreenshot, `${actionLabel} after screenshot`);

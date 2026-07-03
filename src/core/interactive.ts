@@ -41,6 +41,7 @@ import type {
   ElementBox,
   Finding,
   FocusEvidence,
+  InteractiveActionEvidenceSummary,
   InteractiveCapabilities,
   InteractiveActionRecord,
   InteractiveCapabilityPolicy,
@@ -1649,6 +1650,38 @@ function attachFindingsToActionTrace(
   }));
 }
 
+function actionEvidenceSummary(action: InteractiveActionRecord): InteractiveActionEvidenceSummary {
+  const present = {
+    beforeScreenshot: Boolean(action.beforeScreenshot),
+    afterScreenshot: Boolean(action.afterScreenshot),
+    visualDiff: Boolean(action.visualDiff),
+    screenMap: Boolean(action.screenMap),
+    domDiff: Boolean(action.domDiff),
+    accessibilityDiff: Boolean(action.accessibilityDiff),
+    pointerTrace: Boolean(action.pointerTrace),
+    animationTrace: Boolean(action.animationTrace)
+  };
+  const required = ["beforeScreenshot", "afterScreenshot", "visualDiff", "screenMap", "domDiff", "accessibilityDiff"];
+  if (action.skipped !== true && action.actionType !== "scroll") {
+    required.push("pointerTrace");
+  }
+  const missing = required.filter((key) => !present[key as keyof typeof present]);
+
+  return {
+    ...present,
+    required,
+    missing,
+    completeForReview: missing.length === 0
+  };
+}
+
+function attachEvidenceSummaries(actionsToSummarize: InteractiveActionRecord[]): InteractiveActionRecord[] {
+  return actionsToSummarize.map((action) => ({
+    ...action,
+    evidenceSummary: actionEvidenceSummary(action)
+  }));
+}
+
 function relativeEvidencePaths(traceDir: string, evidencePaths: Record<string, string> | undefined): Record<string, string> {
   return Object.fromEntries(
     Object.entries(evidencePaths ?? {}).map(([label, filePath]) => [label, relativeArtifact(traceDir, filePath)])
@@ -1701,6 +1734,7 @@ function buildTraceManifest(
       skipReason: action.skipReason,
       clickDecision: action.clickDecision,
       clickDecisionReason: action.clickDecisionReason,
+      evidenceSummary: action.evidenceSummary,
       beforeStateId: action.beforeStateId,
       afterStateId: action.afterStateId,
       findingDetectors: action.findingDetectors,
@@ -1990,7 +2024,10 @@ export function buildContactSheetHtml(
             `diff=${artifactLink(result.artifacts.traceDir, action.visualDiff)}`,
             `screen-map=${artifactLink(result.artifacts.traceDir, action.screenMap)}`
           ].join(" / ");
-          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}<br /><span>Evidence: ${evidence}</span></li>`;
+          const evidenceSummary = action.evidenceSummary
+            ? `${action.evidenceSummary.completeForReview ? "complete" : "incomplete"}; required=${action.evidenceSummary.required.join(",")}; missing=${action.evidenceSummary.missing.length ? action.evidenceSummary.missing.join(",") : "none"}`
+            : "not summarized";
+          return `<li><strong>${escapeHtml(action.id)}</strong> ${escapeHtml(decision + skipped)}<br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
@@ -3035,17 +3072,18 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
       }
     }
 
+    const actionsWithEvidenceSummaries = attachEvidenceSummaries(actions);
     const numberedFindings = renumberInteractiveFindings(attachActionEvidencePathsToFindings(findings, actions));
     const summary = {
-      actionCount: actions.length,
-      screenshotCount: 1 + actions.length * 3,
+      actionCount: actionsWithEvidenceSummaries.length,
+      screenshotCount: 1 + actionsWithEvidenceSummaries.length * 3,
       anomalyCount: numberedFindings.length,
       notes
     };
     const result: InteractiveExplorationResult = {
       screenMap,
       accessibilitySnapshot,
-      actions,
+      actions: actionsWithEvidenceSummaries,
       clickCandidates: Array.from(clickCandidatesById.values()),
       findings: numberedFindings,
       artifacts: {
@@ -3077,7 +3115,7 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
         replannedActionCount
       },
       clickCandidates: Array.from(clickCandidatesById.values()),
-      actions: attachFindingsToActionTrace(actions, numberedFindings)
+      actions: attachFindingsToActionTrace(actionsWithEvidenceSummaries, numberedFindings)
     };
     const stateGraphPayload = buildStateGraph(stateNodes, attachFindingsToStateEdges(stateEdges, numberedFindings));
     await writeJson(actionTracePath, actionTracePayload);

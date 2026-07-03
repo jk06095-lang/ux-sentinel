@@ -678,3 +678,12 @@ Strengthened UX rule registry verification:
 
 - `tests/rules.test.ts` now discovers implemented detectors from both `finding("...")` helper calls and direct `detector: "..."` finding objects.
 - The rule registry test proves direct-object interactive findings are included in the "every implemented detector maps to at least one UX rule" guard.
+
+### Checkpoint: Action Evidence Completeness Summary
+
+Made per-action evidence completeness machine-readable:
+
+- Interactive action records now include `evidenceSummary` with required, missing, and `completeForReview` fields.
+- `trace-manifest.json` indexes the same summary so a verifier can audit skipped and performed actions without opening every artifact first.
+- `contact-sheet.html` safety log shows evidence completeness beside safe-click and skip decisions.
+- `npm run demo:verify` now fails if any action lacks complete required evidence.
