@@ -540,3 +540,11 @@ Added a focused browser regression for pointer-path target movement evidence:
 - Added an interactive fixture where a safe button shifts horizontally during cursor approach while the final hit-test still lands on the target.
 - Asserted `target_moved_during_cursor_approach` appears in action-linked findings.
 - Asserted `a001-pointer-trace.json` records `targetMovedDuringApproach: true`, `finalHitTestMatchedTarget: true`, and the before/after target bbox movement.
+
+### Checkpoint: Planner Semantic Deduplication
+
+Tightened repeated-target planning so visually identical controls are not collapsed when their semantic action differs:
+
+- Included `data-ux-action` and `href` in the planner state key used to avoid repeated target exploration.
+- Preserved deduplication for genuinely identical same-label/same-bbox targets.
+- Added a planner regression proving same-label/same-bbox targets with different `data-ux-action` or `href` identities are all planned.

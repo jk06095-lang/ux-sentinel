@@ -93,6 +93,31 @@ describe("target classifier and action planner", () => {
     expect(planned[1].plannedClickSkipReason).toBe("max_clicks limit reached by planner");
   });
 
+  it("does not collapse same-label targets when their action identity differs", () => {
+    const duplicateBox = { x: 20, y: 20, width: 100, height: 40 };
+    const planned = planInteractiveActions({
+      targets: [
+        target({ id: "t1", visibleText: "Open", bbox: duplicateBox, dataUxAction: "open-billing" }),
+        target({ id: "t2", visibleText: "Open", bbox: duplicateBox, dataUxAction: "open-security" }),
+        target({ id: "t3", tag: "a", role: "link", visibleText: "Open", href: "/audit-log", bbox: duplicateBox })
+      ],
+      scrollTargets: [],
+      scenario,
+      config: {
+        mode: "agentic",
+        maxActions: 3,
+        maxDepth: 2,
+        maxClicks: 3,
+        maxStateChanges: 3,
+        safeClickEnabled: true
+      }
+    });
+
+    expect(planned).toHaveLength(3);
+    expect(planned.map((item) => item.target.id)).toEqual(["t3", "t1", "t2"]);
+    expect(new Set(planned.map((item) => item.stateKey)).size).toBe(3);
+  });
+
   it("reports max_state_changes when state-change budget blocks otherwise safe clicks", () => {
     const planned = planInteractiveActions({
       targets: [

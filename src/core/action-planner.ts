@@ -40,7 +40,7 @@ function targetText(target: InteractiveTarget): string {
 function targetStateKey(kind: PlannedActionKind, target: InteractiveTarget, category: InteractiveTargetCategory): string {
   const text = targetText(target).toLowerCase();
   const box = `${Math.round(target.bbox.x / 8)}:${Math.round(target.bbox.y / 8)}:${Math.round(target.bbox.width / 8)}:${Math.round(target.bbox.height / 8)}`;
-  return [kind, category, target.tag, target.role ?? "", target.dataUxRole ?? "", text, box].join("|");
+  return [kind, category, target.tag, target.role ?? "", target.dataUxRole ?? "", target.dataUxAction ?? "", target.href ?? "", text, box].join("|");
 }
 
 function plannedReason(kind: PlannedActionKind, category: InteractiveTargetCategory, reason: string, target: InteractiveTarget): string {
