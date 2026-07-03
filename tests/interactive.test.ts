@@ -1165,6 +1165,54 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("records keyboard targets that cannot retain focus as evidence-backed findings", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button { position: absolute; left: 80px; top: 80px; width: 180px; height: 44px; }
+            button:focus { outline: 3px solid #111; }
+          </style>
+          <button onfocus="this.blur(); document.body.dataset.focusLost = 'true'">Focus vanishes</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 20,
+        scenario: {
+          id: "keyboard-target-not-reachable",
+          title: "Keyboard target not reachable",
+          persona: "keyboard-user",
+          interactive_exploration: { enabled: true, focus_all_keyboard_targets: true }
+        }
+      });
+
+      const finding = result.findings.find((item) => item.detector === "keyboard_target_not_reachable");
+      expect(result.actions[0].focused).toBe(true);
+      expect(result.actions[0].focusEvidence?.activeElementMatchesTarget).toBe(false);
+      expect(result.actions[0].findingDetectors).toContain("keyboard_target_not_reachable");
+      expect(finding?.ruleIds).toContain("wcag22.focus_visible");
+      expect(finding?.confidence).toBe("high");
+      expect(finding?.evidencePaths).toEqual(
+        expect.objectContaining({
+          beforeScreenshot: expect.stringContaining("a001-before.png"),
+          afterScreenshot: expect.stringContaining("a001-after.png"),
+          pointerTrace: expect.stringContaining("a001-pointer-trace.json")
+        })
+      );
+
+      const manifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
+        findings: Array<{ detector: string; evidencePaths: Record<string, string> }>;
+      };
+      const manifestFinding = manifest.findings.find((item) => item.detector === "keyboard_target_not_reachable");
+      expect(manifestFinding?.evidencePaths.beforeScreenshot).toBe("actions/a001-before.png");
+      expect(manifestFinding?.evidencePaths.pointerTrace).toBe("actions/a001-pointer-trace.json");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("detects visible context changes caused by focus alone", async () => {
     const traceRoot = await tempTraceRoot();
     try {

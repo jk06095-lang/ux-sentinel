@@ -606,3 +606,11 @@ Added a machine-readable bundle index for interactive audit evidence:
 - Interactive runs now write `trace-manifest.json` beside `action-trace.json`, `state-graph.json`, `anomalies.json`, and `contact-sheet.html`.
 - The manifest records root artifacts, action evidence files, state/finding counts, planner metadata, and resolved capability policy so reviewers can verify bundle completeness before opening each artifact.
 - Reports, CLI summaries, contact sheets, README/docs, and `npm run demo:verify` now surface and validate the trace manifest.
+
+### Checkpoint: Keyboard Focus Reachability Evidence
+
+Tightened test coverage for the interactive focus/keyboard detector group:
+
+- Added a real Playwright fixture for a focusable target that immediately blurs itself, proving `keyboard_target_not_reachable` is emitted when `document.activeElement` does not match the intended target after focus.
+- Verified the finding remains rule-mapped, high-confidence, and action-linked through before/after screenshots plus pointer trace evidence.
+- Verified `trace-manifest.json` indexes the same action evidence paths for the keyboard reachability finding.
