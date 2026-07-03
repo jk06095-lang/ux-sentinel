@@ -85,6 +85,8 @@
     const button = document.querySelector(".motion-primary");
     const status = document.querySelector(".status");
     button.addEventListener("click", () => {
+      const started = performance.now();
+      while (performance.now() - started < 90) {}
       status.textContent = "Motion review started";
     });
   </script>

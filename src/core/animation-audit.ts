@@ -2,7 +2,14 @@ import path from "node:path";
 import type { Page } from "playwright";
 import { writeJson } from "./files.js";
 import { withReducedMotion } from "./reduced-motion.js";
-import type { AnimationAuditOptions, AnimationTargetTrace, AnimationTrace, ElementBox, InteractiveTarget } from "./types.js";
+import type {
+  AnimationAuditOptions,
+  AnimationLongTaskMarker,
+  AnimationTargetTrace,
+  AnimationTrace,
+  ElementBox,
+  InteractiveTarget
+} from "./types.js";
 
 const riskyAnimatedProperties = new Set([
   "top",
@@ -29,6 +36,12 @@ const riskyAnimatedProperties = new Set([
 export interface RecordedAnimationTrace {
   trace: AnimationTrace;
   path: string;
+}
+
+interface LongTaskCollection {
+  apiAvailable: boolean;
+  observerInstalled: boolean;
+  longTasks: AnimationLongTaskMarker[];
 }
 
 function roundBox(box: ElementBox): ElementBox {
@@ -69,6 +82,153 @@ function traceIsAnimating(trace: AnimationTargetTrace): boolean {
     trace.animationDurationMs > 0 ||
     trace.webAnimations.some((animation) => animation.durationMs > 0)
   );
+}
+
+export async function beginAnimationLongTaskCollection(
+  page: Page,
+  actionId: string,
+  options: AnimationAuditOptions
+): Promise<void> {
+  if (!options.enabled) {
+    return;
+  }
+
+  await page
+    .evaluate((currentActionId) => {
+      const browserWindow = window as typeof window & {
+        __uxSentinelLongTaskCollection?: {
+          actionId: string;
+          startTime: number;
+          apiAvailable: boolean;
+          observerInstalled: boolean;
+          longTasks: AnimationLongTaskMarker[];
+          observer?: PerformanceObserver;
+          error?: string;
+        };
+      };
+      const serialize = (entry: PerformanceEntry): AnimationLongTaskMarker => {
+        const rawEntry = entry as PerformanceEntry & { attribution?: Array<Record<string, unknown>> };
+        return {
+          name: entry.name,
+          entryType: entry.entryType,
+          startTimeMs: Math.round(entry.startTime),
+          durationMs: Math.round(entry.duration),
+          attribution: (rawEntry.attribution ?? []).slice(0, 8).map((item) => ({
+            name: typeof item.name === "string" ? item.name : undefined,
+            entryType: typeof item.entryType === "string" ? item.entryType : undefined,
+            containerType: typeof item.containerType === "string" ? item.containerType : undefined,
+            containerName: typeof item.containerName === "string" ? item.containerName : undefined,
+            containerId: typeof item.containerId === "string" ? item.containerId : undefined,
+            containerSrc: typeof item.containerSrc === "string" ? item.containerSrc : undefined
+          }))
+        };
+      };
+      const supported =
+        typeof PerformanceObserver !== "undefined" &&
+        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
+        PerformanceObserver.supportedEntryTypes.includes("longtask");
+      const collection: {
+        actionId: string;
+        startTime: number;
+        apiAvailable: boolean;
+        observerInstalled: boolean;
+        longTasks: AnimationLongTaskMarker[];
+        observer?: PerformanceObserver;
+        error?: string;
+      } = {
+        actionId: currentActionId,
+        startTime: performance.now(),
+        apiAvailable: supported,
+        observerInstalled: false,
+        longTasks: [] as AnimationLongTaskMarker[]
+      };
+      browserWindow.__uxSentinelLongTaskCollection = collection;
+
+      if (!supported) {
+        return;
+      }
+
+      try {
+        const observer = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.startTime >= collection.startTime) {
+              collection.longTasks.push(serialize(entry));
+            }
+          }
+        });
+        observer.observe({ entryTypes: ["longtask"] });
+        collection.observer = observer;
+        collection.observerInstalled = true;
+      } catch (error) {
+        collection.error = error instanceof Error ? error.message : String(error);
+      }
+    }, actionId)
+    .catch(() => undefined);
+}
+
+async function collectLongTaskMarkers(page: Page, actionId: string): Promise<LongTaskCollection> {
+  return page
+    .evaluate((currentActionId) => {
+      const browserWindow = window as typeof window & {
+        __uxSentinelLongTaskCollection?: {
+          actionId: string;
+          startTime: number;
+          apiAvailable: boolean;
+          observerInstalled: boolean;
+          longTasks: AnimationLongTaskMarker[];
+          observer?: PerformanceObserver;
+        };
+      };
+      const serialize = (entry: PerformanceEntry): AnimationLongTaskMarker => {
+        const rawEntry = entry as PerformanceEntry & { attribution?: Array<Record<string, unknown>> };
+        return {
+          name: entry.name,
+          entryType: entry.entryType,
+          startTimeMs: Math.round(entry.startTime),
+          durationMs: Math.round(entry.duration),
+          attribution: (rawEntry.attribution ?? []).slice(0, 8).map((item) => ({
+            name: typeof item.name === "string" ? item.name : undefined,
+            entryType: typeof item.entryType === "string" ? item.entryType : undefined,
+            containerType: typeof item.containerType === "string" ? item.containerType : undefined,
+            containerName: typeof item.containerName === "string" ? item.containerName : undefined,
+            containerId: typeof item.containerId === "string" ? item.containerId : undefined,
+            containerSrc: typeof item.containerSrc === "string" ? item.containerSrc : undefined
+          }))
+        };
+      };
+      const supported =
+        typeof PerformanceObserver !== "undefined" &&
+        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
+        PerformanceObserver.supportedEntryTypes.includes("longtask");
+      const collection = browserWindow.__uxSentinelLongTaskCollection;
+      const startTime = collection?.actionId === currentActionId ? collection.startTime : performance.now();
+      const fromObserver = collection?.longTasks ?? [];
+      const fromPerformance =
+        typeof performance.getEntriesByType === "function"
+          ? performance
+              .getEntriesByType("longtask")
+              .filter((entry) => entry.startTime >= startTime)
+              .map(serialize)
+          : [];
+      collection?.observer?.disconnect();
+      delete browserWindow.__uxSentinelLongTaskCollection;
+
+      const byKey = new Map<string, AnimationLongTaskMarker>();
+      for (const task of [...fromObserver, ...fromPerformance]) {
+        byKey.set(`${task.startTimeMs}:${task.durationMs}:${task.name}`, task);
+      }
+
+      return {
+        apiAvailable: collection?.apiAvailable ?? supported,
+        observerInstalled: collection?.observerInstalled ?? false,
+        longTasks: Array.from(byKey.values()).sort((left, right) => left.startTimeMs - right.startTimeMs)
+      };
+    }, actionId)
+    .catch(() => ({
+      apiAvailable: false,
+      observerInstalled: false,
+      longTasks: []
+    }));
 }
 
 async function collectAnimationTargets(page: Page, targetId: string): Promise<AnimationTargetTrace[]> {
@@ -206,6 +366,7 @@ export async function recordAnimationTrace(
     : undefined;
   const afterTargetBbox = normal.find((item) => item.id === target.id)?.bbox ?? roundBox(target.bbox);
   const riskyProperties = Array.from(new Set(normal.flatMap((item) => item.riskyProperties)));
+  const longTaskCollection = await collectLongTaskMarkers(page, actionId);
   const trace: AnimationTrace = {
     actionId,
     enabled: true,
@@ -217,7 +378,10 @@ export async function recordAnimationTrace(
     riskyProperties,
     normal,
     reducedMotion,
-    reducedMotionStillAnimating: reducedMotion ? normalReducedStillAnimating(normal, reducedMotion) : false
+    reducedMotionStillAnimating: reducedMotion ? normalReducedStillAnimating(normal, reducedMotion) : false,
+    longTaskApiAvailable: longTaskCollection.apiAvailable,
+    longTaskObserverInstalled: longTaskCollection.observerInstalled,
+    longTasks: longTaskCollection.longTasks
   };
   const tracePath = path.join(actionsDir, `${actionId}-animation-trace.json`);
   await writeJson(tracePath, trace);
@@ -284,6 +448,10 @@ export function animationTraceJankIndicators(trace: AnimationTrace): string[] {
 
   if (activeTargets.length >= 6) {
     indicators.push(`${activeTargets.length} visible elements report simultaneous motion evidence`);
+  }
+
+  if (trace.longTasks?.length) {
+    indicators.push(`${trace.longTasks.length} long task marker(s) recorded during the action`);
   }
 
   if (trace.layoutShiftApproximationPx > 8 && trace.riskyProperties.length > 0) {

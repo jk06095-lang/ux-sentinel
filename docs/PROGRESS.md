@@ -614,3 +614,12 @@ Tightened test coverage for the interactive focus/keyboard detector group:
 - Added a real Playwright fixture for a focusable target that immediately blurs itself, proving `keyboard_target_not_reachable` is emitted when `document.activeElement` does not match the intended target after focus.
 - Verified the finding remains rule-mapped, high-confidence, and action-linked through before/after screenshots plus pointer trace evidence.
 - Verified `trace-manifest.json` indexes the same action evidence paths for the keyboard reachability finding.
+
+### Checkpoint: Motion Long-Task Markers
+
+Extended opt-in motion audit evidence:
+
+- Added action-scoped long-task marker collection through `PerformanceObserver` and `performance.getEntriesByType("longtask")` when the browser supports the Long Task API.
+- `actions/aNNN-animation-trace.json` now records `longTaskApiAvailable`, `longTaskObserverInstalled`, and a `longTasks` array.
+- Long-task markers feed the deterministic `animation_jank_detected` heuristic and are covered by a real interactive Playwright fixture.
+- The interactive motion demo now produces busy-action evidence, and `npm run demo:verify` checks long-task marker fields without requiring unsupported browsers to invent them.

@@ -15,6 +15,7 @@ import {
   animationTraceJankIndicators,
   animationTraceHasLongDuration,
   animationTraceHasRiskyProperties,
+  beginAnimationLongTaskCollection,
   recordAnimationTrace,
   resolveAnimationAuditOptions
 } from "./animation-audit.js";
@@ -2552,6 +2553,7 @@ async function performTargetAction(
   }
   const livePlanned = { ...planned, target: liveTarget };
   let clickDecision = resolveClickDecision(liveTarget, config.capabilityPolicy.capabilities, livePlanned, blockage);
+  await beginAnimationLongTaskCollection(page, actionId, config.animationAudit);
 
   const pointerTrace = await recordPointerTrace(page, liveTarget, actionId, actionsDir, {
     from: pointerStart,

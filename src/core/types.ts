@@ -393,6 +393,21 @@ export interface AnimationTargetTrace {
   riskyProperties: string[];
 }
 
+export interface AnimationLongTaskMarker {
+  name: string;
+  entryType: string;
+  startTimeMs: number;
+  durationMs: number;
+  attribution: Array<{
+    name?: string;
+    entryType?: string;
+    containerType?: string;
+    containerName?: string;
+    containerId?: string;
+    containerSrc?: string;
+  }>;
+}
+
 export interface AnimationTrace {
   actionId: string;
   enabled: boolean;
@@ -405,6 +420,9 @@ export interface AnimationTrace {
   normal: AnimationTargetTrace[];
   reducedMotion?: AnimationTargetTrace[];
   reducedMotionStillAnimating: boolean;
+  longTaskApiAvailable?: boolean;
+  longTaskObserverInstalled?: boolean;
+  longTasks?: AnimationLongTaskMarker[];
 }
 
 export interface InteractiveActionRecord {

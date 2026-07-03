@@ -244,12 +244,18 @@ function assertInteractiveArtifacts({
       if (trace.actionId !== action.id) {
         throw new Error(`${action.animationTrace} action id ${trace.actionId ?? "unknown"} did not match ${action.id}`);
       }
+      if (!Array.isArray(trace.longTasks)) {
+        throw new Error(`${action.animationTrace} did not record long task marker evidence array`);
+      }
       if (expectedAnimationTrace) {
         if (trace.compareReducedMotion !== true) {
           throw new Error(`${action.animationTrace} did not record expected reduced-motion comparison evidence`);
         }
         if (!Array.isArray(trace.reducedMotion)) {
           throw new Error(`${action.animationTrace} did not record reduced-motion target evidence`);
+        }
+        if (trace.longTaskApiAvailable === true && !trace.longTasks.some((task) => Number(task.durationMs) >= 50)) {
+          throw new Error(`${action.animationTrace} did not record expected long task marker evidence`);
         }
       }
     }

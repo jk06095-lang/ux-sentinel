@@ -180,6 +180,8 @@ describe("animation audit", () => {
       expect(trace.normal.some((item) => item.id === result.actions[0].target.id)).toBe(true);
       expect(trace.riskyProperties).toContain("left");
       expect(trace.reducedMotionStillAnimating).toBe(true);
+      expect(trace.longTaskApiAvailable).toEqual(expect.any(Boolean));
+      expect(Array.isArray(trace.longTasks)).toBe(true);
 
       expect(result.findings.map((finding) => finding.detector)).toEqual(
         expect.arrayContaining([
@@ -202,6 +204,60 @@ describe("animation audit", () => {
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("Animation trace:");
       expect(contactSheet).toContain("a001-animation-trace.json");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("records long task markers in animation traces when the browser exposes them", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button {
+              position: absolute;
+              left: 32px;
+              top: 48px;
+              width: 180px;
+              height: 44px;
+            }
+          </style>
+          <button>Run busy action</button>
+          <p id="status" role="status"></p>
+          <script>
+            document.querySelector("button").addEventListener("click", () => {
+              const started = performance.now();
+              while (performance.now() - started < 90) {}
+              document.getElementById("status").textContent = "Busy action complete";
+            });
+          </script>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 20,
+        scenario: {
+          id: "motion-long-task",
+          title: "Motion long task",
+          persona: "tester",
+          interactive_exploration: { enabled: true, click_all_safe_controls: true },
+          animation_audit: {
+            enabled: true,
+            max_animation_ms: 1000
+          }
+        }
+      });
+
+      expect(result.actions[0].clicked).toBe(true);
+      const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
+
+      expect(Array.isArray(trace.longTasks)).toBe(true);
+      if (trace.longTaskApiAvailable) {
+        expect(trace.longTaskObserverInstalled).toBe(true);
+        expect(trace.longTasks?.some((task) => task.durationMs >= 50)).toBe(true);
+        expect(animationTraceJankIndicators(trace)).toContain("1 long task marker(s) recorded during the action");
+      }
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }
