@@ -333,9 +333,13 @@ export function clickBlockageFromHitTest(samples: HitTestSample[]): ClickBlockag
   };
 }
 
-export async function collectVisibleInteractiveTargets(page: Page, avoidClickText = defaultAvoidClickText): Promise<InteractiveTarget[]> {
+export async function collectVisibleInteractiveTargets(
+  page: Page,
+  avoidClickText = defaultAvoidClickText,
+  allowNavigation = false
+): Promise<InteractiveTarget[]> {
   const targets = await page.evaluate(
-    ({ selector, avoidText }) => {
+    ({ selector, avoidText, allowNavigation }) => {
       const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();
       const dangerous = (label: string) => {
         const normalized = normalize(label).toLowerCase();
@@ -396,6 +400,7 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
           const dangerousLabel = dangerous(label);
           const nativeClickControl =
             tag === "button" ||
+            (tag === "a" && Boolean(href)) ||
             tag === "select" ||
             tag === "summary" ||
             (tag === "input" && ["button", "checkbox", "radio"].includes(inputType));
@@ -403,12 +408,17 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
           const clickEligible = nativeClickControl || roleClickControl || dataUxClickable || Boolean(dataUxAction);
           const dataUxMetadataOnly = Boolean(dataUxRole) && !clickEligible;
           const safeToClick =
-            clickEligible && !disabled && !insideForm && !navigationLink && !unsafeInput && !dangerousLabel;
+            clickEligible &&
+            !disabled &&
+            !insideForm &&
+            (!navigationLink || allowNavigation) &&
+            !unsafeInput &&
+            !dangerousLabel;
           const skipClickReason = disabled
             ? "disabled"
             : dangerousLabel
               ? "dangerous label"
-              : navigationLink
+              : navigationLink && !allowNavigation
                 ? "navigation link"
                 : dataUxMetadataOnly
                   ? "data-ux-role metadata only"
@@ -454,7 +464,7 @@ export async function collectVisibleInteractiveTargets(page: Page, avoidClickTex
         .filter((target) => target.visible)
         .map(({ visible, ...target }) => target);
     },
-    { selector: targetSelector, avoidText: avoidClickText }
+    { selector: targetSelector, avoidText: avoidClickText, allowNavigation }
   );
 
   return targets;
@@ -2750,7 +2760,9 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
 
     findings.push(...detectVisualAnomalies(await collectVisualAnalysis(page, options.scenario), options.scenario, "baseline"));
 
-    const targets = config.hoverAllClickables ? await collectVisibleInteractiveTargets(page, config.avoidClickText) : [];
+    const targets = config.hoverAllClickables
+      ? await collectVisibleInteractiveTargets(page, config.avoidClickText, config.allowNavigation)
+      : [];
     const scrollTargets = config.scrollContainers ? await collectScrollableTargets(page, config.avoidClickText) : [];
     const plannedActions = planInteractiveActions({
       targets,
@@ -2845,7 +2857,9 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
           notes.push(`State ${currentState.node.id} repeated an already-seen fingerprint after ${result.action.id}; skipped replanning.`);
         } else {
           seenStateFingerprints.add(currentFingerprint);
-          const latestTargets = config.hoverAllClickables ? await collectVisibleInteractiveTargets(page, config.avoidClickText) : [];
+          const latestTargets = config.hoverAllClickables
+            ? await collectVisibleInteractiveTargets(page, config.avoidClickText, config.allowNavigation)
+            : [];
           const latestScrollTargets = config.scrollContainers ? await collectScrollableTargets(page, config.avoidClickText) : [];
           const freshTargets = latestTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
           const freshScrollTargets = latestScrollTargets.filter((target) => !seenPlannedTargetIds.has(target.id));

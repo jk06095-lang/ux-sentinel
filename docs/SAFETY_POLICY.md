@@ -34,7 +34,7 @@ interactive_exploration:
   click_all_safe_controls: true
 ```
 
-Navigation remains disabled unless the scenario sets `interactive_exploration.allow_navigation: true`. `demo/scenarios/interactive-navigation-stop.yaml` verifies the default policy by clicking a safe-looking control that changes the URL, then asserting the runner stops remaining planned actions and records the stop note in the report, action trace, and contact sheet. `demo/scenarios/interactive-navigation-allow.yaml` verifies the explicit opt-in path by enabling navigation, clicking through to a destination page, replanning the next safe action, and asserting no stop note is recorded.
+Navigation remains disabled unless the scenario sets `interactive_exploration.allow_navigation: true`. Default target collection marks real `a[href]` navigation links as skipped with `navigation link`; the explicit opt-in path may click those links only after the same safe-click filters pass. `demo/scenarios/interactive-navigation-stop.yaml` verifies the default policy by clicking a safe-looking control that changes the URL, then asserting the runner stops remaining planned actions and records the stop note in the report, action trace, and contact sheet. `demo/scenarios/interactive-navigation-allow.yaml` verifies the explicit opt-in path with a real `a[href]` link to a destination page, replanning the next safe action, and asserting no stop note is recorded.
 
 ## Target Policy
 

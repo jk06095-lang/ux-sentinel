@@ -11,7 +11,10 @@
     .panel { width: min(680px, 100%); border: 1px solid #cbd5e1; background: #ffffff; padding: 28px; }
     h1 { margin: 0 0 10px; font-size: 26px; }
     p { color: #475569; }
-    button {
+    .primary-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       min-width: 180px;
       min-height: 44px;
       border: 0;
@@ -19,6 +22,7 @@
       background: #111827;
       color: #ffffff;
       font-weight: 700;
+      text-decoration: none;
       cursor: pointer;
     }
   </style>
@@ -28,7 +32,7 @@
     <section class="panel" aria-label="Interactive navigation allow demo">
       <h1>Navigation allow fixture</h1>
       <p>This scenario explicitly allows navigation, so the audit may continue after the URL changes.</p>
-      <button onclick="window.location.href = '/interactive-navigation-allow-next';">Open navigation detail</button>
+      <a class="primary-link" href="/interactive-navigation-allow-next">Open navigation detail</a>
     </section>
   </main>
 </body>

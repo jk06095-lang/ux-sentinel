@@ -78,6 +78,9 @@ describe("interactive exploration helpers", () => {
       expect(targets.some((target) => target.role === "button" && target.dataUxRole === "primary")).toBe(true);
       expect(targets.find((target) => target.visibleText === "Delete project")?.safeToClick).toBe(false);
       expect(targets.find((target) => target.visibleText === "Billing")?.skipClickReason).toBe("navigation link");
+      const allowedNavigationTargets = await collectVisibleInteractiveTargets(page, undefined, true);
+      expect(allowedNavigationTargets.find((target) => target.visibleText === "Billing")?.safeToClick).toBe(true);
+      expect(allowedNavigationTargets.find((target) => target.visibleText === "Billing")?.skipClickReason).toBeUndefined();
       expect(targets.find((target) => target.visibleText === "Node A")?.safeToClick).toBe(false);
       expect(targets.find((target) => target.visibleText === "Node A")?.skipClickReason).toBe("data-ux-role metadata only");
       expect(targets.find((target) => target.visibleText === "Node B")?.safeToClick).toBe(true);

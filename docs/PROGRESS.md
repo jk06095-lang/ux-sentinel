@@ -588,3 +588,11 @@ Separated keyboard focusability from click actionability in observed screen maps
 - `tabindex`-only elements now record `focusable: true` without being treated as click targets.
 - Focus-order detectors still inspect focusable elements, so positive-tabindex jumps remain visible even when the element is not clickable.
 - Added browser and detector regressions proving focusable-only elements do not trigger click target size, spacing, or affordance findings.
+
+### Checkpoint: Navigation Link Capability Boundary
+
+Aligned real link target collection with the interactive navigation capability:
+
+- Kept `a[href]` navigation links skipped by default with the `navigation link` reason.
+- Allowed real `a[href]` links to become safe-click candidates only when the scenario resolves `interactive_exploration.allow_navigation: true` and the rest of the safe-click filters pass.
+- Changed the navigation-allow demo from a button-driven URL change to a real link so `npm run demo:verify` proves the documented navigation capability boundary.
