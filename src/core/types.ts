@@ -259,6 +259,7 @@ export interface InteractiveTarget {
   dataUxClickable?: boolean;
   visibleText: string;
   ariaLabel: string | null;
+  ariaHasPopup?: string | null;
   title: string | null;
   bbox: ElementBox;
   center: {
@@ -280,6 +281,7 @@ export interface InteractiveClickCandidateDecision {
   dataUxAction?: string | null;
   visibleText: string;
   ariaLabel: string | null;
+  ariaHasPopup?: string | null;
   title: string | null;
   bbox: ElementBox;
   href: string | null;

@@ -632,3 +632,11 @@ Made motion evidence easier to review without opening the full trace first:
 - The summary includes animated target count, risky properties, approximate target layout shift, reduced-motion status, long-task count, max long-task duration, and Long Task API availability.
 - `contact-sheet.html` now shows compact animation metadata in the animation audit section and each action card.
 - `npm run demo:verify` checks that animation summaries match their underlying `actions/aNNN-animation-trace.json` files.
+
+### Checkpoint: ARIA Popup Target Classification
+
+Tightened agentic planner semantics for common popup controls:
+
+- Interactive target evidence now preserves `aria-haspopup` and collects `role=combobox` targets.
+- The target classifier maps `aria-haspopup=menu` to menu actions, `aria-haspopup=dialog` to dialog triggers, and `aria-haspopup=listbox/tree/grid` or `role=combobox` to dropdown actions.
+- The planner state key includes popup semantics so same-label controls with different popup behavior are not collapsed as duplicate states.

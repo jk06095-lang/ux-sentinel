@@ -65,6 +65,9 @@ describe("interactive exploration helpers", () => {
         <button>Delete project</button>
         <button>Account deletion</button>
         <button>Irreversible action</button>
+        <button aria-haspopup="menu">Open menu</button>
+        <div aria-haspopup="dialog">Panel metadata</div>
+        <div role="combobox" aria-haspopup="listbox" tabindex="0">Filter status</div>
         <button>삭제</button>
         <button>제거</button>
         <button>결제</button>
@@ -95,6 +98,20 @@ describe("interactive exploration helpers", () => {
       expect(targets.find((target) => target.visibleText === "Delete from input")?.skipClickReason).toBe("dangerous label");
       expect(targets.find((target) => target.visibleText === "Account deletion")?.skipClickReason).toBe("dangerous label");
       expect(targets.find((target) => target.visibleText === "Irreversible action")?.skipClickReason).toBe("dangerous label");
+      expect(targets.find((target) => target.visibleText === "Open menu")).toMatchObject({
+        ariaHasPopup: "menu",
+        safeToClick: true
+      });
+      expect(targets.find((target) => target.visibleText === "Panel metadata")).toMatchObject({
+        ariaHasPopup: "dialog",
+        safeToClick: false,
+        skipClickReason: "not a click control"
+      });
+      expect(targets.find((target) => target.visibleText === "Filter status")).toMatchObject({
+        role: "combobox",
+        ariaHasPopup: "listbox",
+        safeToClick: true
+      });
       for (const label of dangerousKoreanLabels) {
         expect(targets.find((target) => target.visibleText === label)?.safeToClick).toBe(false);
         expect(targets.find((target) => target.visibleText === label)?.skipClickReason).toBe("dangerous label");

@@ -13,6 +13,7 @@ function target(overrides: Partial<InteractiveTarget>): InteractiveTarget {
     dataUxClickable: overrides.dataUxClickable,
     visibleText: overrides.visibleText ?? "Action",
     ariaLabel: overrides.ariaLabel ?? null,
+    ariaHasPopup: overrides.ariaHasPopup ?? null,
     title: overrides.title ?? null,
     bbox: overrides.bbox ?? { x: 10, y: 10, width: 120, height: 40 },
     center: overrides.center ?? { x: 70, y: 30 },
@@ -42,6 +43,24 @@ describe("target classifier and action planner", () => {
       "graph_dag_node"
     );
     expect(classifyInteractiveTarget(target({ role: "tab", visibleText: "Details" }), scenario).category).toBe("tab");
+  });
+
+  it("classifies ARIA popup and combobox targets for agentic planning", () => {
+    expect(classifyInteractiveTarget(target({ visibleText: "Actions", ariaHasPopup: "menu" }), scenario)).toMatchObject({
+      category: "menu",
+      reason: "ARIA popup menu trigger"
+    });
+    expect(classifyInteractiveTarget(target({ visibleText: "Filters", ariaHasPopup: "listbox" }), scenario)).toMatchObject({
+      category: "dropdown",
+      reason: "ARIA popup listbox trigger"
+    });
+    expect(classifyInteractiveTarget(target({ visibleText: "Choose workspace", role: "combobox" }), scenario)).toMatchObject({
+      category: "dropdown"
+    });
+    expect(classifyInteractiveTarget(target({ visibleText: "Open settings", ariaHasPopup: "dialog" }), scenario)).toMatchObject({
+      category: "dialog_trigger",
+      reason: "ARIA popup dialog trigger"
+    });
   });
 
   it("prioritizes agentic actions by UX meaning instead of DOM order", () => {
@@ -116,6 +135,30 @@ describe("target classifier and action planner", () => {
     expect(planned).toHaveLength(3);
     expect(planned.map((item) => item.target.id)).toEqual(["t3", "t1", "t2"]);
     expect(new Set(planned.map((item) => item.stateKey)).size).toBe(3);
+  });
+
+  it("does not collapse same-label targets when popup semantics differ", () => {
+    const duplicateBox = { x: 20, y: 20, width: 100, height: 40 };
+    const planned = planInteractiveActions({
+      targets: [
+        target({ id: "t1", visibleText: "Open", bbox: duplicateBox, ariaHasPopup: "menu" }),
+        target({ id: "t2", visibleText: "Open", bbox: duplicateBox, ariaHasPopup: "dialog" })
+      ],
+      scrollTargets: [],
+      scenario,
+      config: {
+        mode: "agentic",
+        maxActions: 2,
+        maxDepth: 2,
+        maxClicks: 2,
+        maxStateChanges: 2,
+        safeClickEnabled: true
+      }
+    });
+
+    expect(planned).toHaveLength(2);
+    expect(planned.map((item) => item.targetCategory)).toEqual(["menu", "dialog_trigger"]);
+    expect(new Set(planned.map((item) => item.stateKey)).size).toBe(2);
   });
 
   it("reports max_state_changes when state-change budget blocks otherwise safe clicks", () => {

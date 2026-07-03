@@ -70,6 +70,7 @@ export function classifyInteractiveTarget(target: InteractiveTarget, scenario?: 
   const text = normalizedText(target);
   const role = target.role?.toLowerCase() ?? "";
   const tag = target.tag.toLowerCase();
+  const ariaHasPopup = target.ariaHasPopup?.toLowerCase() ?? "";
   const dataRole = target.dataUxRole?.toLowerCase() ?? "";
   const action = target.dataUxAction?.toLowerCase() ?? "";
   let category: InteractiveTargetCategory = "ambiguous_clickable";
@@ -89,12 +90,20 @@ export function classifyInteractiveTarget(target: InteractiveTarget, scenario?: 
   } else if (role === "tab") {
     category = "tab";
     reason = "ARIA tab target";
-  } else if (role === "menuitem" || /menu/.test(action + " " + text)) {
+  } else if (role === "menuitem" || ariaHasPopup === "menu" || /menu/.test(action + " " + text)) {
     category = "menu";
-    reason = "menu or menuitem target";
-  } else if (tag === "select" || /dropdown|combobox|select/.test(role + " " + action + " " + text)) {
+    reason = ariaHasPopup === "menu" ? "ARIA popup menu trigger" : "menu or menuitem target";
+  } else if (ariaHasPopup === "dialog" || /dialog|modal|popover|panel|drawer/.test(action + " " + text)) {
+    category = "dialog_trigger";
+    reason = ariaHasPopup === "dialog" ? "ARIA popup dialog trigger" : "dialog or popover trigger";
+  } else if (
+    tag === "select" ||
+    role === "combobox" ||
+    ["listbox", "tree", "grid"].includes(ariaHasPopup) ||
+    /dropdown|combobox|select/.test(role + " " + action + " " + text)
+  ) {
     category = "dropdown";
-    reason = "dropdown or selection control";
+    reason = ariaHasPopup ? `ARIA popup ${ariaHasPopup} trigger` : "dropdown or selection control";
   } else if (tag === "summary" || /accordion|expand|details?|more/.test(action + " " + text)) {
     category = "expandable_section";
     reason = "expander or detail panel trigger";
@@ -104,9 +113,6 @@ export function classifyInteractiveTarget(target: InteractiveTarget, scenario?: 
   } else if (/help|tooltip|hint|\?|info/.test(action + " " + text)) {
     category = "tooltip_help_trigger";
     reason = "help or tooltip-like trigger";
-  } else if (/dialog|modal|popover|panel|drawer/.test(action + " " + text)) {
-    category = "dialog_trigger";
-    reason = "dialog or popover trigger";
   } else if (dataRole.includes("card")) {
     category = "card";
     reason = "card metadata target";

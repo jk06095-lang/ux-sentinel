@@ -218,9 +218,11 @@ const targetSelector = [
   "[role='link']",
   "[role='tab']",
   "[role='menuitem']",
+  "[role='combobox']",
   "[role='switch']",
   "[role='checkbox']",
   "[role='radio']",
+  "[aria-haspopup]",
   "[tabindex]",
   "[data-ux-role]"
 ].join(",");
@@ -348,7 +350,7 @@ export async function collectVisibleInteractiveTargets(
         const normalized = normalize(label).toLowerCase();
         return Boolean(normalized) && avoidText.some((item) => normalized.includes(normalize(item).toLowerCase()));
       };
-      const roleSet = new Set(["button", "link", "tab", "menuitem", "switch", "checkbox", "radio"]);
+      const roleSet = new Set(["button", "link", "tab", "menuitem", "combobox", "switch", "checkbox", "radio"]);
       const seen = new Set<Element>();
 
       return Array.from(document.querySelectorAll<HTMLElement>(selector))
@@ -365,6 +367,7 @@ export async function collectVisibleInteractiveTargets(
           const tag = element.tagName.toLowerCase();
           const role = element.getAttribute("role");
           const ariaLabel = element.getAttribute("aria-label");
+          const ariaHasPopup = element.getAttribute("aria-haspopup");
           const title = element.getAttribute("title");
           const dataUxRole = element.getAttribute("data-ux-role");
           const dataUxAction = element.getAttribute("data-ux-action");
@@ -407,7 +410,7 @@ export async function collectVisibleInteractiveTargets(
             tag === "select" ||
             tag === "summary" ||
             (tag === "input" && ["button", "checkbox", "radio"].includes(inputType));
-          const roleClickControl = role ? ["button", "tab", "menuitem", "switch", "checkbox", "radio"].includes(role) : false;
+          const roleClickControl = role ? ["button", "tab", "menuitem", "combobox", "switch", "checkbox", "radio"].includes(role) : false;
           const clickEligible = nativeClickControl || roleClickControl || dataUxClickable || Boolean(dataUxAction);
           const dataUxMetadataOnly = Boolean(dataUxRole) && !clickEligible;
           const safeToClick =
@@ -445,6 +448,7 @@ export async function collectVisibleInteractiveTargets(
             dataUxClickable,
             visibleText: visibleText.slice(0, 240),
             ariaLabel,
+            ariaHasPopup,
             title,
             bbox: {
               x: Math.round(rect.x),
@@ -1833,6 +1837,7 @@ function buildClickCandidateDecisions(
       dataUxAction: target.dataUxAction,
       visibleText: target.visibleText,
       ariaLabel: target.ariaLabel,
+      ariaHasPopup: target.ariaHasPopup,
       title: target.title,
       bbox: target.bbox,
       href: target.href,
