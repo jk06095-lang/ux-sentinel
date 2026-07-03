@@ -1746,6 +1746,8 @@ function summarizeAnimationTrace(trace: AnimationTrace): AnimationTraceSummary {
   return {
     targetCount: trace.normal.length,
     riskyProperties: trace.riskyProperties,
+    normalMotionEnvironment: trace.normalMotionEnvironment,
+    reducedMotionEnvironment: trace.reducedMotionEnvironment,
     reducedMotionStillAnimating: trace.reducedMotionStillAnimating,
     layoutShiftApproximationPx: trace.layoutShiftApproximationPx,
     longTaskApiAvailable: trace.longTaskApiAvailable === true,
@@ -1792,10 +1794,19 @@ function animationTraceSummaryText(summary: AnimationTraceSummary | undefined): 
     return "summary not captured";
   }
 
+  const normalMotion = summary.normalMotionEnvironment
+    ? `${summary.normalMotionEnvironment.mediaEmulation}/matches=${summary.normalMotionEnvironment.prefersReducedMotionMatches}`
+    : "not captured";
+  const reducedMotion = summary.reducedMotionEnvironment
+    ? `${summary.reducedMotionEnvironment.mediaEmulation}/matches=${summary.reducedMotionEnvironment.prefersReducedMotionMatches}`
+    : "not captured";
+
   return [
     `targets=${summary.targetCount}`,
     `risky=${summary.riskyProperties.length ? summary.riskyProperties.join("|") : "none"}`,
     `layoutShift=${summary.layoutShiftApproximationPx}px`,
+    `normalMotion=${normalMotion}`,
+    `reducedMotion=${reducedMotion}`,
     `reducedMotionStillAnimating=${summary.reducedMotionStillAnimating}`,
     `longTasks=${summary.longTaskCount}`,
     `maxLongTask=${summary.maxLongTaskDurationMs}ms`,

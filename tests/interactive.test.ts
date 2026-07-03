@@ -391,6 +391,14 @@ describe("interactive exploration helpers", () => {
           animationTraceSummary: {
             targetCount: 2,
             riskyProperties: ["left", "box-shadow"],
+            normalMotionEnvironment: {
+              mediaEmulation: "no-preference",
+              prefersReducedMotionMatches: false
+            },
+            reducedMotionEnvironment: {
+              mediaEmulation: "reduce",
+              prefersReducedMotionMatches: true
+            },
             reducedMotionStillAnimating: true,
             layoutShiftApproximationPx: 12,
             longTaskApiAvailable: true,
@@ -545,7 +553,9 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Animation trace:");
     expect(html).toContain('href="actions/a001-animation-trace.json"');
     expect(html).toContain("Animation metadata:");
-    expect(html).toContain("targets=2, risky=left|box-shadow, layoutShift=12px, reducedMotionStillAnimating=true, longTasks=1, maxLongTask=91ms, longTaskApi=true");
+    expect(html).toContain(
+      "targets=2, risky=left|box-shadow, layoutShift=12px, normalMotion=no-preference/matches=false, reducedMotion=reduce/matches=true, reducedMotionStillAnimating=true, longTasks=1, maxLongTask=91ms, longTaskApi=true"
+    );
     expect(html).toContain('href="actions/a001-diff.png"');
     expect(html).toContain("visual diff");
     expect(html).toContain("Focus evidence:");

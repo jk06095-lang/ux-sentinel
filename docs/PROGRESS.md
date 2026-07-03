@@ -656,3 +656,11 @@ Made normal/reduced motion comparison evidence explicit:
 - Animation traces now record `normalMotionEnvironment` with `prefers-reduced-motion: no-preference` evidence.
 - Reduced-motion comparisons now record `reducedMotionEnvironment` with `prefers-reduced-motion: reduce` evidence.
 - The demo verifier checks both environment records so `actions/aNNN-animation-trace.json` proves which browser motion preference was active for each trace section.
+
+### Checkpoint: Motion Environment Summary Evidence
+
+Surfaced motion media preferences in compact review surfaces:
+
+- `animationTraceSummary` now carries normal and reduced motion environment metadata from the full animation trace.
+- `contact-sheet.html`, action trace, and state graph summaries show which browser motion preference backed each animation audit section.
+- The demo verifier checks summary environment metadata against the underlying `actions/aNNN-animation-trace.json`.

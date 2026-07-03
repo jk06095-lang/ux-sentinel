@@ -438,6 +438,8 @@ export interface AnimationTrace {
 export interface AnimationTraceSummary {
   targetCount: number;
   riskyProperties: string[];
+  normalMotionEnvironment?: AnimationMotionEnvironment;
+  reducedMotionEnvironment?: AnimationMotionEnvironment;
   reducedMotionStillAnimating: boolean;
   layoutShiftApproximationPx: number;
   longTaskApiAvailable: boolean;

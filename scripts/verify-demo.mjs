@@ -256,6 +256,13 @@ function assertInteractiveArtifacts({
       if (!action.animationTraceSummary || action.animationTraceSummary.targetCount !== trace.normal.length) {
         throw new Error(`${actionLabel} did not record animation summary target count`);
       }
+      if (
+        action.animationTraceSummary.normalMotionEnvironment?.mediaEmulation !== trace.normalMotionEnvironment?.mediaEmulation ||
+        action.animationTraceSummary.normalMotionEnvironment?.prefersReducedMotionMatches !==
+          trace.normalMotionEnvironment?.prefersReducedMotionMatches
+      ) {
+        throw new Error(`${actionLabel} animation summary normal-motion environment did not match trace`);
+      }
       if (action.animationTraceSummary.longTaskCount !== trace.longTasks.length) {
         throw new Error(`${actionLabel} animation summary long task count did not match trace`);
       }
@@ -271,6 +278,13 @@ function assertInteractiveArtifacts({
           trace.reducedMotionEnvironment?.prefersReducedMotionMatches !== true
         ) {
           throw new Error(`${action.animationTrace} did not record expected reduced-motion environment evidence`);
+        }
+        if (
+          action.animationTraceSummary.reducedMotionEnvironment?.mediaEmulation !== trace.reducedMotionEnvironment.mediaEmulation ||
+          action.animationTraceSummary.reducedMotionEnvironment?.prefersReducedMotionMatches !==
+            trace.reducedMotionEnvironment.prefersReducedMotionMatches
+        ) {
+          throw new Error(`${actionLabel} animation summary reduced-motion environment did not match trace`);
         }
         if (trace.longTaskApiAvailable === true && !trace.longTasks.some((task) => Number(task.durationMs) >= 50)) {
           throw new Error(`${action.animationTrace} did not record expected long task marker evidence`);

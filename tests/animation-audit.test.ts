@@ -206,7 +206,13 @@ describe("animation audit", () => {
       const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
         actions: Array<{
           animationTrace?: string;
-          animationTraceSummary?: { targetCount: number; riskyProperties: string[]; reducedMotionStillAnimating: boolean };
+          animationTraceSummary?: {
+            targetCount: number;
+            riskyProperties: string[];
+            normalMotionEnvironment?: { mediaEmulation: string; prefersReducedMotionMatches: boolean };
+            reducedMotionEnvironment?: { mediaEmulation: string; prefersReducedMotionMatches: boolean };
+            reducedMotionStillAnimating: boolean;
+          };
           findingDetectors: string[];
         }>;
       };
@@ -215,6 +221,14 @@ describe("animation audit", () => {
         expect.objectContaining({
           targetCount: trace.normal.length,
           riskyProperties: expect.arrayContaining(["left"]),
+          normalMotionEnvironment: {
+            mediaEmulation: "no-preference",
+            prefersReducedMotionMatches: false
+          },
+          reducedMotionEnvironment: {
+            mediaEmulation: "reduce",
+            prefersReducedMotionMatches: true
+          },
           reducedMotionStillAnimating: true
         })
       );
@@ -224,6 +238,8 @@ describe("animation audit", () => {
       expect(contactSheet).toContain("Animation trace:");
       expect(contactSheet).toContain("Animation metadata:");
       expect(contactSheet).toContain("risky=left");
+      expect(contactSheet).toContain("normalMotion=no-preference/matches=false");
+      expect(contactSheet).toContain("reducedMotion=reduce/matches=true");
       expect(contactSheet).toContain("reducedMotionStillAnimating=true");
       expect(contactSheet).toContain("a001-animation-trace.json");
     } finally {
