@@ -494,6 +494,108 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Focus evidence:");
   });
 
+  it("keeps contact sheet findings scoped to action ids when detectors repeat", () => {
+    const action = (id: "a001" | "a002", text: string, x: number) => ({
+      id,
+      sequence: id === "a001" ? 1 : 2,
+      actionType: "hover_click" as const,
+      target: {
+        id: `t-${id}`,
+        tag: "button",
+        role: "button",
+        dataUxRole: null,
+        visibleText: text,
+        ariaLabel: null,
+        title: null,
+        bbox: { x, y: 20, width: 160, height: 44 },
+        center: { x: x + 80, y: 42 },
+        disabled: false,
+        focusable: true,
+        href: null,
+        safeToClick: true
+      },
+      beforeScreenshot: `trace/actions/${id}-before.png`,
+      afterScreenshot: `trace/actions/${id}-after.png`,
+      visualDiff: `trace/actions/${id}-diff.png`,
+      screenMap: `trace/actions/${id}-screen-map.json`,
+      beforeStateId: id === "a001" ? "s000" : "s001",
+      afterStateId: id === "a001" ? "s001" : "s002",
+      targetCategory: "primary_cta" as const,
+      riskLevel: "low" as const,
+      pointerTrace: `trace/actions/${id}-pointer-trace.json`,
+      clicked: true,
+      focused: false,
+      clickDecision: "allowed" as const,
+      clickDecisionReason: "safe_click capability enabled and target passed safe-click filtering",
+      consoleErrorCount: 0,
+      networkErrorCount: 0,
+      findingDetectors: ["no_feedback_after_action"]
+    });
+    const result: Pick<InteractiveExplorationResult, "actions" | "clickCandidates" | "findings" | "summary" | "artifacts"> = {
+      actions: [action("a001", "Create first project", 10), action("a002", "Open details", 210)],
+      clickCandidates: [],
+      findings: [
+        {
+          id: "UX-I001",
+          detector: "no_feedback_after_action",
+          title: "First action produced no feedback",
+          severity: "P2",
+          type: "Perception Mismatch",
+          evidence: "First action evidence. Action: a001.",
+          userImpact: "The first action may feel inert.",
+          suggestedFix: "Show feedback for the first action.",
+          regressionCheck: "Rerun action a001.",
+          ruleIds: ["nielsen.visibility_of_system_status"],
+          ruleFamily: "nielsen",
+          whyThisMatters: "Visibility of system status: feedback should be visible.",
+          confidence: "high",
+          evidencePaths: { beforeScreenshot: "trace/actions/a001-before.png", afterScreenshot: "trace/actions/a001-after.png" }
+        },
+        {
+          id: "UX-I002",
+          detector: "no_feedback_after_action",
+          title: "Second action produced no feedback",
+          severity: "P2",
+          type: "Perception Mismatch",
+          evidence: "Second action evidence. Action: a002.",
+          userImpact: "The second action may feel inert.",
+          suggestedFix: "Show feedback for the second action.",
+          regressionCheck: "Rerun action a002.",
+          ruleIds: ["nielsen.visibility_of_system_status"],
+          ruleFamily: "nielsen",
+          whyThisMatters: "Visibility of system status: feedback should be visible.",
+          confidence: "high",
+          evidencePaths: { beforeScreenshot: "trace/actions/a002-before.png", afterScreenshot: "trace/actions/a002-after.png" }
+        }
+      ],
+      summary: { actionCount: 2, screenshotCount: 7, anomalyCount: 2, notes: [] },
+      artifacts: {
+        traceDir: "trace",
+        baseline: "trace/baseline.png",
+        screenMap: "trace/screen-map.json",
+        overlay: "trace/screen-map.html",
+        actionsDir: "trace/actions",
+        actionTrace: "trace/action-trace.json",
+        stateGraph: "trace/state-graph.json",
+        anomalies: "trace/anomalies.json",
+        contactSheet: "trace/contact-sheet.html"
+      }
+    };
+
+    const html = buildContactSheetHtml(result);
+    const firstStart = html.indexOf('<article id="a001"');
+    const secondStart = html.indexOf('<article id="a002"');
+    const firstArticle = html.slice(firstStart, html.indexOf("</article>", firstStart));
+    const secondArticle = html.slice(secondStart, html.indexOf("</article>", secondStart));
+
+    expect(firstStart).toBeGreaterThan(-1);
+    expect(secondStart).toBeGreaterThan(-1);
+    expect(firstArticle).toContain("First action produced no feedback");
+    expect(firstArticle).not.toContain("Second action produced no feedback");
+    expect(secondArticle).toContain("Second action produced no feedback");
+    expect(secondArticle).not.toContain("First action produced no feedback");
+  });
+
   it("skips stale targets instead of clicking old coordinates", async () => {
     const traceRoot = await tempTraceRoot();
     try {

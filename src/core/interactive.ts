@@ -1758,6 +1758,14 @@ export function buildContactSheetHtml(
   for (const findingItem of result.findings) {
     findingsByDetector.set(findingItem.detector, [...(findingsByDetector.get(findingItem.detector) ?? []), findingItem]);
   }
+  const findingsByAction = findingsByActionId(result.findings);
+  const findingsForAction = (action: InteractiveActionRecord): Finding[] => {
+    const directFindings = findingsByAction.get(action.id);
+    if (directFindings?.length) {
+      return directFindings;
+    }
+    return uniqueValues(action.findingDetectors).flatMap((detector) => findingsByDetector.get(detector) ?? []);
+  };
   const severityOptions = uniqueValues(result.findings.map((findingItem) => findingItem.severity));
   const ruleFamilyOptions = uniqueValues(result.findings.map((findingItem) => findingItem.ruleFamily));
   const confidenceOptions = uniqueValues(result.findings.map((findingItem) => findingItem.confidence));
@@ -1869,7 +1877,7 @@ export function buildContactSheetHtml(
   const reviewerMatrix = result.actions.length
     ? result.actions
         .map((action) => {
-          const actionFindings = uniqueValues(action.findingDetectors).flatMap((detector) => findingsByDetector.get(detector) ?? []);
+          const actionFindings = findingsForAction(action);
           const target = targetLabel(action.target) || action.target.role || action.target.tag;
           const category = action.targetCategory ?? "unclassified";
           const risk = action.riskLevel ?? "unknown";
@@ -1922,7 +1930,7 @@ export function buildContactSheetHtml(
       const before = relativeArtifact(result.artifacts.traceDir, action.beforeScreenshot);
       const after = relativeArtifact(result.artifacts.traceDir, action.afterScreenshot);
       const visualDiff = relativeArtifact(result.artifacts.traceDir, action.visualDiff);
-      const actionFindings = uniqueValues(action.findingDetectors).flatMap((detector) => findingsByDetector.get(detector) ?? []);
+      const actionFindings = findingsForAction(action);
       const actionSeverities = uniqueValues(actionFindings.map((findingItem) => findingItem.severity));
       const actionRuleFamilies = uniqueValues(actionFindings.map((findingItem) => findingItem.ruleFamily));
       const actionConfidences = uniqueValues(actionFindings.map((findingItem) => findingItem.confidence));
