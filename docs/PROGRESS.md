@@ -671,3 +671,10 @@ Locked destructive-label evidence to clean Korean strings across static and inte
 
 - Static detector coverage now proves `destructive_action_without_confirmation` fires for `삭제`, `제거`, `결제`, and `로그아웃`.
 - Package/docs guard coverage now checks `src/core/detectors.ts` and `tests/detectors.test.ts` when verifying clean Korean labels and removed mojibake labels.
+
+### Checkpoint: Complete Detector Rule-Mapping Guard
+
+Strengthened UX rule registry verification:
+
+- `tests/rules.test.ts` now discovers implemented detectors from both `finding("...")` helper calls and direct `detector: "..."` finding objects.
+- The rule registry test proves direct-object interactive findings are included in the "every implemented detector maps to at least one UX rule" guard.

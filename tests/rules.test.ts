@@ -10,7 +10,7 @@ function implementedDetectors(): string[] {
   const detectorNames = new Set<string>();
   for (const sourceFile of ["src/core/detectors.ts", "src/core/interactive.ts", "src/core/animation-audit.ts"]) {
     const source = readFileSync(path.join(repoRoot, sourceFile), "utf8");
-    for (const match of source.matchAll(/finding\(\s*["']([a-z0-9_]+)["']/g)) {
+    for (const match of source.matchAll(/(?:finding\(\s*|detector:\s*)["']([a-z0-9_]+)["']/g)) {
       detectorNames.add(match[1]);
     }
   }
