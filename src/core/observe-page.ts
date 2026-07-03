@@ -55,7 +55,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
       return iconTexts.has(text.toLowerCase()) || (text.length <= 2 && !/[a-z0-9가-힣]/i.test(text));
     };
     const interactiveTags = new Set(["button", "a", "input", "select", "textarea", "summary"]);
-    const interactiveRoles = new Set(["button", "link", "menuitem", "switch", "checkbox", "radio", "tab"]);
+    const interactiveRoles = new Set(["button", "link", "menuitem", "combobox", "switch", "checkbox", "radio", "tab"]);
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const viewportArea = Math.max(1, viewportWidth * viewportHeight);
@@ -67,6 +67,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
         const tag = element.tagName.toLowerCase();
         const role = element.getAttribute("role");
         const ariaLabel = element.getAttribute("aria-label");
+        const ariaHasPopup = element.getAttribute("aria-haspopup");
         const ariaLabelledBy = element.getAttribute("aria-labelledby");
         const ariaLive = element.getAttribute("aria-live");
         const ariaModal = element.getAttribute("aria-modal");
@@ -105,7 +106,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           nativeAffordance ||
           hasPointerCursor ||
           borderVisible ||
-          (backgroundVisible && ["button", "link", "menuitem", "tab", "switch", "checkbox", "radio"].includes(role ?? ""));
+          (backgroundVisible && ["button", "link", "menuitem", "combobox", "tab", "switch", "checkbox", "radio"].includes(role ?? ""));
         const aboveFold = rect.top < viewportHeight && rect.bottom > 0;
         const hasVisibleLabel = Boolean(visibleText) && !isIconOnly(visibleText);
         const looksClickable =
@@ -130,6 +131,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           visibleText: visibleText.slice(0, 240),
           accessibleName: normalize(ariaLabel || title || visibleText).slice(0, 240),
           ariaLabel,
+          ariaHasPopup,
           ariaLabelledBy,
           ariaLive,
           ariaModal,

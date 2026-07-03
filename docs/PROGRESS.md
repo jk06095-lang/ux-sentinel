@@ -640,3 +640,11 @@ Tightened agentic planner semantics for common popup controls:
 - Interactive target evidence now preserves `aria-haspopup` and collects `role=combobox` targets.
 - The target classifier maps `aria-haspopup=menu` to menu actions, `aria-haspopup=dialog` to dialog triggers, and `aria-haspopup=listbox/tree/grid` or `role=combobox` to dropdown actions.
 - The planner state key includes popup semantics so same-label controls with different popup behavior are not collapsed as duplicate states.
+
+### Checkpoint: Popup Semantics In Screen Maps
+
+Extended DOM-derived screen-map evidence for popup controls:
+
+- `collectScreenMap` now preserves `aria-haspopup` on visible elements.
+- `role=combobox` is treated as a focusable/clickable ARIA interaction role in screen maps.
+- Added browser coverage proving popup metadata is recorded without turning metadata-only elements into click targets.

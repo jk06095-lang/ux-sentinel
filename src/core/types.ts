@@ -146,6 +146,7 @@ export interface ScreenElement {
   visibleText: string;
   accessibleName?: string;
   ariaLabel: string | null;
+  ariaHasPopup?: string | null;
   ariaLabelledBy?: string | null;
   ariaLive?: string | null;
   ariaModal?: string | null;

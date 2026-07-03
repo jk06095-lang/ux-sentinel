@@ -74,4 +74,37 @@ describe("observe page screen map", () => {
       await browser.close();
     }
   });
+
+  it("preserves popup semantics in screen-map evidence", async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.setContent(`
+        <main>
+          <button aria-haspopup="menu">Open menu</button>
+          <div aria-haspopup="dialog">Panel metadata</div>
+          <div role="combobox" aria-haspopup="listbox" tabindex="0">Filter status</div>
+        </main>
+      `);
+
+      const screenMap = await collectScreenMap(page, page.url(), [], []);
+      expect(screenMap.elements.find((element) => element.visibleText === "Open menu")).toMatchObject({
+        ariaHasPopup: "menu",
+        clickable: true,
+        focusable: true
+      });
+      expect(screenMap.elements.find((element) => element.visibleText === "Panel metadata")).toMatchObject({
+        ariaHasPopup: "dialog",
+        clickable: false
+      });
+      expect(screenMap.elements.find((element) => element.visibleText === "Filter status")).toMatchObject({
+        role: "combobox",
+        ariaHasPopup: "listbox",
+        clickable: true,
+        focusable: true
+      });
+    } finally {
+      await browser.close();
+    }
+  });
 });
