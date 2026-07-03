@@ -580,3 +580,11 @@ Aligned static screen-map actionability evidence with the hardened interactive t
 - `data-ux-role` remains metadata-only in observed screen maps.
 - `data-ux-clickable="true"` and `data-ux-action` now opt non-native elements into `clickable` screen-map evidence, matching the interactive safe-click filtering model.
 - Added a browser regression proving metadata-only graph nodes stay non-clickable while explicit data-UX action opt-ins are not reported as fake clickable controls.
+
+### Checkpoint: Focusable Versus Clickable Screen Map Evidence
+
+Separated keyboard focusability from click actionability in observed screen maps:
+
+- `tabindex`-only elements now record `focusable: true` without being treated as click targets.
+- Focus-order detectors still inspect focusable elements, so positive-tabindex jumps remain visible even when the element is not clickable.
+- Added browser and detector regressions proving focusable-only elements do not trigger click target size, spacing, or affordance findings.

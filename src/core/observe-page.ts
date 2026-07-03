@@ -82,12 +82,13 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
           style.display !== "none" &&
           style.visibility !== "hidden" &&
           Number(style.opacity || "1") > 0;
+        const hasTabIndex = element.hasAttribute("tabindex");
+        const focusable = interactiveTags.has(tag) || (role ? interactiveRoles.has(role) : false) || hasTabIndex;
         const explicitDataUxAction = dataUxClickable || Boolean(dataUxAction);
         const clickable =
           interactiveTags.has(tag) ||
           (role ? interactiveRoles.has(role) : false) ||
           typeof element.onclick === "function" ||
-          element.hasAttribute("tabindex") ||
           explicitDataUxAction;
         const disabled =
           element.hasAttribute("disabled") ||
@@ -140,6 +141,7 @@ export async function collectScreenMap(page: Page, url: string, consoleErrors: C
             height: Math.round(rect.height)
           },
           clickable,
+          focusable,
           disabled,
           tabIndex: tabIndexAttr === null ? null : Number.parseInt(tabIndexAttr, 10),
           aboveFold,

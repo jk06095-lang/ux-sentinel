@@ -584,6 +584,36 @@ describe("detectors", () => {
     expect(finding?.ruleIds).toContain("wcag22.focus_visible");
   });
 
+  it("detects focus order jumps on tabindex-only focusable elements without clickability", () => {
+    const screenMap = baseScreenMap({
+      visibleText: ["First panel", "Second panel"],
+      elements: [
+        baseElement({
+          id: "top-panel",
+          visibleText: "First panel",
+          bbox: { x: 40, y: 80, width: 220, height: 48 },
+          focusable: true,
+          tabIndex: 2
+        }),
+        baseElement({
+          id: "bottom-panel",
+          visibleText: "Second panel",
+          bbox: { x: 40, y: 420, width: 220, height: 48 },
+          focusable: true,
+          tabIndex: 1
+        })
+      ]
+    });
+
+    const finding = runDetectors(screenMap, scenario).find((item) => item.detector === "focus_order_unexpected_jump");
+    const detectors = runDetectors(screenMap, scenario).map((item) => item.detector);
+
+    expect(finding?.evidence).toContain("bottom-panel");
+    expect(finding?.evidence).toContain("top-panel");
+    expect(detectors).not.toContain("click_target_too_small");
+    expect(detectors).not.toContain("clickable_without_visible_affordance");
+  });
+
   it("does not flag positive tabindex values that follow visual order", () => {
     const screenMap = baseScreenMap({
       visibleText: ["First card", "Second card"],

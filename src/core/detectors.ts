@@ -198,7 +198,7 @@ function responsiveBreakpointOverlap(screenMap: ScreenMap): { first: ScreenEleme
 function focusOrderCandidates(screenMap: ScreenMap): Array<{ element: ScreenElement; sourceIndex: number }> {
   return screenMap.elements
     .map((element, sourceIndex) => ({ element, sourceIndex }))
-    .filter(({ element }) => element.visible && !element.disabled && element.clickable);
+    .filter(({ element }) => element.visible && !element.disabled && (element.focusable === true || element.clickable));
 }
 
 function visualOrderIndex(element: ScreenElement, screenMap: ScreenMap): number {

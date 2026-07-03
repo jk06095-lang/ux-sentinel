@@ -220,6 +220,7 @@ Generate screen-map.json:
         "height": 44
       },
       "clickable": true,
+      "focusable": true,
       "disabled": false,
       "aboveFold": true,
       "visible": true,

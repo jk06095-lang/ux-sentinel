@@ -44,4 +44,34 @@ describe("observe page screen map", () => {
       await browser.close();
     }
   });
+
+  it("records tabindex-only elements as focusable without treating them as click targets", async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await page.setContent(`
+        <main>
+          <div tabindex="0">Focusable review panel</div>
+        </main>
+      `);
+
+      const screenMap = await collectScreenMap(page, page.url(), [], []);
+      const focusablePanel = screenMap.elements.find(
+        (element) => element.tag === "div" && element.visibleText === "Focusable review panel"
+      );
+
+      expect(focusablePanel).toMatchObject({
+        clickable: false,
+        focusable: true,
+        tabIndex: 0
+      });
+
+      const findings = runDetectors(screenMap, scenario).map((finding) => finding.detector);
+      expect(findings).not.toContain("clickable_without_visible_affordance");
+      expect(findings).not.toContain("click_target_too_small");
+      expect(findings).not.toContain("click_target_spacing_too_tight");
+    } finally {
+      await browser.close();
+    }
+  });
 });
