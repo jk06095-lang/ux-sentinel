@@ -341,6 +341,7 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("clickDecision");
     expect(verifier).toContain("skipReason");
     expect(verifier).toContain("plannedReason");
+    expect(verifier).toContain("targetId did not match action trace target id");
     expect(readme).toContain("`demo:verify` also runs the interactive DAG, agentic benign-state, skipped-action, navigation-stop, navigation-allow, hover-block, and motion-audit scenarios");
     expect(readme).toContain("demo/scenarios/interactive-agentic-states.yaml");
     expect(readme).toContain("depth-1 replanning");
@@ -375,6 +376,8 @@ describe("Codex integration docs", () => {
     expect(verifier).toContain("demo/scenarios/interactive-motion.yaml");
     expect(verifier).toContain("/interactive-motion");
     expect(verifier).toContain("expectedAnimationTrace");
+    expect(verifier).toContain("reduced-motion comparison evidence");
+    expect(verifier).toContain("reducedMotion");
     expect(verifier).toContain("expectedActionFindingDetectors");
     expect(verifier).toContain("a001-animation-trace.json");
     expect(verifier).toContain("Animation Audit");

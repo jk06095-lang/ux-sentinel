@@ -564,3 +564,11 @@ Strengthened state graph reconstruction evidence:
 - Added planner `plannedReason`, `riskLevel`, `planDepth`, and `planPriority` metadata to each state graph action edge.
 - Updated state graph tests to assert the planner metadata is preserved with target id/category and cursor evidence.
 - Extended `npm run demo:verify` so every state graph edge must include planner metadata matching the action trace.
+
+### Checkpoint: Demo Evidence Integrity Gate
+
+Tightened the local demo verifier so generated artifacts prove more of the agentic audit path:
+
+- `npm run demo:verify` now fails if a `state-graph.json` edge points at a target id that does not match the corresponding `action-trace.json` action target.
+- The motion audit demo gate now requires opt-in reduced-motion comparison evidence, including `compareReducedMotion: true` and a `reducedMotion` target trace array.
+- Added package-doc coverage so these verifier checks remain part of the documented local gate.

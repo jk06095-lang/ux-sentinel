@@ -218,6 +218,14 @@ function assertInteractiveArtifacts({
       if (trace.actionId !== action.id) {
         throw new Error(`${action.animationTrace} action id ${trace.actionId ?? "unknown"} did not match ${action.id}`);
       }
+      if (expectedAnimationTrace) {
+        if (trace.compareReducedMotion !== true) {
+          throw new Error(`${action.animationTrace} did not record expected reduced-motion comparison evidence`);
+        }
+        if (!Array.isArray(trace.reducedMotion)) {
+          throw new Error(`${action.animationTrace} did not record reduced-motion target evidence`);
+        }
+      }
     }
     const domDiff = readJson(action.domDiff, `${actionLabel} DOM diff`);
     domDiffTextAdded.push(...(Array.isArray(domDiff.visibleTextAdded) ? domDiff.visibleTextAdded : []));
@@ -301,11 +309,15 @@ function assertInteractiveArtifacts({
     if (typeof edge.planDepth !== "number" || typeof edge.planPriority !== "number") {
       throw new Error(`${edgeLabel} is missing numeric planner depth or priority metadata`);
     }
-    if (action) {
-      for (const key of ["targetCategory", "plannedReason", "riskLevel", "planDepth", "planPriority"]) {
-        if (edge[key] !== action[key]) {
-          throw new Error(`${edgeLabel} ${key} did not match action trace metadata`);
-        }
+    if (!action) {
+      throw new Error(`${edgeLabel} actionId ${edge.actionId ?? "unknown"} was not found in action-trace.json`);
+    }
+    if (edge.targetId !== action.target?.id) {
+      throw new Error(`${edgeLabel} targetId did not match action trace target id`);
+    }
+    for (const key of ["targetCategory", "plannedReason", "riskLevel", "planDepth", "planPriority"]) {
+      if (edge[key] !== action[key]) {
+        throw new Error(`${edgeLabel} ${key} did not match action trace metadata`);
       }
     }
     artifactPath(edge.beforeScreenshot, `${edgeLabel} before screenshot`);
