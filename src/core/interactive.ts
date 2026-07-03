@@ -277,20 +277,95 @@ export function targetIdentitySignature(
   });
 }
 
+export function structuralTargetIdentitySignature(
+  target: Pick<InteractiveTarget, "tag" | "role" | "href" | "dataUxRole" | "dataUxAction" | "dataUxClickable">
+): string {
+  return JSON.stringify({
+    tag: normalizeText(target.tag).toLowerCase(),
+    role: normalizeText(target.role).toLowerCase(),
+    href: normalizeText(target.href),
+    dataUxRole: normalizeText(target.dataUxRole).toLowerCase(),
+    dataUxAction: normalizeText(target.dataUxAction).toLowerCase(),
+    dataUxClickable: target.dataUxClickable === true
+  });
+}
+
+export function normalizedLabelForIdentity(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/\b\d+\b/g, "")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isBenignLabelChange(plannedLabel: string, liveLabel: string): boolean {
+  const planned = normalizedLabelForIdentity(plannedLabel);
+  const live = normalizedLabelForIdentity(liveLabel);
+
+  if (planned === live) {
+    return true;
+  }
+  if (planned && live.includes(planned)) {
+    return true;
+  }
+  if (live && planned.includes(live)) {
+    return true;
+  }
+
+  return false;
+}
+
 function compareTargetIdentity(planned: InteractiveTarget, live: InteractiveTarget): LiveTargetIdentityCheck {
   const plannedSignature = targetIdentitySignature(planned);
   const liveSignature = targetIdentitySignature(live);
+  const structuralPlannedSignature = structuralTargetIdentitySignature(planned);
+  const structuralLiveSignature = structuralTargetIdentitySignature(live);
+  const structuralSignatureMatches = structuralPlannedSignature === structuralLiveSignature;
   const plannedLabel = targetLabel(planned) || planned.href || planned.tag;
   const liveLabel = targetLabel(live) || live.href || live.tag;
-  const matches = plannedSignature === liveSignature;
-
-  return {
-    matches,
-    reason: matches ? undefined : `target identity mismatch: planned "${plannedLabel}", live "${liveLabel}"`,
+  const labelChanged = normalizeText(plannedLabel).toLowerCase() !== normalizeText(liveLabel).toLowerCase();
+  const common = {
     liveLabel,
     plannedLabel,
     liveSignature,
-    plannedSignature
+    plannedSignature,
+    structuralSignatureMatches,
+    labelChanged
+  };
+
+  if (!structuralSignatureMatches) {
+    return {
+      ...common,
+      matches: false,
+      status: "identity_mismatch",
+      reason: `target identity mismatch: structural identity changed: planned "${plannedLabel}", live "${liveLabel}"`
+    };
+  }
+
+  if (!isDangerousClickLabel(plannedLabel) && isDangerousClickLabel(liveLabel)) {
+    return {
+      ...common,
+      matches: false,
+      status: "dangerous_label_change",
+      reason: `target identity mismatch: target label became dangerous: planned "${plannedLabel}", live "${liveLabel}"`
+    };
+  }
+
+  if (labelChanged && !isBenignLabelChange(plannedLabel, liveLabel)) {
+    return {
+      ...common,
+      matches: false,
+      status: "identity_mismatch",
+      reason: `target identity mismatch: label identity changed: planned "${plannedLabel}", live "${liveLabel}"`
+    };
+  }
+
+  return {
+    ...common,
+    matches: true,
+    status: labelChanged ? "benign_label_change" : "match",
+    reason: labelChanged ? `benign label change: planned "${plannedLabel}", live "${liveLabel}"` : undefined
   };
 }
 
@@ -1785,9 +1860,36 @@ function buildTraceManifest(
     },
     clickCandidates: result.clickCandidates.map((candidate) => ({
       id: candidate.id,
+      tag: candidate.tag,
+      role: candidate.role,
+      dataUxRole: candidate.dataUxRole,
+      dataUxAction: candidate.dataUxAction,
+      dataUxClickable: candidate.dataUxClickable,
       visibleText: candidate.visibleText,
       ariaLabel: candidate.ariaLabel,
+      title: candidate.title,
+      href: candidate.href,
       targetText: candidate.visibleText || candidate.ariaLabel || candidate.title || "",
+      originalTag: candidate.originalTag,
+      originalRole: candidate.originalRole,
+      originalVisibleText: candidate.originalVisibleText,
+      originalAriaLabel: candidate.originalAriaLabel,
+      originalTitle: candidate.originalTitle,
+      originalHref: candidate.originalHref,
+      originalDataUxRole: candidate.originalDataUxRole,
+      originalDataUxAction: candidate.originalDataUxAction,
+      originalDataUxClickable: candidate.originalDataUxClickable,
+      originalIdentitySignature: candidate.originalIdentitySignature,
+      latestTag: candidate.latestTag,
+      latestRole: candidate.latestRole,
+      latestVisibleText: candidate.latestVisibleText,
+      latestAriaLabel: candidate.latestAriaLabel,
+      latestTitle: candidate.latestTitle,
+      latestHref: candidate.latestHref,
+      latestDataUxRole: candidate.latestDataUxRole,
+      latestDataUxAction: candidate.latestDataUxAction,
+      latestDataUxClickable: candidate.latestDataUxClickable,
+      latestIdentitySignature: candidate.latestIdentitySignature,
       targetCategory: candidate.targetCategory,
       riskLevel: candidate.riskLevel,
       safeToClick: candidate.safeToClick,
@@ -1817,6 +1919,8 @@ function buildTraceManifest(
       runtimeClickDecision: action.runtimeClickDecision,
       runtimeClickDecisionReason: action.runtimeClickDecisionReason,
       targetIdentity: action.targetIdentity,
+      targetIdentityCheckedBeforeScroll: action.targetIdentityCheckedBeforeScroll,
+      targetIdentityMismatchBeforeScroll: action.targetIdentityMismatchBeforeScroll,
       evidenceSummary: action.evidenceSummary,
       beforeStateId: action.beforeStateId,
       afterStateId: action.afterStateId,
@@ -1965,6 +2069,26 @@ function buildClickCandidateDecisions(
       title: target.title,
       bbox: target.bbox,
       href: target.href,
+      originalTag: target.tag,
+      originalRole: target.role,
+      originalVisibleText: target.visibleText,
+      originalAriaLabel: target.ariaLabel,
+      originalTitle: target.title,
+      originalHref: target.href,
+      originalDataUxRole: target.dataUxRole,
+      originalDataUxAction: target.dataUxAction,
+      originalDataUxClickable: target.dataUxClickable,
+      originalIdentitySignature: targetIdentitySignature(target),
+      latestTag: target.tag,
+      latestRole: target.role,
+      latestVisibleText: target.visibleText,
+      latestAriaLabel: target.ariaLabel,
+      latestTitle: target.title,
+      latestHref: target.href,
+      latestDataUxRole: target.dataUxRole,
+      latestDataUxAction: target.dataUxAction,
+      latestDataUxClickable: target.dataUxClickable,
+      latestIdentitySignature: targetIdentitySignature(target),
       targetCategory,
       riskLevel,
       safeToClick: target.safeToClick,
@@ -1986,11 +2110,65 @@ function upsertClickCandidateDecisions(
 ): void {
   for (const decision of decisions) {
     const existing = candidatesById.get(decision.id);
+    if (!existing) {
+      candidatesById.set(decision.id, {
+        ...decision,
+        originalTag: decision.originalTag ?? decision.tag,
+        originalRole: decision.originalRole ?? decision.role,
+        originalVisibleText: decision.originalVisibleText ?? decision.visibleText,
+        originalAriaLabel: decision.originalAriaLabel ?? decision.ariaLabel,
+        originalTitle: decision.originalTitle ?? decision.title,
+        originalHref: decision.originalHref ?? decision.href,
+        originalDataUxRole: decision.originalDataUxRole ?? decision.dataUxRole,
+        originalDataUxAction: decision.originalDataUxAction ?? decision.dataUxAction,
+        originalDataUxClickable: decision.originalDataUxClickable ?? decision.dataUxClickable,
+        originalIdentitySignature: decision.originalIdentitySignature ?? targetIdentitySignature(decision),
+        latestTag: decision.latestTag ?? decision.tag,
+        latestRole: decision.latestRole ?? decision.role,
+        latestVisibleText: decision.latestVisibleText ?? decision.visibleText,
+        latestAriaLabel: decision.latestAriaLabel ?? decision.ariaLabel,
+        latestTitle: decision.latestTitle ?? decision.title,
+        latestHref: decision.latestHref ?? decision.href,
+        latestDataUxRole: decision.latestDataUxRole ?? decision.dataUxRole,
+        latestDataUxAction: decision.latestDataUxAction ?? decision.dataUxAction,
+        latestDataUxClickable: decision.latestDataUxClickable ?? decision.dataUxClickable,
+        latestIdentitySignature: decision.latestIdentitySignature ?? targetIdentitySignature(decision)
+      });
+      continue;
+    }
+
+    const nextPlannerFields =
+      existing.planned === false && decision.planned === true
+        ? {
+            planned: true,
+            plannedActionId: decision.plannedActionId,
+            plannedReason: decision.plannedReason,
+            plannedSafeClick: decision.plannedSafeClick,
+            plannerClickDecision: decision.plannerClickDecision,
+            plannerClickDecisionReason: decision.plannerClickDecisionReason,
+            clickDecision: decision.plannerClickDecision,
+            clickDecisionReason: decision.plannerClickDecisionReason,
+            targetCategory: decision.targetCategory,
+            riskLevel: decision.riskLevel
+          }
+        : {};
+
     candidatesById.set(decision.id, {
-      ...decision,
-      runtimeClickDecision: existing?.runtimeClickDecision ?? decision.runtimeClickDecision,
-      runtimeClickDecisionReason: existing?.runtimeClickDecisionReason ?? decision.runtimeClickDecisionReason,
-      runtimeActionId: existing?.runtimeActionId ?? decision.runtimeActionId
+      ...existing,
+      ...nextPlannerFields,
+      latestTag: decision.tag,
+      latestRole: decision.role,
+      latestVisibleText: decision.visibleText,
+      latestAriaLabel: decision.ariaLabel,
+      latestTitle: decision.title,
+      latestHref: decision.href,
+      latestDataUxRole: decision.dataUxRole,
+      latestDataUxAction: decision.dataUxAction,
+      latestDataUxClickable: decision.dataUxClickable,
+      latestIdentitySignature: targetIdentitySignature(decision),
+      runtimeClickDecision: existing.runtimeClickDecision ?? decision.runtimeClickDecision,
+      runtimeClickDecisionReason: existing.runtimeClickDecisionReason ?? decision.runtimeClickDecisionReason,
+      runtimeActionId: existing.runtimeActionId ?? decision.runtimeActionId
     });
   }
 }
@@ -2126,8 +2304,12 @@ export function buildContactSheetHtml(
               ? `${action.clickDecision}: ${action.clickDecisionReason ?? "no reason recorded"}`
               : "not recorded";
           const identity = action.targetIdentity
-            ? `${action.targetIdentity.matches ? "matched" : "mismatch"}; planned=${action.targetIdentity.plannedLabel}; live=${action.targetIdentity.liveLabel}`
-            : "not checked or matched";
+            ? `${action.targetIdentity.status}; ${action.targetIdentity.matches ? "matched" : "mismatch"}; planned=${action.targetIdentity.plannedLabel}; live=${action.targetIdentity.liveLabel}; checkedBeforeScroll=${action.targetIdentityCheckedBeforeScroll === true}; mismatchBeforeScroll=${action.targetIdentityMismatchBeforeScroll === true}`
+            : action.targetIdentityCheckedBeforeScroll
+              ? `checked before scroll; mismatchBeforeScroll=${action.targetIdentityMismatchBeforeScroll === true}`
+              : "not checked or matched";
+          const beforeScrollSkip =
+            action.targetIdentityMismatchBeforeScroll === true ? "; skipped before scroll due to identity mismatch" : "";
           const skipped = action.skipped ? `; skipped: ${action.skipReason ?? "unknown reason"}` : "";
           const evidence = [
             `before=${artifactLink(result.artifacts.traceDir, action.beforeScreenshot)}`,
@@ -2138,7 +2320,7 @@ export function buildContactSheetHtml(
           const evidenceSummary = action.evidenceSummary
             ? `${action.evidenceSummary.completeForReview ? "complete" : "incomplete"}; required=${action.evidenceSummary.required.join(",")}; missing=${action.evidenceSummary.missing.length ? action.evidenceSummary.missing.join(",") : "none"}`
             : "not summarized";
-          return `<li><strong>${escapeHtml(action.id)}</strong> Planner click decision: ${escapeHtml(plannerDecision)}; Runtime click decision: ${escapeHtml(runtimeDecision)}${escapeHtml(skipped)}<br /><span>Target identity status: ${escapeHtml(identity)}</span><br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
+          return `<li><strong>${escapeHtml(action.id)}</strong> Planner click decision: ${escapeHtml(plannerDecision)}; Runtime click decision: ${escapeHtml(runtimeDecision)}${escapeHtml(skipped)}${escapeHtml(beforeScrollSkip)}<br /><span>Target identity status: ${escapeHtml(identity)}</span><br /><span>Evidence completeness: ${escapeHtml(evidenceSummary)}</span><br /><span>Evidence: ${evidence}</span></li>`;
         })
         .join("\n")
     : "<li>No action safety decisions were captured.</li>";
@@ -2146,13 +2328,38 @@ export function buildContactSheetHtml(
     ? result.clickCandidates
         .map((candidate) => {
           const label = targetLabel(candidate);
+          const originalLabel =
+            normalizeText([candidate.originalVisibleText, candidate.originalAriaLabel, candidate.originalTitle].filter(Boolean).join(" ")) ||
+            label ||
+            candidate.originalHref ||
+            candidate.originalTag;
+          const latestLabel =
+            normalizeText([candidate.latestVisibleText, candidate.latestAriaLabel, candidate.latestTitle].filter(Boolean).join(" ")) ||
+            candidate.latestHref ||
+            candidate.latestTag ||
+            "";
+          const latestChanged =
+            Boolean(latestLabel) &&
+            (normalizedLabelForIdentity(originalLabel) !== normalizedLabelForIdentity(latestLabel) ||
+              candidate.originalIdentitySignature !== candidate.latestIdentitySignature);
+          const latestDangerous =
+            latestChanged && !isDangerousClickLabel(originalLabel) && Boolean(latestLabel) && isDangerousClickLabel(latestLabel);
           const planned = candidate.planned ? `planned ${candidate.plannedActionId ?? ""}` : "not planned";
           const plannerDecision = candidate.plannerClickDecision ?? candidate.clickDecision;
           const plannerReason = candidate.plannerClickDecisionReason ?? candidate.clickDecisionReason;
           const runtime = candidate.runtimeClickDecision
             ? `; runtime ${candidate.runtimeClickDecision}: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
             : "; runtime not attempted";
-          return `<li><strong>${escapeHtml(candidate.id)}</strong> planner ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}${escapeHtml(runtime)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})</li>`;
+          const latestText = latestChanged ? `<br /><span>Latest candidate: ${escapeHtml(latestLabel)}</span>` : "";
+          const dangerText = latestDangerous ? `<br /><span>Latest live label became dangerous.</span>` : "";
+          const plannerPhrase =
+            plannerDecision === "allowed" ? `Planner allowed original target: ${originalLabel}` : `Planner ${plannerDecision} original target: ${originalLabel}`;
+          const runtimePhrase = candidate.runtimeClickDecision
+            ? candidate.runtimeClickDecision === "skipped"
+              ? `Runtime skipped live target: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
+              : `Runtime ${candidate.runtimeClickDecision} live target: ${candidate.runtimeClickDecisionReason ?? "no reason recorded"}`
+            : "Runtime not attempted";
+          return `<li><strong>${escapeHtml(candidate.id)}</strong> planner ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}${escapeHtml(runtime)} (${escapeHtml(candidate.targetCategory)} / ${escapeHtml(candidate.riskLevel)} risk; ${escapeHtml(planned)}; ${escapeHtml(label || candidate.tag)})<br /><span>Original candidate: ${escapeHtml(originalLabel)}</span>${latestText}<br /><span>Planner click decision: ${escapeHtml(plannerDecision)}: ${escapeHtml(plannerReason)}</span><br /><span>Runtime click decision: ${escapeHtml(candidate.runtimeClickDecision ?? "not_attempted")}${candidate.runtimeClickDecision ? `: ${escapeHtml(candidate.runtimeClickDecisionReason ?? "no reason recorded")}` : ""}</span><br /><span>${escapeHtml(plannerPhrase)}</span><br /><span>${escapeHtml(runtimePhrase)}</span>${dangerText}</li>`;
         })
         .join("\n")
     : "<li>No click candidates were captured.</li>";
@@ -2252,8 +2459,10 @@ export function buildContactSheetHtml(
         ? `${action.runtimeClickDecision}: ${action.runtimeClickDecisionReason ?? "no reason recorded"}`
         : clickDecision;
       const targetIdentity = action.targetIdentity
-        ? `${action.targetIdentity.matches ? "matched" : "mismatch"}; planned label "${action.targetIdentity.plannedLabel}"; live label "${action.targetIdentity.liveLabel}"`
-        : "not recorded";
+        ? `${action.targetIdentity.status}; ${action.targetIdentity.matches ? "matched" : "mismatch"}; planned label "${action.targetIdentity.plannedLabel}"; live label "${action.targetIdentity.liveLabel}"; checked before scroll=${action.targetIdentityCheckedBeforeScroll === true}; mismatch before scroll=${action.targetIdentityMismatchBeforeScroll === true}${action.targetIdentityMismatchBeforeScroll === true ? "; skipped before scroll due to identity mismatch" : ""}`
+        : action.targetIdentityCheckedBeforeScroll
+          ? `checked before scroll; mismatch before scroll=${action.targetIdentityMismatchBeforeScroll === true}`
+          : "not recorded";
       const planned = action.plannedReason
         ? `${action.targetCategory ?? "unknown"} / ${action.riskLevel ?? "unknown"} risk: ${action.plannedReason}`
         : "not recorded";
@@ -2584,6 +2793,8 @@ async function recordActionStateEvidence(options: {
       runtimeClickDecision: options.action.runtimeClickDecision,
       runtimeClickDecisionReason: options.action.runtimeClickDecisionReason,
       targetIdentity: options.action.targetIdentity,
+      targetIdentityCheckedBeforeScroll: options.action.targetIdentityCheckedBeforeScroll,
+      targetIdentityMismatchBeforeScroll: options.action.targetIdentityMismatchBeforeScroll,
       beforeStateId: options.beforeState.node.id,
       afterStateId: afterState.node.id,
       beforeScreenshot: options.action.beforeScreenshot,
@@ -2602,9 +2813,102 @@ async function recordActionStateEvidence(options: {
 }
 
 export type LiveTargetResult =
-  | { status: "ok"; target: InteractiveTarget }
+  | { status: "ok"; target: InteractiveTarget; identity: LiveTargetIdentityCheck }
   | { status: "missing" | "invisible" | "offscreen" | "detached"; reason: string }
   | { status: "identity_mismatch"; reason: string; identity: LiveTargetIdentityCheck };
+
+export type LiveTargetIdentityOnlyResult =
+  | { status: "ok"; identity: LiveTargetIdentityCheck }
+  | { status: "missing" | "detached"; reason: string }
+  | { status: "identity_mismatch"; reason: string; identity: LiveTargetIdentityCheck };
+
+function identityMismatchReason(identity: LiveTargetIdentityCheck): string {
+  return identity.reason ?? `target identity mismatch: planned "${identity.plannedLabel}", live "${identity.liveLabel}"`;
+}
+
+export async function resolveLiveTargetIdentityOnly(page: Page, target: InteractiveTarget): Promise<LiveTargetIdentityOnlyResult> {
+  return page
+    .evaluate((currentTarget) => {
+      const normalize = (value: string | null | undefined) => (value ?? "").replace(/\s+/g, " ").trim();
+      const element = document.querySelector<HTMLElement>(`[data-ux-sentinel-target-id="${currentTarget.id}"]`);
+      if (!element) {
+        return { status: "missing" as const, reason: `Target ${currentTarget.id} no longer exists in the DOM.` };
+      }
+      if (!element.isConnected) {
+        return { status: "detached" as const, reason: `Target ${currentTarget.id} is detached from the document.` };
+      }
+
+      const rect = element.getBoundingClientRect();
+      const tag = element.tagName.toLowerCase();
+      const role = element.getAttribute("role");
+      const roleSet = new Set(["button", "link", "tab", "menuitem", "combobox", "switch", "checkbox", "radio"]);
+      return {
+        status: "ok" as const,
+        target: {
+          ...currentTarget,
+          tag,
+          role,
+          dataUxRole: element.getAttribute("data-ux-role"),
+          dataUxAction: element.getAttribute("data-ux-action"),
+          dataUxClickable: element.getAttribute("data-ux-clickable") === "true",
+          visibleText: normalize(element.innerText || element.textContent || (element instanceof HTMLInputElement ? element.value : "") || "").slice(
+            0,
+            240
+          ),
+          ariaLabel: element.getAttribute("aria-label"),
+          ariaHasPopup: element.getAttribute("aria-haspopup"),
+          title: element.getAttribute("title"),
+          disabled:
+            element.hasAttribute("disabled") ||
+            element.getAttribute("aria-disabled") === "true" ||
+            (element as HTMLButtonElement).disabled === true,
+          focusable:
+            tag === "button" ||
+            tag === "a" ||
+            tag === "input" ||
+            tag === "select" ||
+            tag === "textarea" ||
+            tag === "summary" ||
+            element.hasAttribute("tabindex") ||
+            roleSet.has(role ?? ""),
+          href: element instanceof HTMLAnchorElement ? element.href : null,
+          bbox: {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          },
+          center: {
+            x: Math.round(rect.x + rect.width / 2),
+            y: Math.round(rect.y + rect.height / 2)
+          }
+        }
+      };
+    }, target)
+    .then((result) => {
+      if (result.status !== "ok") {
+        return result;
+      }
+
+      const identity = compareTargetIdentity(target, result.target);
+      if (!identity.matches) {
+        return {
+          status: "identity_mismatch" as const,
+          reason: identityMismatchReason(identity),
+          identity
+        };
+      }
+
+      return {
+        status: "ok" as const,
+        identity
+      };
+    })
+    .catch((error: unknown) => ({
+      status: "missing" as const,
+      reason: error instanceof Error ? error.message : String(error)
+    }));
+}
 
 export async function resolveLiveTarget(page: Page, target: InteractiveTarget): Promise<LiveTargetResult> {
   return page
@@ -2683,12 +2987,15 @@ export async function resolveLiveTarget(page: Page, target: InteractiveTarget): 
       if (!identity.matches) {
         return {
           status: "identity_mismatch" as const,
-          reason: `Target ${target.id} identity changed: planned "${identity.plannedLabel}", live "${identity.liveLabel}".`,
+          reason: identityMismatchReason(identity),
           identity
         };
       }
 
-      return result;
+      return {
+        ...result,
+        identity
+      };
     })
     .catch((error: unknown) => ({
       status: "missing" as const,
@@ -2711,6 +3018,8 @@ async function skippedAction(
     runtimeClickDecision?: ClickDecision;
     runtimeClickDecisionReason?: string;
     targetIdentity?: LiveTargetIdentityCheck;
+    targetIdentityCheckedBeforeScroll?: boolean;
+    targetIdentityMismatchBeforeScroll?: boolean;
   }
 ): Promise<{ action: InteractiveActionRecord; screenMap: ScreenMap }> {
   const actionId = `a${String(sequence).padStart(3, "0")}`;
@@ -2745,6 +3054,8 @@ async function skippedAction(
       runtimeClickDecision: decisions?.runtimeClickDecision ?? "skipped",
       runtimeClickDecisionReason: decisions?.runtimeClickDecisionReason ?? reason,
       targetIdentity: decisions?.targetIdentity,
+      targetIdentityCheckedBeforeScroll: decisions?.targetIdentityCheckedBeforeScroll,
+      targetIdentityMismatchBeforeScroll: decisions?.targetIdentityMismatchBeforeScroll,
       plannedReason: planned.plannedReason,
       targetCategory: planned.targetCategory,
       riskLevel: planned.riskLevel,
@@ -2836,19 +3147,42 @@ async function performTargetAction(
   const urlBefore = page.url();
   const plannerClickDecision = resolvePlannerClickDecision(target, config.capabilityPolicy.capabilities, planned);
 
+  const preScrollIdentity = await resolveLiveTargetIdentityOnly(page, target);
+  if (preScrollIdentity.status !== "ok") {
+    const runtimeReason =
+      preScrollIdentity.status === "identity_mismatch"
+        ? `pre-scroll identity check failed: ${identityMismatchReason(preScrollIdentity.identity)}`
+        : `pre-scroll identity check failed: ${preScrollIdentity.reason}`;
+    const skipped = await skippedAction(page, planned, sequence, actionsDir, runtimeReason, urlBefore, consoleErrors, networkErrors, {
+      plannerClickDecision: plannerClickDecision.decision,
+      plannerClickDecisionReason: plannerClickDecision.reason,
+      runtimeClickDecision: "skipped",
+      runtimeClickDecisionReason: runtimeReason,
+      targetIdentity: preScrollIdentity.status === "identity_mismatch" ? preScrollIdentity.identity : undefined,
+      targetIdentityCheckedBeforeScroll: true,
+      targetIdentityMismatchBeforeScroll: preScrollIdentity.status === "identity_mismatch"
+    });
+    return {
+      ...skipped,
+      findings
+    };
+  }
+
   await locator.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
     const runtimeReason =
       live.status === "identity_mismatch"
-        ? live.identity.reason ?? `target identity mismatch: planned "${live.identity.plannedLabel}", live "${live.identity.liveLabel}"`
+        ? identityMismatchReason(live.identity)
         : live.reason;
     const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors, {
       plannerClickDecision: plannerClickDecision.decision,
       plannerClickDecisionReason: plannerClickDecision.reason,
       runtimeClickDecision: "skipped",
       runtimeClickDecisionReason: runtimeReason,
-      targetIdentity: live.status === "identity_mismatch" ? live.identity : undefined
+      targetIdentity: live.status === "identity_mismatch" ? live.identity : undefined,
+      targetIdentityCheckedBeforeScroll: true,
+      targetIdentityMismatchBeforeScroll: false
     });
     return {
       ...skipped,
@@ -2983,6 +3317,9 @@ async function performTargetAction(
     plannerClickDecisionReason: plannerClickDecision.reason,
     runtimeClickDecision: runtimeClickDecision.decision,
     runtimeClickDecisionReason: runtimeClickDecision.reason,
+    targetIdentity: live.identity,
+    targetIdentityCheckedBeforeScroll: true,
+    targetIdentityMismatchBeforeScroll: false,
     plannedReason: planned.plannedReason,
     targetCategory: planned.targetCategory,
     riskLevel: planned.riskLevel,
@@ -3101,19 +3438,42 @@ async function performScrollAction(
   const urlBefore = page.url();
   const target = planned.target;
 
+  const preScrollIdentity = await resolveLiveTargetIdentityOnly(page, target);
+  if (preScrollIdentity.status !== "ok") {
+    const runtimeReason =
+      preScrollIdentity.status === "identity_mismatch"
+        ? `pre-scroll identity check failed: ${identityMismatchReason(preScrollIdentity.identity)}`
+        : `pre-scroll identity check failed: ${preScrollIdentity.reason}`;
+    const skipped = await skippedAction(page, planned, sequence, actionsDir, runtimeReason, urlBefore, consoleErrors, networkErrors, {
+      plannerClickDecision: "not_applicable",
+      plannerClickDecisionReason: "scroll action does not perform safe clicks",
+      runtimeClickDecision: "skipped",
+      runtimeClickDecisionReason: runtimeReason,
+      targetIdentity: preScrollIdentity.status === "identity_mismatch" ? preScrollIdentity.identity : undefined,
+      targetIdentityCheckedBeforeScroll: true,
+      targetIdentityMismatchBeforeScroll: preScrollIdentity.status === "identity_mismatch"
+    });
+    return {
+      ...skipped,
+      findings: []
+    };
+  }
+
   await page.locator(`[data-ux-sentinel-target-id="${target.id}"]`).first().scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => undefined);
   const live = await resolveLiveTarget(page, target);
   if (live.status !== "ok") {
     const runtimeReason =
       live.status === "identity_mismatch"
-        ? live.identity.reason ?? `target identity mismatch: planned "${live.identity.plannedLabel}", live "${live.identity.liveLabel}"`
+        ? identityMismatchReason(live.identity)
         : live.reason;
     const skipped = await skippedAction(page, planned, sequence, actionsDir, live.reason, urlBefore, consoleErrors, networkErrors, {
       plannerClickDecision: "not_applicable",
       plannerClickDecisionReason: "scroll action does not perform safe clicks",
       runtimeClickDecision: "skipped",
       runtimeClickDecisionReason: runtimeReason,
-      targetIdentity: live.status === "identity_mismatch" ? live.identity : undefined
+      targetIdentity: live.status === "identity_mismatch" ? live.identity : undefined,
+      targetIdentityCheckedBeforeScroll: true,
+      targetIdentityMismatchBeforeScroll: false
     });
     return {
       ...skipped,
@@ -3153,6 +3513,9 @@ async function performScrollAction(
       plannerClickDecisionReason: "scroll action does not perform safe clicks",
       runtimeClickDecision: "not_applicable",
       runtimeClickDecisionReason: "scroll action does not perform safe clicks",
+      targetIdentity: live.identity,
+      targetIdentityCheckedBeforeScroll: true,
+      targetIdentityMismatchBeforeScroll: false,
       plannedReason: planned.plannedReason,
       targetCategory: planned.targetCategory,
       riskLevel: planned.riskLevel,
@@ -3341,6 +3704,10 @@ export async function interactiveExplorePage(options: InteractiveExploreOptions)
           const latestScrollTargets = config.scrollContainers
             ? (await collectScrollableTargets(page, config.avoidClickText)).filter((target) => !latestInteractiveTargetIds.has(target.id))
             : [];
+          upsertClickCandidateDecisions(
+            clickCandidatesById,
+            buildClickCandidateDecisions(latestTargets, plannedActions, options.scenario, config.capabilityPolicy.capabilities)
+          );
           const freshTargets = latestTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
           const freshScrollTargets = latestScrollTargets.filter((target) => !seenPlannedTargetIds.has(target.id));
           const replannedActions = planInteractiveActions({

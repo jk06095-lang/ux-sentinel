@@ -18,7 +18,14 @@ Fix evidence-backed perception mismatches from an agentic interactive audit with
 - pointer trace: `.ux-sentinel/traces/<timestamp>/actions/a001-pointer-trace.json`
 - animation trace: `.ux-sentinel/traces/<timestamp>/actions/a001-animation-trace.json`
 
-Before patching, compare `plannerClickDecision` with `runtimeClickDecision` in `action-trace.json` and `trace-manifest.json`. A planner-allowed candidate may still be runtime-skipped for cursor target drift, stale target, target identity mismatch, overlay blockage, or navigation safety. If `targetIdentity.matches` is false, preserve the skip behavior and fix the UI/state drift; do not force the audit to click the changed live element.
+Before patching, compare `plannerClickDecision` with `runtimeClickDecision` in `action-trace.json` and `trace-manifest.json`. A planner-allowed candidate may still be runtime-skipped for cursor target drift, stale target, target identity mismatch, dangerous label change, overlay blockage, or navigation safety. Read `originalVisibleText` / `originalIdentitySignature` beside `latestVisibleText` / `latestIdentitySignature` before judging whether the planner allowed the original target or the live target later changed. If `targetIdentity.matches` is false, preserve the skip behavior and fix the UI/state drift; do not force the audit to click, hover, focus, or scroll the changed live element.
+
+Identity statuses mean:
+
+- `match`: structural identity and label are stable.
+- `benign_label_change`: structure is stable and the label changed only by counters, punctuation, whitespace, or safe state copy.
+- `identity_mismatch`: structure, href, role, or semantic action changed, or the label drift is not benign.
+- `dangerous_label_change`: the latest live label became destructive, payment-related, logout/removal/account-deletion, or irreversible.
 
 ## Findings To Address
 
@@ -62,6 +69,8 @@ Acceptance criteria:
 - Do not disable interactive exploration or contact sheet generation.
 - Do not enable `run --interactive --click-safe`; scenario-driven clicks must use `interactive_exploration.click_all_safe_controls: true`.
 - Do not weaken stable target identity checks or remove `target identity mismatch` skips.
+- Do not remove the pre-scroll identity gate; mismatched targets must be skipped before scroll, hover, focus, or click.
+- Do not overwrite original click-candidate identity fields with latest live metadata.
 - Do not collapse planner and runtime click decisions into one ambiguous field.
 - Do not remove phased animation samples; short hover/focus/click motion must remain visible before after-settle evidence.
 

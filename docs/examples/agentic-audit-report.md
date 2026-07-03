@@ -39,9 +39,16 @@ This example shows the intended shape of an evidence-backed interactive report. 
 | a001 | hover_click | Create first project | planner allowed; runtime allowed | before/after/diff, pointer trace, state diff |
 | a002 | focus | Help | planner skipped; runtime skipped | safe_click capability disabled |
 | a003 | scroll | dashboard list | not_applicable | before/after/diff |
-| a004 | hover | Open details | planner allowed; runtime skipped | target identity mismatch, before/after/diff, DOM diff, accessibility diff |
+| a004 | hover | Open details | planner allowed original target; runtime skipped live target | pre-scroll `dangerous_label_change`, before/after/diff, DOM diff, accessibility diff |
 
-`action-trace.json`, `state-graph.json`, and `trace-manifest.json` expose both `plannerClickDecision` and `runtimeClickDecision`. If an old planned id resolves to a different semantic element, the action keeps `targetIdentity.plannedLabel`, `targetIdentity.liveLabel`, `skipReason`, and local evidence links instead of acting on the live element.
+`action-trace.json`, `state-graph.json`, and `trace-manifest.json` expose both `plannerClickDecision` and `runtimeClickDecision`. Click candidates preserve original fields such as `originalVisibleText: "Open details"` and later live fields such as `latestVisibleText: "Delete project"` so the report does not imply the planner allowed a dangerous label. If an old planned id resolves to a different semantic element, the action keeps `targetIdentity.status`, `targetIdentity.plannedLabel`, `targetIdentity.liveLabel`, `targetIdentityCheckedBeforeScroll`, `targetIdentityMismatchBeforeScroll`, `skipReason`, and local evidence links instead of acting on the live element.
+
+Target identity statuses are:
+
+- `match`
+- `benign_label_change`
+- `identity_mismatch`
+- `dangerous_label_change`
 
 Animation traces expose phased samples:
 

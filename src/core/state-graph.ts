@@ -62,6 +62,8 @@ export interface StateGraphEdge {
   runtimeClickDecision?: ClickDecision;
   runtimeClickDecisionReason?: string;
   targetIdentity?: LiveTargetIdentityCheck;
+  targetIdentityCheckedBeforeScroll?: boolean;
+  targetIdentityMismatchBeforeScroll?: boolean;
   beforeStateId: string;
   afterStateId: string;
   beforeScreenshot: string;

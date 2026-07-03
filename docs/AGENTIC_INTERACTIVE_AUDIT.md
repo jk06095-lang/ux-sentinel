@@ -91,21 +91,25 @@ Each action record includes:
 - `runtimeClickDecisionReason`
 - `clickDecision`
 - `clickDecisionReason`
-- `targetIdentity` when the live element no longer matches the planned target
+- `targetIdentity` with status `match`, `benign_label_change`, `identity_mismatch`, or `dangerous_label_change`
+- `targetIdentityCheckedBeforeScroll`
+- `targetIdentityMismatchBeforeScroll`
 - `visualDiff`
 - `pointerTrace`
 - `animationTrace` when motion audit is enabled
 
-The action trace also includes a root `planner` object with the selected mode and action/click/depth/state-change budgets. `clickCandidates` keeps the legacy `clickDecision` fields as the planner decision for compatibility, and adds `plannerClickDecision`, `plannerClickDecisionReason`, `runtimeClickDecision`, `runtimeClickDecisionReason`, and `runtimeActionId` after execution. This makes safe behavior legible when the planner allowed a candidate but runtime skipped it because of cursor target drift, blockage, stale DOM, identity mismatch, or navigation safety.
+The action trace also includes a root `planner` object with the selected mode and action/click/depth/state-change budgets. `clickCandidates` keeps the legacy `clickDecision` fields as the planner decision for compatibility, and adds `plannerClickDecision`, `plannerClickDecisionReason`, `runtimeClickDecision`, `runtimeClickDecisionReason`, and `runtimeActionId` after execution. Candidate records preserve the original planned identity in fields such as `originalVisibleText`, `originalDataUxAction`, and `originalIdentitySignature`, while later recollection writes `latestVisibleText`, `latestDataUxAction`, and `latestIdentitySignature`. This makes safe behavior legible when the planner allowed the original target but runtime skipped the latest live target because of cursor target drift, blockage, stale DOM, identity mismatch, dangerous label change, or navigation safety.
 
-Target ids are stable within a page. `collectVisibleInteractiveTargets()` and `collectScrollableTargets()` do not overwrite an existing `data-ux-sentinel-target-id`; new targets receive monotonic ids (`t0001`, `t0002`, ... for interactive targets and `s0001`, `s0002`, ... for scroll targets). Replanning after a state change adds newly discovered controls without corrupting old planned actions. Before hover, focus, click, or scroll, `resolveLiveTarget()` compares the planned target signature against the live DOM element using tag, role, visible text, aria label, title, href, `data-ux-role`, `data-ux-action`, and `data-ux-clickable`. If the id now points at a semantically different element, the action is skipped with `target identity mismatch`; no hover, focus, or click is performed for that stale plan.
+Target ids are stable within a page. `collectVisibleInteractiveTargets()` and `collectScrollableTargets()` do not overwrite an existing `data-ux-sentinel-target-id`; new targets receive monotonic ids (`t0001`, `t0002`, ... for interactive targets and `s0001`, `s0002`, ... for scroll targets). Replanning after a state change adds newly discovered controls without corrupting old planned actions. Before any user-like scroll, hover, focus, or click, `resolveLiveTargetIdentityOnly()` checks the live element without scrolling. The full `resolveLiveTarget()` still runs after scroll to verify visibility, viewport, and identity again.
+
+Target identity uses strict structural matching for tag, role, href, `data-ux-role`, `data-ux-action`, and `data-ux-clickable`, then separately classifies label drift. Counter, punctuation, whitespace, and safe suffix changes such as `Notifications` -> `Notifications 2` or `Open details` -> `Open details expanded` can be recorded as `benign_label_change`; structural drift remains `identity_mismatch`; destructive/payment/logout/removal/irreversible live labels remain `dangerous_label_change`. Mismatched and dangerous targets are skipped before scroll, hover, focus, or click, and the contact sheet states whether the skip happened before scroll.
 
 `state-graph.json` includes:
 
 - state nodes with URL, viewport, screenshot, screen map path, accessibility hash, visible text hash, DOM structure hash, open UI state with id/bbox/ARIA/data-state evidence, console error count, and network error count
 - action edges with action id, action type, target id, target category, planner reason/risk/depth/priority, skipped/skip reason, planner/runtime click decisions, target identity status when present, before/after state ids, before/after screenshots, visual diff path, DOM diff path, accessibility diff path, pointer trace path plus cursor movement summary, finding detectors, and attached finding summaries with evidence, impact, suggested fix, regression check, and rule metadata
 
-`trace-manifest.json` is written beside the action trace and state graph. It indexes root artifacts, click candidate planner/runtime decisions, per-action evidence files, state/finding counts, planner metadata, and the resolved capability policy so a reviewer or Codex can quickly verify that the bundle is complete before drilling into individual files.
+`trace-manifest.json` is written beside the action trace and state graph. It indexes root artifacts, click candidate original/latest identity fields, click candidate planner/runtime decisions, per-action target identity status, per-action evidence files, state/finding counts, planner metadata, and the resolved capability policy so a reviewer or Codex can quickly verify that the bundle is complete before drilling into individual files.
 
 Visual diffs are written as `actions/aNNN-diff.png`. They are generated by composing the before and after screenshots with a deterministic difference blend, so reviewers can quickly spot visible changes without requiring a server or external image service.
 

@@ -1278,10 +1278,374 @@ describe("interactive exploration helpers", () => {
       );
 
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
-      expect(contactSheet).toContain("Target identity status: mismatch");
+      expect(contactSheet).toContain("Target identity status: identity_mismatch");
       expect(contactSheet).toContain("planned label &quot;Open details&quot;");
       expect(contactSheet).toContain("live label &quot;Delete project&quot;");
-      expect(contactSheet).toContain("Runtime click decision: skipped: target identity mismatch");
+      expect(contactSheet).toContain("Runtime click decision: skipped: pre-scroll identity check failed: target identity mismatch");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves original click candidate metadata while recording latest live identity", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="prepare" onclick="
+            const details = document.getElementById('details');
+            details.textContent = 'Delete project';
+            details.setAttribute('data-ux-action', 'delete-project');
+            details.onclick = () => {
+              const deleted = document.createElement('p');
+              deleted.textContent = 'Deleted project';
+              document.body.append(deleted);
+            };
+            const fresh = document.createElement('button');
+            fresh.textContent = 'Review created note';
+            fresh.setAttribute('data-ux-action', 'review-created-note');
+            document.body.append(fresh);
+            document.getElementById('status').textContent = 'Prepared';
+          ">Prepare mutation</button>
+          <button id="details" data-ux-action="open-details" onclick="document.body.append('Opened details')">Open details</button>
+          <p id="status">Ready</p>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 3,
+        settleMs: 0,
+        scenario: {
+          id: "candidate-original-latest",
+          title: "Candidate original/latest",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Prepare mutation"] } },
+          interactive_exploration: {
+            enabled: true,
+            mode: "agentic",
+            click_all_safe_controls: true,
+            max_actions: 3,
+            max_depth: 2,
+            max_clicks: 3,
+            max_state_changes: 3
+          }
+        }
+      });
+
+      expect(result.actions[0].clicked).toBe(true);
+      expect(result.actions[1]).toMatchObject({
+        skipped: true,
+        clicked: false,
+        runtimeClickDecision: "skipped",
+        targetIdentity: {
+          matches: false,
+          status: "identity_mismatch",
+          plannedLabel: "Open details",
+          liveLabel: "Delete project"
+        }
+      });
+
+      const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
+        clickCandidates: Array<{
+          visibleText: string;
+          originalVisibleText: string;
+          latestVisibleText?: string;
+          originalDataUxAction?: string | null;
+          latestDataUxAction?: string | null;
+          originalIdentitySignature: string;
+          latestIdentitySignature?: string;
+          plannerClickDecision: string;
+          runtimeClickDecision?: string;
+          runtimeClickDecisionReason?: string;
+        }>;
+      };
+      const candidate = actionTrace.clickCandidates.find((item) => item.originalVisibleText === "Open details");
+      expect(candidate).toMatchObject({
+        visibleText: "Open details",
+        originalVisibleText: "Open details",
+        latestVisibleText: "Delete project",
+        originalDataUxAction: "open-details",
+        latestDataUxAction: "delete-project",
+        plannerClickDecision: "allowed",
+        runtimeClickDecision: "skipped",
+        runtimeClickDecisionReason: expect.stringContaining("target identity mismatch")
+      });
+      expect(candidate?.originalIdentitySignature).toEqual(expect.any(String));
+      expect(candidate?.latestIdentitySignature).toEqual(expect.any(String));
+      expect(candidate?.latestIdentitySignature).not.toBe(candidate?.originalIdentitySignature);
+
+      const traceManifest = JSON.parse(await readFile(result.artifacts.traceManifest, "utf8")) as {
+        clickCandidates: Array<{
+          originalVisibleText?: string;
+          latestVisibleText?: string;
+          originalIdentitySignature?: string;
+          latestIdentitySignature?: string;
+          runtimeClickDecisionReason?: string;
+        }>;
+      };
+      const manifestCandidate = traceManifest.clickCandidates.find((item) => item.originalVisibleText === "Open details");
+      expect(manifestCandidate).toMatchObject({
+        originalVisibleText: "Open details",
+        latestVisibleText: "Delete project",
+        originalIdentitySignature: expect.any(String),
+        latestIdentitySignature: expect.any(String),
+        runtimeClickDecisionReason: expect.stringContaining("target identity mismatch")
+      });
+
+      const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
+      expect(contactSheet).toContain("Original candidate: Open details");
+      expect(contactSheet).toContain("Latest candidate: Delete project");
+      expect(contactSheet).toContain("Planner click decision: allowed");
+      expect(contactSheet).toContain("Runtime click decision: skipped");
+      expect(contactSheet).toContain("Latest live label became dangerous");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows benign label changes to continue through pre-scroll identity checks", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            body { min-height: 1800px; }
+            #notify { display: block; margin-top: 120px; width: 180px; height: 44px; }
+          </style>
+          <button id="prepare" onclick="
+            const notify = document.getElementById('notify');
+            notify.textContent = 'Notifications 2';
+            notify.style.marginTop = '1100px';
+            document.getElementById('status').textContent = 'Prepared notifications';
+          ">Prepare notifications</button>
+          <button id="notify" data-ux-action="open-notifications" onclick="
+            document.body.dataset.notified = 'true';
+            document.getElementById('status').textContent = 'Notifications opened';
+          ">Notifications</button>
+          <p id="status">Ready</p>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "benign-label-change",
+          title: "Benign label change",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Prepare notifications"] } },
+          interactive_exploration: { enabled: true, click_all_safe_controls: true, max_actions: 2, max_clicks: 2, max_state_changes: 2 }
+        }
+      });
+
+      expect(result.actions[1]).toMatchObject({
+        clicked: true,
+        runtimeClickDecision: "allowed",
+        targetIdentity: {
+          matches: true,
+          status: "benign_label_change",
+          plannedLabel: "Notifications",
+          liveLabel: "Notifications 2"
+        },
+        targetIdentityCheckedBeforeScroll: true,
+        targetIdentityMismatchBeforeScroll: false
+      });
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("skips dangerous label changes even when structural identity is stable", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="prepare" onclick="
+            const details = document.getElementById('details');
+            details.textContent = 'Delete project';
+            details.onclick = () => document.body.append('Deleted project');
+          ">Prepare danger</button>
+          <button id="details" data-ux-action="open-details" onclick="document.body.append('Opened details')">Open details</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "dangerous-label-change",
+          title: "Dangerous label change",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Prepare danger"] } },
+          interactive_exploration: { enabled: true, click_all_safe_controls: true, max_actions: 2, max_clicks: 2, max_state_changes: 2 }
+        }
+      });
+
+      expect(result.actions[1]).toMatchObject({
+        skipped: true,
+        clicked: false,
+        runtimeClickDecision: "skipped",
+        targetIdentity: {
+          matches: false,
+          status: "dangerous_label_change",
+          plannedLabel: "Open details",
+          liveLabel: "Delete project",
+          structuralSignatureMatches: true
+        },
+        targetIdentityCheckedBeforeScroll: true,
+        targetIdentityMismatchBeforeScroll: true
+      });
+      expect(result.actions[1].runtimeClickDecisionReason).toContain("target label became dangerous");
+      expect(result.actions[1].pointerTrace).toBeUndefined();
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("skips structural action changes even when label drift is benign", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="prepare" onclick="
+            const details = document.getElementById('details');
+            details.textContent = 'Open details expanded';
+            details.setAttribute('data-ux-action', 'delete-project');
+          ">Prepare structural change</button>
+          <button id="details" data-ux-action="open-details" onclick="document.body.append('Opened details')">Open details</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "structural-label-change",
+          title: "Structural label change",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Prepare structural change"] } },
+          interactive_exploration: { enabled: true, click_all_safe_controls: true, max_actions: 2, max_clicks: 2, max_state_changes: 2 }
+        }
+      });
+
+      expect(result.actions[1]).toMatchObject({
+        skipped: true,
+        clicked: false,
+        targetIdentity: {
+          matches: false,
+          status: "identity_mismatch",
+          structuralSignatureMatches: false,
+          plannedLabel: "Open details",
+          liveLabel: "Open details expanded"
+        }
+      });
+      expect(result.actions[1].runtimeClickDecisionReason).toContain("structural identity changed");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("skips href changes as structural identity mismatches", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <button id="prepare" onclick="
+            const details = document.getElementById('details');
+            details.href = 'https://example.test/billing';
+          ">Prepare href change</button>
+          <a id="details" data-ux-action="open-details" href="https://example.test/details">Open details</a>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "href-identity-change",
+          title: "Href identity change",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Prepare href change"] } },
+          interactive_exploration: {
+            enabled: true,
+            click_all_safe_controls: true,
+            allow_navigation: true,
+            max_actions: 2,
+            max_clicks: 2,
+            max_state_changes: 2
+          }
+        }
+      });
+
+      expect(result.actions[1]).toMatchObject({
+        skipped: true,
+        clicked: false,
+        targetIdentity: {
+          matches: false,
+          status: "identity_mismatch",
+          structuralSignatureMatches: false,
+          plannedLabel: "Open details",
+          liveLabel: "Open details"
+        }
+      });
+      expect(result.actions[1].runtimeClickDecisionReason).toContain("structural identity changed");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not scroll before skipping a pre-scroll identity mismatch", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            body { min-height: 2200px; }
+            #details { display: block; margin-top: 120px; width: 180px; height: 44px; }
+          </style>
+          <script>
+            window.addEventListener('scroll', () => {
+              if (!document.getElementById('scrolled')) {
+                const marker = document.createElement('p');
+                marker.id = 'scrolled';
+                marker.textContent = 'Scrolled before skip';
+                document.body.append(marker);
+              }
+            });
+          </script>
+          <button id="prepare" onclick="
+            const details = document.getElementById('details');
+            details.textContent = 'Delete project';
+            details.style.marginTop = '1500px';
+          ">Prepare offscreen danger</button>
+          <button id="details" data-ux-action="open-details" onclick="document.body.append('Deleted project')">Open details</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 2,
+        settleMs: 0,
+        scenario: {
+          id: "pre-scroll-identity-skip",
+          title: "Pre-scroll identity skip",
+          persona: "tester",
+          visual_contract: { primary_cta: { preferred_labels: ["Prepare offscreen danger"] } },
+          interactive_exploration: { enabled: true, click_all_safe_controls: true, max_actions: 2, max_clicks: 2, max_state_changes: 2 }
+        }
+      });
+
+      expect(result.actions[1]).toMatchObject({
+        skipped: true,
+        clicked: false,
+        focused: false,
+        targetIdentity: {
+          matches: false,
+          status: "dangerous_label_change"
+        },
+        targetIdentityCheckedBeforeScroll: true,
+        targetIdentityMismatchBeforeScroll: true
+      });
+      expect(result.actions[1].pointerTrace).toBeUndefined();
+      expect(result.actions[1].skipReason).toContain("pre-scroll identity check failed");
+
+      const domDiff = JSON.parse(await readFile(result.actions[1].domDiff!, "utf8")) as {
+        visibleTextAdded: string[];
+      };
+      expect(domDiff.visibleTextAdded).not.toContain("Scrolled before skip");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

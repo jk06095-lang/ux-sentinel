@@ -274,13 +274,18 @@ export interface InteractiveTarget {
   skipClickReason?: string;
 }
 
+export type TargetIdentityStatus = "match" | "benign_label_change" | "identity_mismatch" | "dangerous_label_change";
+
 export interface LiveTargetIdentityCheck {
   matches: boolean;
+  status: TargetIdentityStatus;
   reason?: string;
   liveLabel: string;
   plannedLabel: string;
   liveSignature: string;
   plannedSignature: string;
+  structuralSignatureMatches: boolean;
+  labelChanged: boolean;
 }
 
 export interface InteractiveClickCandidateDecision {
@@ -296,6 +301,26 @@ export interface InteractiveClickCandidateDecision {
   title: string | null;
   bbox: ElementBox;
   href: string | null;
+  originalTag: string;
+  originalRole: string | null;
+  originalVisibleText: string;
+  originalAriaLabel: string | null;
+  originalTitle: string | null;
+  originalHref: string | null;
+  originalDataUxRole: string | null;
+  originalDataUxAction?: string | null;
+  originalDataUxClickable?: boolean;
+  originalIdentitySignature: string;
+  latestTag?: string;
+  latestRole?: string | null;
+  latestVisibleText?: string;
+  latestAriaLabel?: string | null;
+  latestTitle?: string | null;
+  latestHref?: string | null;
+  latestDataUxRole?: string | null;
+  latestDataUxAction?: string | null;
+  latestDataUxClickable?: boolean;
+  latestIdentitySignature?: string;
   targetCategory: InteractiveTargetCategory;
   riskLevel: InteractiveRiskLevel;
   safeToClick: boolean;
@@ -513,6 +538,8 @@ export interface InteractiveActionRecord {
   runtimeClickDecision?: ClickDecision;
   runtimeClickDecisionReason?: string;
   targetIdentity?: LiveTargetIdentityCheck;
+  targetIdentityCheckedBeforeScroll?: boolean;
+  targetIdentityMismatchBeforeScroll?: boolean;
   plannedReason?: string;
   targetCategory?: InteractiveTargetCategory;
   riskLevel?: InteractiveRiskLevel;

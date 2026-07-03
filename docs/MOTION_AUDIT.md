@@ -55,6 +55,8 @@ Critical-action hiding findings only fire for targets classified as `primary_cta
 Motion detectors scan the phased `samples` array first, with the legacy `normal` and `reducedMotion` fields kept for compatibility. `animation_uses_layout_paint_properties`, `animation_duration_blocks_task`, `animation_hides_critical_action`, `animation_jank_detected`, and `inconsistent_motion_tokens` use normal-motion samples across hover, focus, click, and settle phases. `animation_ignores_reduced_motion` compares normal-motion samples with the `reduced_motion_comparison` sample when `compare_reduced_motion: true`.
 Jank and token-consistency findings are deterministic trace heuristics: they use visible animated element counts, risky property evidence, target bbox movement, long-task markers when available, duration spread, and easing spread from `actions/aNNN-animation-trace.json`.
 
+The post-identity-check reporting changes do not change phased motion sampling. A target must still pass the pre-scroll identity gate before hover, focus, click, and their immediate animation phases are sampled; pre-scroll identity skips remain evidence-backed through screenshots, DOM diff, accessibility diff, screen map, and skip reason rather than animation or pointer traces.
+
 ## Demo Gate
 
 `demo/scenarios/interactive-motion.yaml` runs against `demo/interactive-motion.html` and intentionally fails. It enables `animation_audit`, safe scenario clicking, reduced-motion comparison, and a low `max_animation_ms` threshold so the demo verifier can prove:
