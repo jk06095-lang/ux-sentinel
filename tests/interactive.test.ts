@@ -395,7 +395,13 @@ describe("interactive exploration helpers", () => {
           ruleIds: ["nielsen.visibility_of_system_status"],
           ruleFamily: "nielsen",
           whyThisMatters: "Visibility of system status: hover feedback should remain readable.",
-          confidence: "high"
+          confidence: "high",
+          evidencePaths: {
+            beforeScreenshot: "trace/actions/a001-before.png",
+            afterScreenshot: "trace/actions/a001-after.png",
+            visualDiff: "trace/actions/a001-diff.png",
+            pointerTrace: "trace/actions/a001-pointer-trace.json"
+          }
         },
         {
           id: "UX-I002",
@@ -479,6 +485,9 @@ describe("interactive exploration helpers", () => {
     expect(html).toContain("Evidence status: evidence-backed finding");
     expect(html).toContain("Evidence status: ambiguous heuristic review prompt");
     expect(html).toContain("Evidence: Tooltip bbox extends beyond viewport.");
+    expect(html).toContain("Evidence paths:");
+    expect(html).toContain('beforeScreenshot=<a href="actions/a001-before.png">actions/a001-before.png</a>');
+    expect(html).toContain('pointerTrace=<a href="actions/a001-pointer-trace.json">actions/a001-pointer-trace.json</a>');
     expect(html).toContain("User impact: A user may not be able to read the hover help.");
     expect(html).toContain("Suggested fix: Keep tooltip content inside the viewport.");
     expect(html).toContain("Regression check: Rerun the interactive audit.");
