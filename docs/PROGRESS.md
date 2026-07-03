@@ -337,6 +337,7 @@ Added detector-to-rule mapping for current findings:
 - Added rule modules for Nielsen heuristics, WCAG 2.2, motion, Gestalt, interaction laws, graph/DAG readability, and local product rules.
 - Extended findings with `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths.
 - Reports now render UX rule metadata and "Why this matters" text.
+- Reports now render explicit evidence status so Markdown findings distinguish evidence-backed findings from lower-confidence review prompts.
 - Added tests that fail if implemented detectors are not mapped to at least one UX rule.
 
 ### Checkpoint: Expanded High-Priority Detectors

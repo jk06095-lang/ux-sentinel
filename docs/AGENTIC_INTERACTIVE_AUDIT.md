@@ -104,7 +104,7 @@ Pointer traces are written as `actions/aNNN-pointer-trace.json`. They record the
 
 Animation traces are written as `actions/aNNN-animation-trace.json` only when motion audit is enabled. They record CSS transition/animation evidence, Web Animations API entries, risky properties, optional reduced-motion comparison, and target bbox movement. See [MOTION_AUDIT.md](MOTION_AUDIT.md).
 
-Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, and `Confidence`.
+Rule mappings live in [UX_RULE_REGISTRY.md](UX_RULE_REGISTRY.md). Enriched findings include `ruleIds`, `ruleFamily`, `whyThisMatters`, `confidence`, and optional evidence paths. Reports render this as `UX rules`, `Rule family`, `Why this matters`, `Evidence status`, and `Confidence`.
 
 When a scenario sets `ux_rule_profile.enabled: true`, reports also show the selected rule sets and whether the scenario requires rule mapping. This profile is declarative: it documents the intended professional review lens while the deterministic enrichment layer continues to attach the concrete rule evidence.
 

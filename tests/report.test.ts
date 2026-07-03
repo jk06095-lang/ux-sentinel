@@ -26,6 +26,17 @@ describe("report generation", () => {
       suggestedFix: "Add visible CTA.",
       regressionCheck: "Run scenario again."
     };
+    const partiallyEvidencedFinding: Finding = {
+      id: "UX-002",
+      detector: "safe_click_changed_unrelated_state",
+      title: "Safe click changed an unrelated state",
+      severity: "P2",
+      type: "Perception Mismatch",
+      evidence: "The action introduced unrelated high-risk copy without a linked state diff artifact.",
+      userImpact: "A user may unexpectedly land in a billing state.",
+      suggestedFix: "Align the click consequence with the visible label.",
+      regressionCheck: "Run the same agentic interactive scenario."
+    };
     const observation: ObservationResult = {
       accessibilitySnapshot: null,
       artifacts: {
@@ -86,7 +97,7 @@ describe("report generation", () => {
       scenario,
       url: "http://example.test",
       verdict: "fail",
-      findings: [finding],
+      findings: [finding, partiallyEvidencedFinding],
       observation
     });
 
@@ -100,12 +111,16 @@ describe("report generation", () => {
     expect(report).toContain("contact-sheet.html");
     expect(report).toContain("UX rules:");
     expect(report).toContain("Why this matters:");
+    expect(report).toContain("- Evidence status: evidence-backed finding");
     expect(report).toContain("- Confidence: high");
+    expect(report).toContain("- Evidence status: evidence-supported review finding");
+    expect(report).toContain("- Confidence: medium");
     expect(report).toContain("screenshot=.ux-sentinel/traces/test/screenshot.png");
     expect(report).toContain("screenMap=.ux-sentinel/traces/test/screen-map.json");
     expect(report).toContain("accessibilitySnapshot=.ux-sentinel/traces/test/accessibility.json");
     expect(report).toContain("## Codex Patch Brief");
     expect(report).toContain("Do not change scenarios or visual contracts");
     expect(report).toContain("UX-001");
+    expect(report).toContain("UX-002");
   });
 });

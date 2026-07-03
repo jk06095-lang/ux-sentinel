@@ -103,6 +103,7 @@ function formatFinding(finding: Finding): string {
     finding.ruleIds?.length ? `- UX rules: ${finding.ruleIds.join(", ")}` : undefined,
     finding.ruleFamily ? `- Rule family: ${finding.ruleFamily}` : undefined,
     finding.whyThisMatters ? `- Why this matters: ${finding.whyThisMatters}` : undefined,
+    `- Evidence status: ${evidenceStatusForFinding(finding)}`,
     finding.confidence ? `- Confidence: ${finding.confidence}` : undefined,
     finding.evidencePaths && Object.keys(finding.evidencePaths).length
       ? `- Evidence paths: ${Object.entries(finding.evidencePaths).map(([key, value]) => `${key}=${value}`).join(", ")}`
@@ -117,6 +118,16 @@ ${ruleLines ? `${ruleLines}\n` : ""}- Evidence: ${finding.evidence}
 - User impact: ${finding.userImpact}
 - Suggested fix: ${finding.suggestedFix}
 - Regression check: ${finding.regressionCheck}`;
+}
+
+function evidenceStatusForFinding(finding: Finding): string {
+  if (finding.confidence === "high") {
+    return "evidence-backed finding";
+  }
+  if (finding.confidence === "medium") {
+    return "evidence-supported review finding";
+  }
+  return "ambiguous heuristic review prompt";
 }
 
 function buildInlinePatchBrief(scenario: Scenario, verdict: Verdict, findings: Finding[]): string {

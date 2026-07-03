@@ -461,7 +461,7 @@ Skipped actions are recorded in `action-trace.json` and shown in `contact-sheet.
 
 Each interactive action writes `actions/a001-diff.png` alongside `a001-before.png` and `a001-after.png`, giving reviewers a local static visual diff without an external image service.
 
-`contact-sheet.html` is a static local review surface with a reviewer answer matrix, severity, detector, and rule-family filters, an action timeline, a safety log, accessibility and animation audit sections, bbox overlays, and UX principle mapping for findings. The matrix answers what the agent did, what it clicked or avoided, what changed, which evidence supports the result, and which UX principle or fix should guide review.
+Markdown reports and `contact-sheet.html` both label finding evidence status so reviewers can distinguish evidence-backed findings from lower-confidence review prompts. `contact-sheet.html` is a static local review surface with a reviewer answer matrix, severity, detector, and rule-family filters, an action timeline, a safety log, accessibility and animation audit sections, bbox overlays, and UX principle mapping for findings. The matrix answers what the agent did, what it clicked or avoided, what changed, which evidence supports the result, and which UX principle or fix should guide review.
 
 Scenario reports are written under `.ux-sentinel/reports/`. Codex patch briefs are written under `.ux-sentinel/briefs/`.
 
