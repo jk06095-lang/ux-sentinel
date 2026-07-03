@@ -664,3 +664,10 @@ Surfaced motion media preferences in compact review surfaces:
 - `animationTraceSummary` now carries normal and reduced motion environment metadata from the full animation trace.
 - `contact-sheet.html`, action trace, and state graph summaries show which browser motion preference backed each animation audit section.
 - The demo verifier checks summary environment metadata against the underlying `actions/aNNN-animation-trace.json`.
+
+### Checkpoint: Korean Destructive Label Regression Coverage
+
+Locked destructive-label evidence to clean Korean strings across static and interactive safety paths:
+
+- Static detector coverage now proves `destructive_action_without_confirmation` fires for `삭제`, `제거`, `결제`, and `로그아웃`.
+- Package/docs guard coverage now checks `src/core/detectors.ts` and `tests/detectors.test.ts` when verifying clean Korean labels and removed mojibake labels.

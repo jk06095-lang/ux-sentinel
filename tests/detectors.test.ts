@@ -299,6 +299,33 @@ describe("detectors", () => {
     );
   });
 
+  it("detects clean Korean destructive labels as destructive actions", () => {
+    const labels = ["삭제", "제거", "결제", "로그아웃"];
+    const screenMap = baseScreenMap({
+      visibleText: labels,
+      elements: labels.map((label, index) =>
+        baseElement({
+          id: `korean-danger-${index + 1}`,
+          tag: "button",
+          role: "button",
+          visibleText: label,
+          bbox: { x: 40, y: 80 + index * 56, width: 180, height: 44 },
+          clickable: true,
+          looksClickable: true,
+          hasVisibleAffordance: true
+        })
+      )
+    });
+
+    const findings = runDetectors(screenMap, scenario).filter(
+      (finding) => finding.detector === "destructive_action_without_confirmation"
+    );
+
+    for (const label of labels) {
+      expect(findings.map((finding) => finding.evidence)).toContainEqual(expect.stringContaining(label));
+    }
+  });
+
   it("detects primary hierarchy conflicts and inconsistent action labels", () => {
     const screenMap = baseScreenMap({
       visibleText: ["Create first project", "Create project", "Learn more", "Open", "Open", "Save", "Save changes"],

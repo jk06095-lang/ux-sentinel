@@ -43,7 +43,9 @@ describe("package metadata for GitHub npm exec", () => {
   it("keeps dangerous Korean labels clean and removes old mojibake labels", () => {
     const sources = [
       "src/core/interactive.ts",
+      "src/core/detectors.ts",
       "tests/interactive.test.ts",
+      "tests/detectors.test.ts",
       "demo/scenarios/interactive-dag-clarity.yaml",
       "demo/scenarios/professional-agentic-ui-audit.yaml"
     ].map(readText).join("\n");
