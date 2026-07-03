@@ -623,3 +623,12 @@ Extended opt-in motion audit evidence:
 - `actions/aNNN-animation-trace.json` now records `longTaskApiAvailable`, `longTaskObserverInstalled`, and a `longTasks` array.
 - Long-task markers feed the deterministic `animation_jank_detected` heuristic and are covered by a real interactive Playwright fixture.
 - The interactive motion demo now produces busy-action evidence, and `npm run demo:verify` checks long-task marker fields without requiring unsupported browsers to invent them.
+
+### Checkpoint: Action-Level Animation Summary
+
+Made motion evidence easier to review without opening the full trace first:
+
+- Added `animationTraceSummary` to interactive action records and state graph edges.
+- The summary includes animated target count, risky properties, approximate target layout shift, reduced-motion status, long-task count, max long-task duration, and Long Task API availability.
+- `contact-sheet.html` now shows compact animation metadata in the animation audit section and each action card.
+- `npm run demo:verify` checks that animation summaries match their underlying `actions/aNNN-animation-trace.json` files.

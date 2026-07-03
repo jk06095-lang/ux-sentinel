@@ -35,6 +35,7 @@ import {
 import type {
   AnimationAuditOptions,
   AnimationTrace,
+  AnimationTraceSummary,
   ClickBlockage,
   ConsoleIssue,
   ElementBox,
@@ -1699,6 +1700,7 @@ function buildTraceManifest(
       beforeStateId: action.beforeStateId,
       afterStateId: action.afterStateId,
       findingDetectors: action.findingDetectors,
+      animationTraceSummary: action.animationTraceSummary,
       evidence: {
         beforeScreenshot: relativeArtifact(traceDir, action.beforeScreenshot),
         afterScreenshot: relativeArtifact(traceDir, action.afterScreenshot),
@@ -1735,6 +1737,19 @@ function summarizePointerTrace(trace: PointerTrace): PointerTraceSummary {
   };
 }
 
+function summarizeAnimationTrace(trace: AnimationTrace): AnimationTraceSummary {
+  const longTasks = trace.longTasks ?? [];
+  return {
+    targetCount: trace.normal.length,
+    riskyProperties: trace.riskyProperties,
+    reducedMotionStillAnimating: trace.reducedMotionStillAnimating,
+    layoutShiftApproximationPx: trace.layoutShiftApproximationPx,
+    longTaskApiAvailable: trace.longTaskApiAvailable === true,
+    longTaskCount: longTasks.length,
+    maxLongTaskDurationMs: Math.max(0, ...longTasks.map((task) => task.durationMs))
+  };
+}
+
 async function pointerTraceSummary(pointerTracePath: string | undefined): Promise<PointerTraceSummary | undefined> {
   if (!pointerTracePath) {
     return undefined;
@@ -1766,6 +1781,22 @@ function evidencePathLinks(traceDir: string, findingItem: Finding): string {
     return "none";
   }
   return entries.map(([label, filePath]) => `${escapeHtml(label)}=${artifactLink(traceDir, filePath)}`).join(" / ");
+}
+
+function animationTraceSummaryText(summary: AnimationTraceSummary | undefined): string {
+  if (!summary) {
+    return "summary not captured";
+  }
+
+  return [
+    `targets=${summary.targetCount}`,
+    `risky=${summary.riskyProperties.length ? summary.riskyProperties.join("|") : "none"}`,
+    `layoutShift=${summary.layoutShiftApproximationPx}px`,
+    `reducedMotionStillAnimating=${summary.reducedMotionStillAnimating}`,
+    `longTasks=${summary.longTaskCount}`,
+    `maxLongTask=${summary.maxLongTaskDurationMs}ms`,
+    `longTaskApi=${summary.longTaskApiAvailable}`
+  ].join(", ");
 }
 
 function buildClickCandidateDecisions(
@@ -1969,7 +2000,10 @@ export function buildContactSheetHtml(
   const animationAudit = result.actions.some((action) => action.animationTrace)
     ? result.actions
         .filter((action) => action.animationTrace)
-        .map((action) => `<li><strong>${escapeHtml(action.id)}</strong> ${artifactLink(result.artifacts.traceDir, action.animationTrace)}</li>`)
+        .map(
+          (action) =>
+            `<li><strong>${escapeHtml(action.id)}</strong> ${artifactLink(result.artifacts.traceDir, action.animationTrace)}; ${escapeHtml(animationTraceSummaryText(action.animationTraceSummary))}</li>`
+        )
         .join("\n")
     : "<li>No animation trace was captured for this run.</li>";
   const reviewerMatrix = result.actions.length
@@ -2052,6 +2086,7 @@ export function buildContactSheetHtml(
           ].join(", ")
         : "none";
       const animationTraceLink = artifactLink(result.artifacts.traceDir, action.animationTrace);
+      const animationTraceSummary = animationTraceSummaryText(action.animationTraceSummary);
       const focusEvidence = action.focusEvidence
         ? `active=${action.focusEvidence.activeElementMatchesTarget}, visible=${action.focusEvidence.hasVisibleFocusIndicator}, hit-test=${action.focusEvidence.hitTestMatchedTarget}`
         : "none";
@@ -2073,6 +2108,7 @@ export function buildContactSheetHtml(
   <p><strong>Pointer trace:</strong> ${pointerTraceLink}</p>
   <p><strong>Pointer metadata:</strong> ${escapeHtml(pointerTraceSummary)}</p>
   <p><strong>Animation trace:</strong> ${animationTraceLink}</p>
+  <p><strong>Animation metadata:</strong> ${escapeHtml(animationTraceSummary)}</p>
   <p><strong>Focus evidence:</strong> ${escapeHtml(focusEvidence)}</p>
   <p><strong>State:</strong> ${escapeHtml(action.beforeStateId ?? "unknown")} -> ${escapeHtml(action.afterStateId ?? "unknown")}</p>
   <p><strong>Diffs:</strong> visual=${artifactLink(result.artifacts.traceDir, action.visualDiff)} / dom=${artifactLink(result.artifacts.traceDir, action.domDiff)} / a11y=${artifactLink(result.artifacts.traceDir, action.accessibilityDiff)}</p>
@@ -2363,6 +2399,7 @@ async function recordActionStateEvidence(options: {
       pointerTrace: options.action.pointerTrace,
       cursorMovement,
       animationTrace: options.action.animationTrace,
+      animationTraceSummary: options.action.animationTraceSummary,
       findingDetectors: options.action.findingDetectors,
       findings: []
     }
@@ -2530,6 +2567,7 @@ async function performTargetAction(
   let pointerTracePath: string | undefined;
   let pointerTraceSummaryValue: PointerTraceSummary | undefined;
   let animationTracePath: string | undefined;
+  let animationTraceSummaryValue: AnimationTraceSummary | undefined;
   let pointerEnd: PointerPoint | undefined;
   let focusEvidence: FocusEvidence | undefined;
   const urlBefore = page.url();
@@ -2600,6 +2638,7 @@ async function performTargetAction(
   const animationTrace = await recordAnimationTrace(page, liveTarget, actionId, actionsDir, config.animationAudit, liveTarget.bbox);
   if (animationTrace) {
     animationTracePath = animationTrace.path;
+    animationTraceSummaryValue = summarizeAnimationTrace(animationTrace.trace);
     findings.push(...buildAnimationFindings(animationTrace.trace, animationTrace.path, liveTarget, actionId, config, planned.targetCategory));
   }
 
@@ -2622,6 +2661,7 @@ async function performTargetAction(
     pointerTrace: pointerTracePath,
     pointerTraceSummary: pointerTraceSummaryValue,
     animationTrace: animationTracePath,
+    animationTraceSummary: animationTraceSummaryValue,
     focusEvidence,
     clicked,
     focused,

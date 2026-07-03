@@ -247,6 +247,12 @@ function assertInteractiveArtifacts({
       if (!Array.isArray(trace.longTasks)) {
         throw new Error(`${action.animationTrace} did not record long task marker evidence array`);
       }
+      if (!action.animationTraceSummary || action.animationTraceSummary.targetCount !== trace.normal.length) {
+        throw new Error(`${actionLabel} did not record animation summary target count`);
+      }
+      if (action.animationTraceSummary.longTaskCount !== trace.longTasks.length) {
+        throw new Error(`${actionLabel} animation summary long task count did not match trace`);
+      }
       if (expectedAnimationTrace) {
         if (trace.compareReducedMotion !== true) {
           throw new Error(`${action.animationTrace} did not record expected reduced-motion comparison evidence`);

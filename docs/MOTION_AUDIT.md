@@ -33,7 +33,7 @@ The trace records:
 - risky properties such as `top`, `left`, `width`, `height`, `margin`, `padding`, `font-size`, `box-shadow`, and `filter`
 - `longTasks` markers from `PerformanceObserver` / `performance.getEntriesByType("longtask")` when the browser exposes them
 
-The contact sheet links the animation trace beside pointer trace and focus evidence. Findings include the action id, target id, trace path, affected properties, and a regression check.
+The contact sheet links the animation trace beside pointer trace and focus evidence, and also shows a compact per-action animation summary: animated target count, risky properties, approximate layout shift, reduced-motion status, long-task count, max long-task duration, and Long Task API availability. Findings include the action id, target id, trace path, affected properties, and a regression check.
 
 ## Detectors
 

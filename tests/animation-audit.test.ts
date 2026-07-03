@@ -196,13 +196,27 @@ describe("animation audit", () => {
         "a001-animation-trace.json"
       );
       const actionTrace = JSON.parse(await readFile(result.artifacts.actionTrace, "utf8")) as {
-        actions: Array<{ animationTrace?: string; findingDetectors: string[] }>;
+        actions: Array<{
+          animationTrace?: string;
+          animationTraceSummary?: { targetCount: number; riskyProperties: string[]; reducedMotionStillAnimating: boolean };
+          findingDetectors: string[];
+        }>;
       };
       expect(actionTrace.actions[0].animationTrace).toContain("a001-animation-trace.json");
+      expect(actionTrace.actions[0].animationTraceSummary).toEqual(
+        expect.objectContaining({
+          targetCount: trace.normal.length,
+          riskyProperties: expect.arrayContaining(["left"]),
+          reducedMotionStillAnimating: true
+        })
+      );
       expect(actionTrace.actions[0].findingDetectors).toContain("animation_ignores_reduced_motion");
       expect(actionTrace.actions[0].findingDetectors).toContain("animation_jank_detected");
       const contactSheet = await readFile(result.artifacts.contactSheet, "utf8");
       expect(contactSheet).toContain("Animation trace:");
+      expect(contactSheet).toContain("Animation metadata:");
+      expect(contactSheet).toContain("risky=left");
+      expect(contactSheet).toContain("reducedMotionStillAnimating=true");
       expect(contactSheet).toContain("a001-animation-trace.json");
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
@@ -258,6 +272,12 @@ describe("animation audit", () => {
         expect(trace.longTasks?.some((task) => task.durationMs >= 50)).toBe(true);
         expect(animationTraceJankIndicators(trace)).toContain("1 long task marker(s) recorded during the action");
       }
+      expect(result.actions[0].animationTraceSummary).toEqual(
+        expect.objectContaining({
+          longTaskApiAvailable: trace.longTaskApiAvailable === true,
+          longTaskCount: trace.longTasks?.length ?? 0
+        })
+      );
     } finally {
       await rm(traceRoot, { recursive: true, force: true });
     }

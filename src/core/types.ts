@@ -425,6 +425,16 @@ export interface AnimationTrace {
   longTasks?: AnimationLongTaskMarker[];
 }
 
+export interface AnimationTraceSummary {
+  targetCount: number;
+  riskyProperties: string[];
+  reducedMotionStillAnimating: boolean;
+  layoutShiftApproximationPx: number;
+  longTaskApiAvailable: boolean;
+  longTaskCount: number;
+  maxLongTaskDurationMs: number;
+}
+
 export interface InteractiveActionRecord {
   id: string;
   sequence: number;
@@ -454,6 +464,7 @@ export interface InteractiveActionRecord {
   pointerTraceSummary?: PointerTraceSummary;
   focusEvidence?: FocusEvidence;
   animationTrace?: string;
+  animationTraceSummary?: AnimationTraceSummary;
   skipped?: boolean;
   skipReason?: string;
   urlBefore?: string;
