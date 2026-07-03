@@ -1275,6 +1275,54 @@ describe("interactive exploration helpers", () => {
     }
   });
 
+  it("records a pointer finding when the target moves during cursor approach", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            body { margin: 0; min-height: 320px; }
+            button { position: absolute; left: 100px; top: 100px; width: 180px; height: 48px; }
+          </style>
+          <button
+            onmouseenter="this.style.left='140px'"
+            onclick="document.getElementById('clicked').hidden=false"
+          >Open stable panel</button>
+          <p id="clicked" hidden>Panel opened</p>
+        `),
+        traceRoot,
+        commandMode: "explore",
+        clickSafeOverride: true,
+        maxActions: 1,
+        settleMs: 20
+      });
+
+      expect(result.actions[0].pointerTrace).toContain("a001-pointer-trace.json");
+      expect(result.actions[0].pointerTraceSummary).toMatchObject({
+        targetMovedDuringApproach: true,
+        finalHitTestMatchedTarget: true
+      });
+      expect(result.actions[0].findingDetectors).toContain("target_moved_during_cursor_approach");
+      expect(result.findings.map((finding) => finding.detector)).toContain("target_moved_during_cursor_approach");
+      expect(result.findings.find((finding) => finding.detector === "target_moved_during_cursor_approach")?.evidencePaths?.pointerTrace).toContain(
+        "a001-pointer-trace.json"
+      );
+
+      const pointerTrace = JSON.parse(await readFile(result.actions[0].pointerTrace!, "utf8")) as {
+        targetMovedDuringApproach: boolean;
+        finalHitTestMatchedTarget: boolean;
+        initialHitTest: { bbox?: { x: number } };
+        finalHitTest: { bbox?: { x: number } };
+      };
+      expect(pointerTrace.targetMovedDuringApproach).toBe(true);
+      expect(pointerTrace.finalHitTestMatchedTarget).toBe(true);
+      expect(pointerTrace.initialHitTest.bbox?.x).toBe(100);
+      expect(pointerTrace.finalHitTest.bbox?.x).toBe(140);
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("does not click English or Korean dangerous labels even when safe-click capability is enabled", async () => {
     const dangerousLabels = ["Delete project", "Account deletion", "Irreversible action", "로그아웃"];
 

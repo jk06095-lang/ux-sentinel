@@ -532,3 +532,11 @@ Added a broken/fixed demo pair for feedback and recovery detectors:
 - Added `demo/scenarios/feedback-recovery.yaml` with explicit fail conditions for `empty_state_without_next_step`, `dead_end_state_without_recovery`, `loading_without_progress_or_timeout`, `status_change_not_announced`, `dialog_without_accessible_name`, `dialog_close_unavailable`, and `modal_trap_without_escape`.
 - Routed `/feedback-recovery-broken` and `/feedback-recovery-fixed` through the demo server.
 - Extended `npm run demo:verify` to assert exact fail/pass verdicts and concrete report evidence for the intended feedback and recovery detectors.
+
+### Checkpoint: Target Movement Pointer Regression
+
+Added a focused browser regression for pointer-path target movement evidence:
+
+- Added an interactive fixture where a safe button shifts horizontally during cursor approach while the final hit-test still lands on the target.
+- Asserted `target_moved_during_cursor_approach` appears in action-linked findings.
+- Asserted `a001-pointer-trace.json` records `targetMovedDuringApproach: true`, `finalHitTestMatchedTarget: true`, and the before/after target bbox movement.
