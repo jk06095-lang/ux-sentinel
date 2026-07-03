@@ -207,6 +207,58 @@ describe("animation audit", () => {
     }
   });
 
+  it("does not collect reduced-motion evidence or findings unless comparison is enabled", async () => {
+    const traceRoot = await tempTraceRoot();
+    try {
+      const result = await interactiveExplorePage({
+        url: dataUrl(`
+          <style>
+            button {
+              position: absolute;
+              left: 32px;
+              top: 48px;
+              width: 180px;
+              height: 44px;
+              transition-property: opacity;
+              transition-duration: 500ms;
+            }
+            @media (prefers-reduced-motion: reduce) {
+              button {
+                transition-duration: 500ms;
+              }
+            }
+          </style>
+          <button>Create first project</button>
+        `),
+        traceRoot,
+        commandMode: "run",
+        maxActions: 1,
+        settleMs: 0,
+        scenario: {
+          id: "motion-no-compare",
+          title: "Motion no compare",
+          persona: "tester",
+          interactive_exploration: { enabled: true },
+          animation_audit: {
+            enabled: true,
+            compare_reduced_motion: false,
+            max_animation_ms: 1000
+          }
+        }
+      });
+
+      expect(result.actions[0].animationTrace).toContain("a001-animation-trace.json");
+      const trace = JSON.parse(await readFile(result.actions[0].animationTrace!, "utf8")) as AnimationTrace;
+
+      expect(trace.compareReducedMotion).toBe(false);
+      expect(trace.reducedMotion).toBeUndefined();
+      expect(trace.reducedMotionStillAnimating).toBe(false);
+      expect(result.findings.map((finding) => finding.detector)).not.toContain("animation_ignores_reduced_motion");
+    } finally {
+      await rm(traceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("reports primary CTA visibility-affecting motion as critical action evidence", async () => {
     const traceRoot = await tempTraceRoot();
     try {

@@ -548,3 +548,11 @@ Tightened repeated-target planning so visually identical controls are not collap
 - Included `data-ux-action` and `href` in the planner state key used to avoid repeated target exploration.
 - Preserved deduplication for genuinely identical same-label/same-bbox targets.
 - Added a planner regression proving same-label/same-bbox targets with different `data-ux-action` or `href` identities are all planned.
+
+### Checkpoint: Reduced-Motion Opt-In Regression
+
+Added a runtime regression for the motion audit opt-in boundary:
+
+- Verified animation traces are still written when `animation_audit.enabled: true`.
+- Verified `compare_reduced_motion: false` leaves `reducedMotion` evidence absent and `reducedMotionStillAnimating: false`.
+- Verified `animation_ignores_reduced_motion` is not emitted unless reduced-motion comparison is explicitly enabled.
