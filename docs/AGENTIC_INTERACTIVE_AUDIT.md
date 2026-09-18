@@ -127,8 +127,17 @@ The contact sheet now acts as the professional review surface for this evidence.
 
 ## Current Limits
 
-This is the planner foundation, not the full professional audit surface yet. Upcoming work should add:
+The current planner and evidence system are strong at reconstructing what happened, but they still leave too much UX inference to the downstream coding agent.
 
-- expanded detector batches
-- richer graph visualization for branching or repeated-state runs
-- broader branching visualization for multiple discovered-control paths
+The next architectural priorities are tracked in [V0.2_ROADMAP.md](V0.2_ROADMAP.md):
+
+- replace area-dominant `visualWeight` decisions with explainable perceptual salience,
+- add coverage gating so required states and control classes must be explored before an audit is considered complete,
+- compile findings into structured repair contracts,
+- compare before/after UX dimensions and block regressions,
+- move scenario goals away from hard-coded visible-label identity,
+- map browser targets back to likely source components when possible,
+- keep any future visual-model critic optional and advisory.
+
+Richer branching visualization remains useful for complex state graphs, but it is secondary to making the judge-to-fixer handoff more precise.
+

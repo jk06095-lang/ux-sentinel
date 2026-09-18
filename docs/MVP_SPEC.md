@@ -1,5 +1,7 @@
 # UX Sentinel MVP Spec
 
+> **Stable v0.1 reference:** this document describes the original deterministic MVP contract. New development architecture is documented in [ARCHITECTURE.md](ARCHITECTURE.md), while future work belongs in [V0.2_ROADMAP.md](V0.2_ROADMAP.md).
+
 ## Product Name
 
 ux-sentinel

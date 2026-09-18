@@ -1,5 +1,7 @@
 # Progress
 
+> **Document role:** chronological implementation history. This file is intentionally append-only and is not the canonical roadmap. See [V0.2_ROADMAP.md](V0.2_ROADMAP.md) for planned work and [ARCHITECTURE.md](ARCHITECTURE.md) for the current system structure.
+
 This file tracks checkpoints while building `ux-sentinel`.
 
 ## 2026-07-01
