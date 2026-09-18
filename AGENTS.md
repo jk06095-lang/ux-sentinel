@@ -18,9 +18,12 @@ A perception mismatch occurs when the DOM, accessibility tree, or guided test sa
 
 Before implementation, read:
 
-1. docs/PRODUCT_BRIEF.md
-2. docs/MVP_SPEC.md
-3. this AGENTS.md
+1. docs/README.md
+2. docs/ARCHITECTURE.md
+3. docs/MVP_SPEC.md
+4. this AGENTS.md
+
+When implementing planned v0.2 architecture work, also read docs/V0.2_ROADMAP.md. Treat docs/PROGRESS.md as implementation history, not the canonical roadmap.
 
 ## Engineering Rules
 
