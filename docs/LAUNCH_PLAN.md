@@ -1,5 +1,7 @@
 # Launch Plan
 
+> **Historical/reference document:** this file preserves v0.1 launch messaging and launch material. It is not the current product roadmap. See [../README.md](../README.md) for current usage and [V0.2_ROADMAP.md](V0.2_ROADMAP.md) for planned architecture work.
+
 ## Public README Message
 
 ```markdown
