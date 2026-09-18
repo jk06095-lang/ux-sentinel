@@ -6,6 +6,15 @@ ux-sentinel is a local CLI that detects perception mismatches in AI-generated fr
 
 It collects screenshots, visible text, DOM/accessibility evidence, layout signals, console errors, and network failures, then generates a report and a Codex-ready patch brief. Current `main` development builds also include interactive audit mode for hover, focus, scroll, overlay, card, and graph/DAG perception checks. Interactive audit is not part of the GitHub `v0.1.0` stable path unless it is released later.
 
+## Project Status
+
+- **v0.1.0** is the stable deterministic baseline.
+- **main** contains the newer interactive evidence, agentic planning, state graph, pointer trace, UX-rule, and motion-audit work described in the development docs.
+- **v0.2** is planned as a repair-oriented architecture: richer perceptual salience, coverage gating, structured repair contracts, before/after UX deltas, semantic goals, and source attribution.
+
+For the canonical documentation map, see [docs/README.md](docs/README.md). For implementation structure, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). For planned work, see [docs/V0.2_ROADMAP.md](docs/V0.2_ROADMAP.md).
+
+
 ## Why this exists
 
 AI-built UIs can pass DOM tests while still failing the person looking at the screen. `ux-sentinel` checks the visible next action, empty-state guidance, layout signals, console errors, and network failures so the report points to the human-facing UX problem, not just the selector that exists.
@@ -573,10 +582,13 @@ Opt-in motion audit detectors:
 
 ## Roadmap
 
-- More visual-contract detectors for disabled recovery, confusing hierarchy, and copy/consequence mismatch.
-- Agentic action planning on top of the current capability-based safety model.
-- Richer scenario action steps that remain deterministic and local-first.
-- Optional vision review behind an explicit disabled-by-default flag.
-- Optional provider hooks for teams that want LLM-assisted feedback distillation.
-- Richer screen-map overlay controls.
-- Package publishing workflow after the MVP stabilizes.
+The canonical roadmap now lives in [docs/V0.2_ROADMAP.md](docs/V0.2_ROADMAP.md).
+
+Near-term priorities are:
+
+- replace area-only visual weight with explainable perceptual salience,
+- add a coverage gate so audits cannot finish before required states are inspected,
+- emit structured repair contracts instead of asking a coding agent to reinterpret vague UX advice,
+- compare before/after UX dimensions and reject regressions,
+- reduce fixer ambiguity with semantic goals and source attribution,
+- keep any future visual-model critic optional and disabled by default.
