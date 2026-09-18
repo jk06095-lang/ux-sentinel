@@ -1,5 +1,7 @@
 # Product Brief
 
+> **Reference document:** this captures the original product rationale and positioning. For the current implementation, read [ARCHITECTURE.md](ARCHITECTURE.md). For planned v0.2 work, read [V0.2_ROADMAP.md](V0.2_ROADMAP.md).
+
 ## Product
 
 `ux-sentinel` is a local CLI developer tool for finding perception mismatch in AI-generated frontend UIs.
